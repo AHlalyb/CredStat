@@ -1,0 +1,1215 @@
+<?php
+/**
+ * 信息查询功能API
+ * 支持基于关键词的模糊匹配查询
+ * 支持按查询类型筛选或全类别查询
+ */
+
+// 启用输出缓冲，防止PHP Warning污染JSON响应
+while (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
+
+// 设置响应头
+header('Content-Type: application/json; charset=UTF-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// 加载数据库配置
+$dbConfig = require __DIR__ . '/app/config/database.php';
+
+// 加载SecurityUtils类
+require_once __DIR__ . '/app/utils/SecurityUtils.php';
+
+// 初始化响应
+$response = [
+    'success' => false,
+    'message' => '',
+    'data' => [],
+    'total' => 0,
+    'page' => 1,
+    'page_size' => 10
+];
+
+// 处理OPTIONS请求
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    // 直接返回CORS头，不处理具体业务逻辑
+    echo json_encode([
+        'success' => true,
+        'message' => 'OPTIONS请求处理成功'
+    ]);
+    exit;
+}
+
+// 处理POST请求
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 获取请求参数
+    $rawInput = file_get_contents('php://input');
+    
+    // 记录原始请求数据（使用base64编码，避免中文乱码）
+    error_log('搜索API原始请求(base64): ' . base64_encode($rawInput));
+    
+    // 解析JSON数据
+    $requestData = json_decode($rawInput, true);
+    
+    // 记录请求日志（使用base64编码，避免中文乱码）
+    error_log('搜索API请求(base64): ' . base64_encode(json_encode($requestData)));
+    
+    // 提取请求参数
+    $action = isset($requestData['action']) ? trim($requestData['action']) : 'search';
+    $keyword1 = isset($requestData['keyword1']) ? trim($requestData['keyword1']) : '';
+    $keyword2 = isset($requestData['keyword2']) ? trim($requestData['keyword2']) : '';
+    $queryType = isset($requestData['queryType']) ? trim($requestData['queryType']) : '';
+    $page = isset($requestData['page']) ? intval($requestData['page']) : 1;
+    $pageSize = isset($requestData['pageSize']) ? intval($requestData['pageSize']) : 10;
+    $export = isset($requestData['export']) ? boolval($requestData['export']) : false;
+    $exportFormat = isset($requestData['exportFormat']) ? strtolower(trim($requestData['exportFormat'])) : 'excel';
+    $data = isset($requestData['data']) ? $requestData['data'] : [];
+    
+    // 添加调试日志
+    error_log('解析后的查询参数:');
+    error_log('keyword1: ' . $keyword1);
+    error_log('keyword2: ' . $keyword2);
+    error_log('queryType: ' . $queryType);
+    error_log('page: ' . $page);
+    error_log('pageSize: ' . $pageSize);
+    error_log('export: ' . ($export ? 'true' : 'false'));
+    error_log('exportFormat: ' . $exportFormat);
+    
+    // 验证页码和每页数量
+    $page = max(1, $page);
+    $pageSize = max(1, min(100, $pageSize)); // 限制每页数量在1-100之间
+    
+    // 如果是导出请求，获取所有数据
+    if ($export) {
+        $pageSize = PHP_INT_MAX; // 获取所有数据
+    }
+    
+    // 记录查询参数
+    error_log('双关键词查询参数: keyword1=' . $keyword1 . ', keyword2=' . $keyword2 . ', type=' . $queryType);
+    
+    try {
+        // 连接数据库
+        $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ];
+        $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+        error_log('数据库连接成功');
+        
+        // 开始事务
+        $pdo->beginTransaction();
+        
+        // 处理不同的操作类型
+        if ($action === 'update') {
+            // 更新操作
+            error_log('执行更新操作');
+            error_log('更新数据: ' . json_encode($data));
+            
+            // 根据查询类型处理不同的更新逻辑
+            switch ($queryType) {
+                case 'cluster':
+                    // 更新集群信息
+                    if (isset($data['cluster_id']) && !empty($data['cluster_id'])) {
+                        $clusterId = $data['cluster_id'];
+                        
+                        // 更新集群基本信息
+                        $updateSql = "UPDATE cluster SET 
+                            cluster_name = :clusterName,
+                            cluster_address = :clusterAddress,
+                            cluster_username = :clusterUsername,
+                            cluster_password = :clusterPassword,
+                            cluster_updated_at = NOW()
+                            WHERE cluster_id = :clusterId";
+                        
+                        $stmt = $pdo->prepare($updateSql);
+                        $stmt->bindValue(':clusterName', $data['clusterName'], PDO::PARAM_STR);
+                        $stmt->bindValue(':clusterAddress', $data['clusterAddress'], PDO::PARAM_STR);
+                        $stmt->bindValue(':clusterUsername', $data['clusterUsername'], PDO::PARAM_STR);
+                        // 加密密码
+                        $encryptedPassword = SecurityUtils::encrypt($data['clusterPassword']);
+                        $stmt->bindValue(':clusterPassword', $encryptedPassword, PDO::PARAM_STR);
+                        $stmt->bindValue(':clusterId', $clusterId, PDO::PARAM_INT);
+                        $stmt->execute();
+                        error_log('集群基本信息更新成功');
+                        
+                        // 更新物理机信息
+                        if (isset($data['physicalMachines']) && is_array($data['physicalMachines'])) {
+                            // 先删除原有物理机信息
+                            $deleteSql = "DELETE FROM cluster_physical_machine WHERE cluster_id = :clusterId";
+                            $stmt = $pdo->prepare($deleteSql);
+                            $stmt->bindValue(':clusterId', $clusterId, PDO::PARAM_INT);
+                            $stmt->execute();
+                            error_log('原有物理机信息删除成功');
+                            
+                            // 插入新的物理机信息
+                            foreach ($data['physicalMachines'] as $pm) {
+                                if (!empty($pm['pmName']) || !empty($pm['pmIp'])) {
+                                    $insertSql = "INSERT INTO cluster_physical_machine (
+                                        cluster_id, 
+                                        cluster_pm_name, 
+                                        cluster_pm_ip, 
+                                        cluster_pm_username, 
+                                        cluster_pm_password, 
+                                        cluster_pm_bmc_ip, 
+                                        cluster_pm_bmc_username, 
+                                        cluster_pm_bmc_password,
+                                        cluster_pm_created_at
+                                    ) VALUES (
+                                        :clusterId, 
+                                        :pmName, 
+                                        :pmIp, 
+                                        :pmUsername, 
+                                        :pmPassword, 
+                                        :pmBmcIp, 
+                                        :pmBmcUsername, 
+                                        :pmBmcPassword,
+                                        NOW()
+                                    )";
+                                    
+                                    $stmt = $pdo->prepare($insertSql);
+                                    $stmt->bindValue(':clusterId', $clusterId, PDO::PARAM_INT);
+                                    $stmt->bindValue(':pmName', $pm['pmName'], PDO::PARAM_STR);
+                                    $stmt->bindValue(':pmIp', $pm['pmIp'], PDO::PARAM_STR);
+                                    $stmt->bindValue(':pmUsername', $pm['pmUsername'], PDO::PARAM_STR);
+                                    // 加密物理机密码
+                                    $encryptedPmPassword = SecurityUtils::encrypt($pm['pmPassword']);
+                                    $stmt->bindValue(':pmPassword', $encryptedPmPassword, PDO::PARAM_STR);
+                                    $stmt->bindValue(':pmBmcIp', $pm['pmBmcIp'], PDO::PARAM_STR);
+                                    $stmt->bindValue(':pmBmcUsername', $pm['pmBmcUsername'], PDO::PARAM_STR);
+                                    // 加密BMC密码
+                                    $encryptedBmcPassword = SecurityUtils::encrypt($pm['pmBmcPassword']);
+                                    $stmt->bindValue(':pmBmcPassword', $encryptedBmcPassword, PDO::PARAM_STR);
+                                    $stmt->execute();
+                                }
+                            }
+                            error_log('物理机信息更新成功');
+                        }
+                    }
+                    break;
+                default:
+                    throw new Exception('不支持的更新类型: ' . $queryType);
+            }
+            
+            // 提交事务
+            $pdo->commit();
+            
+            // 返回成功响应
+            $response['success'] = true;
+            $response['message'] = '更新成功';
+            $response['data'] = $data;
+        } else {
+            // 查询操作
+            // 初始化变量
+            $allResults = [];
+            $total = 0;
+            
+            // 全类别查询或特定类型查询
+            if (empty($queryType) || $queryType === 'all') {
+                // 全类别查询：先查询所有数据，然后合并分页
+                $tables = ['login_info', 'server_cred', 'net_dev_cred'];
+                
+                foreach ($tables as $table) {
+                    try {
+                        // 对每个表查询所有匹配数据（不分页）
+                    $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, 1, PHP_INT_MAX, $requestData);
+                        $allResults = array_merge($allResults, $tableResults['data']);
+                    } catch (Exception $e) {
+                        error_log('查询表 ' . $table . ' 出错: ' . $e->getMessage());
+                        // 跳过出错的表，继续查询其他表
+                        continue;
+                    }
+                }
+                
+                // 计算实际找到的记录总数
+                $total = count($allResults);
+                
+                // 对合并后的所有数据进行分页
+                $offset = ($page - 1) * $pageSize;
+                $results = array_slice($allResults, $offset, $pageSize);
+            } else {
+                // 特定类型查询：直接分页查询
+                $table = '';
+                error_log('查询类型: ' . $queryType);
+                switch ($queryType) {
+                    case 'system':
+                        $table = 'login_info';
+                        break;
+                    case 'server':
+                        $table = 'server_cred';
+                        break;
+                    case 'network':
+                        $table = 'net_dev_cred';
+                        break;
+                    case 'cluster':
+                        $table = 'cluster';
+                        break;
+                    case 'cluster_physical_machine':
+                        $table = 'cluster_physical_machine';
+                        break;
+                    default:
+                        throw new Exception('无效的查询类型: ' . $queryType);
+                }
+                error_log('选定的表: ' . $table);
+                
+                // 使用普通查询逻辑
+                $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requestData);
+                $results = $tableResults['data'];
+                $total = $tableResults['total'];
+            }
+            
+            // 返回查询结果前，对数据进行最终清理
+            $cleanedResults = [];
+            foreach ($results as $result) {
+                $cleanedResult = [];
+                foreach ($result as $key => $value) {
+                    // 确保键名是字符串
+                    $cleanKey = (string)$key;
+                    
+                    // 清理值，确保JSON编码成功
+                    if (is_null($value)) {
+                        // NULL值转换为空字符串
+                        $cleanValue = '';
+                    } elseif (is_string($value)) {
+                        // 清理字符串，移除可能导致JSON编码失败的字符
+                        $cleanValue = trim($value);
+                        // 移除控制字符
+                        $cleanValue = preg_replace('/[\x00-\x1F\x7F]/', '', $cleanValue);
+                        // 确保是有效的UTF-8
+                        $cleanValue = mb_convert_encoding($cleanValue, 'UTF-8', 'UTF-8');
+                    } else {
+                        // 其他类型直接使用
+                        $cleanValue = $value;
+                    }
+                    
+                    $cleanedResult[$cleanKey] = $cleanValue;
+                }
+                
+                // 密码已经在searchTable函数中解密，这里不需要再次解密
+                // 只需要确保密码字段存在，避免前端显示问题
+                try {
+                    // 如果是物理机数据，确保密码字段存在
+                    if ((isset($cleanedResult['category']) && $cleanedResult['category'] === 'cluster_physical_machine') || 
+                        (isset($cleanedResult['cluster_pm_ip']) && isset($cleanedResult['cluster_pm_username']))) {
+                        // 确保物理机密码字段存在
+                        if (!isset($cleanedResult['cluster_pm_password'])) {
+                            $cleanedResult['cluster_pm_password'] = '';
+                        }
+                        // 确保BMC密码字段存在
+                        if (!isset($cleanedResult['cluster_pm_bmc_password'])) {
+                            $cleanedResult['cluster_pm_bmc_password'] = '';
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("处理密码字段失败: {$e->getMessage()}");
+                }
+                
+                $cleanedResults[] = $cleanedResult;
+            }
+            
+            // 修复全类别查询的total计算：使用所有结果的数量
+            if (empty($queryType) || $queryType === 'all') {
+                // 对于全类别查询，使用合并后的结果数量作为total
+                $total = count($allResults);
+            } else {
+                // 修复特定类型查询的total计算问题：如果total为0，但有结果，使用结果数量作为total
+                if ($total === 0 && count($cleanedResults) > 0) {
+                    $total = count($cleanedResults);
+                }
+            }
+            
+            // 记录成功日志
+            error_log('搜索API成功返回: ' . count($cleanedResults) . ' 条记录');
+            error_log('搜索API总记录数: ' . $total . ' 条记录');
+            
+            // 检查是否是导出请求
+            if ($export) {
+                // 执行导出
+                exportData($cleanedResults, $exportFormat);
+                exit;
+            } else {
+                // 返回JSON响应
+                $response['success'] = true;
+                $response['message'] = '查询成功';
+                $response['data'] = $cleanedResults;
+                $response['total'] = $total;
+                $response['page'] = $page;
+                $response['page_size'] = $pageSize;
+            }
+        }
+        
+        // 提交事务
+        $pdo->commit();
+        
+    } catch (PDOException $e) {
+        $errorMsg = '数据库查询错误: ' . $e->getMessage();
+        $response['message'] = $errorMsg;
+        error_log($errorMsg . ' 错误代码: ' . $e->getCode());
+    } catch (Exception $e) {
+        $errorMsg = '查询错误: ' . $e->getMessage();
+        $response['message'] = $errorMsg;
+        error_log($errorMsg);
+    }
+} else {
+    $response['message'] = '仅支持POST请求';
+    error_log('搜索API错误: 仅支持POST请求，收到 ' . $_SERVER['REQUEST_METHOD']);
+}
+
+// 在输出JSON响应之前，清除所有之前的输出缓冲（包括PHP Warning）
+while (ob_get_level()) {
+    ob_end_clean();
+}
+
+// 尝试编码响应
+$jsonResponse = json_encode($response, JSON_UNESCAPED_UNICODE);
+
+if ($jsonResponse === false) {
+    // 如果JSON编码失败，记录错误信息并返回简化响应
+    $jsonError = json_last_error();
+    $jsonErrorMsg = json_last_error_msg();
+    error_log('JSON编码失败，错误码: ' . $jsonError . ', 错误信息: ' . $jsonErrorMsg);
+    
+    // 清除任何可能的输出
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+    
+    // 返回简化的错误响应
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => '查询过程中出现错误，请稍后重试',
+        'data' => [],
+        'total' => 0,
+        'page' => 1,
+        'page_size' => 10
+    ], JSON_UNESCAPED_UNICODE);
+} else {
+    echo $jsonResponse;
+}
+
+/**
+ * 导出数据
+ * @param array $data 要导出的数据
+ * @param string $format 导出格式 (pdf 或 excel)
+ */
+function exportData($data, $format) {
+    if (empty($data)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => '没有可导出的数据']);
+        exit;
+    }
+    
+    // 检查数据类型
+    $dataType = 'default';
+    if (!empty($data[0])) {
+        // 如果有category字段，使用它
+        if (isset($data[0]['category'])) {
+            $dataType = $data[0]['category'];
+        } 
+        // 否则，检查是否有cluster_id字段，这是集群数据的特征
+        elseif (isset($data[0]['cluster_id'])) {
+            $dataType = 'cluster';
+        }
+    }
+    
+    // 对于集群类型数据，需要加载物理机信息
+    if ($dataType === 'cluster') {
+        // 连接数据库
+        $dbConfig = require __DIR__ . '/app/config/database.php';
+        $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ];
+        $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+        
+        // 为每个集群加载物理机信息
+        foreach ($data as &$cluster) {
+            $clusterId = $cluster['cluster_id'];
+            // 查询物理机信息
+            $stmt = $pdo->prepare("SELECT * FROM cluster_physical_machine WHERE cluster_id = :clusterId");
+            $stmt->bindValue(':clusterId', $clusterId, PDO::PARAM_INT);
+            $stmt->execute();
+            $physicalMachines = $stmt->fetchAll();
+            
+            // 解密物理机密码和BMC密码
+            foreach ($physicalMachines as &$pm) {
+                // 解密物理机密码
+                if (isset($pm['cluster_pm_password']) && !empty($pm['cluster_pm_password'])) {
+                    $pm['cluster_pm_password'] = SecurityUtils::decrypt($pm['cluster_pm_password']);
+                }
+                
+                // 解密BMC密码
+                if (isset($pm['cluster_pm_bmc_password']) && !empty($pm['cluster_pm_bmc_password'])) {
+                    $pm['cluster_pm_bmc_password'] = SecurityUtils::decrypt($pm['cluster_pm_bmc_password']);
+                }
+            }
+            
+            // 添加物理机信息到集群数据中
+            $cluster['physical_machines'] = $physicalMachines;
+        }
+    }
+    
+    // 根据格式导出
+    switch ($format) {
+        case 'pdf':
+            exportToPDF($data, $dataType);
+            break;
+        case 'excel':
+        default:
+            exportToExcel($data, $dataType);
+            break;
+    }
+}
+
+/**
+ * 导出为Excel (CSV格式)
+ * @param array $data 要导出的数据
+ * @param string $dataType 数据类型
+ */
+function exportToExcel($data, $dataType = 'default') {
+    // 生成文件名，使用YYYYMMDDHHMMSS格式
+    $filename = '查询结果_' . date('YmdHis') . '.csv';
+    
+    // 设置响应头，确保中文文件名正确显示
+    // 先清除可能存在的旧响应头
+    header_remove('Content-Disposition');
+    
+    // 设置正确的Content-Type和字符集
+    header('Content-Type: text/csv; charset=utf-8');
+    
+    // 使用RFC 5987编码处理中文文件名
+    $encodedFilename = urlencode($filename);
+    header('Content-Disposition: attachment; filename*=UTF-8\'\'' . $encodedFilename);
+    header('Cache-Control: max-age=0');
+    
+    // 打开输出流
+    $output = fopen('php://output', 'w');
+    
+    // 添加BOM头，确保Excel能正确识别UTF-8编码
+    fwrite($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+    
+    // 根据数据类型处理
+    if ($dataType === 'cluster') {
+        // 导出集群信息和物理机信息
+        fputcsv($output, ['宿主机集群导出']);
+        fputcsv($output, []);
+        
+        // 遍历每个集群
+        foreach ($data as $clusterIndex => $cluster) {
+            // 导出集群基本信息
+            $clusterColumns = [
+                '集群名称', '集群ID', '集群地址', '集群用户名', '集群密码', '宿主机数量', '创建时间'
+            ];
+            fputcsv($output, $clusterColumns);
+            
+            $clusterData = [
+                isset($cluster['cluster_name']) ? $cluster['cluster_name'] : '',
+                isset($cluster['cluster_id']) ? $cluster['cluster_id'] : '',
+                isset($cluster['cluster_address']) ? $cluster['cluster_address'] : '',
+                isset($cluster['cluster_username']) ? $cluster['cluster_username'] : '',
+                isset($cluster['cluster_password']) ? $cluster['cluster_password'] : '',
+                isset($cluster['pm_count']) ? $cluster['pm_count'] : '',
+                isset($cluster['cluster_created_at']) ? $cluster['cluster_created_at'] : ''
+            ];
+            fputcsv($output, $clusterData);
+            
+            // 导出物理机信息
+            fputcsv($output, []);
+            fputcsv($output, ['物理机信息']);
+            
+            $physicalMachineColumns = [
+                '序号', '物理机IP', '物理机用户名', '物理机密码', 'BMC IP', 'BMC用户名', 'BMC密码', '创建时间'
+            ];
+            fputcsv($output, $physicalMachineColumns);
+            
+            // 写入物理机数据
+            if (isset($cluster['physical_machines']) && is_array($cluster['physical_machines'])) {
+                foreach ($cluster['physical_machines'] as $pmIndex => $pm) {
+                    // 确保物理机密码和解密
+                    $pmPassword = isset($pm['cluster_pm_password']) ? $pm['cluster_pm_password'] : '';
+                    $bmcPassword = isset($pm['cluster_pm_bmc_password']) ? $pm['cluster_pm_bmc_password'] : '';
+                    
+                    $pmData = [
+                        $pmIndex + 1,
+                        isset($pm['cluster_pm_ip']) ? $pm['cluster_pm_ip'] : '',
+                        isset($pm['cluster_pm_username']) ? $pm['cluster_pm_username'] : '',
+                        $pmPassword,
+                        isset($pm['cluster_pm_bmc_ip']) ? $pm['cluster_pm_bmc_ip'] : '',
+                        isset($pm['cluster_pm_bmc_username']) ? $pm['cluster_pm_bmc_username'] : '',
+                        $bmcPassword,
+                        isset($pm['cluster_pm_created_at']) ? $pm['cluster_pm_created_at'] : ''
+                    ];
+                    fputcsv($output, $pmData);
+                }
+            }
+            
+            // 添加分隔行
+            fputcsv($output, []);
+            fputcsv($output, ['--------------------------------------------------']);
+            fputcsv($output, []);
+        }
+    } else {
+        // 导出其他类型数据，使用默认字段列表
+        // 定义需要导出的固定字段列表（与查询显示的结果一致）
+        $exportColumns = [
+            '序号' => 'serial',
+            '名称' => 'name',
+            'IP/URL' => 'ip_url',
+            '类型' => 'type',
+            '用户名' => 'username',
+            '密码' => 'password',
+            '备注' => 'remark',
+            '创建时间' => 'created_at',
+            '类别' => 'category'
+        ];
+        
+        // 写入中文列名
+        fputcsv($output, array_keys($exportColumns));
+        
+        // 写入数据行
+        foreach ($data as $index => $row) {
+            $rowData = [];
+            $rowData[] = $index + 1; // 序号，从1开始
+            $rowData[] = isset($row['name']) ? $row['name'] : '';
+            $rowData[] = isset($row['ip_url']) ? $row['ip_url'] : '';
+            $rowData[] = isset($row['type']) ? $row['type'] : '';
+            $rowData[] = isset($row['username']) ? $row['username'] : '';
+            $rowData[] = isset($row['password']) ? $row['password'] : '';
+            $rowData[] = isset($row['remark']) ? $row['remark'] : '';
+            $rowData[] = isset($row['created_at']) ? $row['created_at'] : '';
+            $rowData[] = isset($row['category']) ? $row['category'] : '';
+            fputcsv($output, $rowData);
+        }
+    }
+    
+    // 关闭输出流
+    fclose($output);
+    exit;
+}
+
+/**
+ * 导出为HTML
+ * @param array $data 要导出的数据
+ * @param string $dataType 数据类型
+ */
+function exportToPDF($data, $dataType = 'default') {
+    // 生成文件名，使用YYYYMMDDHHMMSS格式，使用.html扩展名
+    $filename = '查询结果_' . date('YmdHis') . '.html';
+    
+    // 生成HTML内容
+    ob_start();
+    
+    // 输出HTML开始部分
+    echo '<!DOCTYPE html>';
+    echo '<html lang="zh-CN">';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<title>查询结果</title>';
+    echo '<style>';
+    echo 'body {';
+    echo '    font-family: Arial, sans-serif;';
+    echo '    margin: 20px;';
+    echo '}';
+    echo 'h1 {';
+    echo '    text-align: center;';
+    echo '    color: #333;';
+    echo '}';
+    echo 'h2 {';
+    echo '    color: #555;';
+    echo '    margin-top: 30px;';
+    echo '}';
+    echo 'h3 {';
+    echo '    color: #666;';
+    echo '    margin-top: 20px;';
+    echo '}';
+    echo 'table {';
+    echo '    width: 100%;';
+    echo '    border-collapse: collapse;';
+    echo '    margin: 20px 0;';
+    echo '}';
+    echo 'th, td {';
+    echo '    border: 1px solid #ddd;';
+    echo '    padding: 8px;';
+    echo '    text-align: left;';
+    echo '}';
+    echo 'th {';
+    echo '    background-color: #f2f2f2;';
+    echo '    font-weight: bold;';
+    echo '}';
+    echo 'tr:nth-child(even) {';
+    echo '    background-color: #f9f9f9;';
+    echo '}';
+    echo '.cluster-section {';
+    echo '    margin-bottom: 40px;';
+    echo '    padding: 20px;';
+    echo '    border: 1px solid #eee;';
+    echo '    border-radius: 5px;';
+    echo '}';
+    echo '.section-divider {';
+    echo '    margin: 30px 0;';
+    echo '    border-top: 2px solid #ddd;';
+    echo '}';
+    echo '</style>';
+    echo '</head>';
+    echo '<body>';
+    echo '<h1>查询结果</h1>';
+    
+    // 根据数据类型处理
+    if ($dataType === 'cluster') {
+        // 导出集群信息和物理机信息
+        foreach ($data as $clusterIndex => $cluster) {
+            echo '<div class="cluster-section">';
+            echo '<h2>集群 ' . ($clusterIndex + 1) . '</h2>';
+            
+            echo '<h3>集群基本信息</h3>';
+            echo '<table>';
+            echo '<thead>';
+            echo '<tr>';
+            echo '<th>集群名称</th>';
+            echo '<th>集群ID</th>';
+            echo '<th>集群地址</th>';
+            echo '<th>集群用户名</th>';
+            echo '<th>集群密码</th>';
+            echo '<th>宿主机数量</th>';
+            echo '<th>创建时间</th>';
+            echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
+            echo '<tr>';
+            echo '<td>' . (isset($cluster['cluster_name']) ? $cluster['cluster_name'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['cluster_id']) ? $cluster['cluster_id'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['cluster_address']) ? $cluster['cluster_address'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['cluster_username']) ? $cluster['cluster_username'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['cluster_password']) ? $cluster['cluster_password'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['pm_count']) ? $cluster['pm_count'] : '') . '</td>';
+            echo '<td>' . (isset($cluster['cluster_created_at']) ? $cluster['cluster_created_at'] : '') . '</td>';
+            echo '</tr>';
+            echo '</tbody>';
+            echo '</table>';
+            
+            echo '<h3>物理机信息</h3>';
+            echo '<table>';
+            echo '<thead>';
+            echo '<tr>';
+            echo '<th>序号</th>';
+            echo '<th>物理机IP</th>';
+            echo '<th>物理机用户名</th>';
+            echo '<th>物理机密码</th>';
+            echo '<th>BMC IP</th>';
+            echo '<th>BMC用户名</th>';
+            echo '<th>BMC密码</th>';
+            echo '<th>创建时间</th>';
+            echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
+            
+            if (isset($cluster['physical_machines']) && is_array($cluster['physical_machines'])) {
+                foreach ($cluster['physical_machines'] as $pmIndex => $pm) {
+                    echo '<tr>';
+                    echo '<td>' . ($pmIndex + 1) . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_ip']) ? $pm['cluster_pm_ip'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_username']) ? $pm['cluster_pm_username'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_password']) ? $pm['cluster_pm_password'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_bmc_ip']) ? $pm['cluster_pm_bmc_ip'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_bmc_username']) ? $pm['cluster_pm_bmc_username'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_bmc_password']) ? $pm['cluster_pm_bmc_password'] : '') . '</td>';
+                    echo '<td>' . (isset($pm['cluster_pm_created_at']) ? $pm['cluster_pm_created_at'] : '') . '</td>';
+                    echo '</tr>';
+                }
+            } else {
+                echo '<tr>';
+                echo '<td colspan="8">该集群下没有物理机</td>';
+                echo '</tr>';
+            }
+            
+            echo '</tbody>';
+            echo '</table>';
+            echo '</div>';
+            echo '<div class="section-divider"></div>';
+        }
+    } else {
+        // 导出其他类型数据，使用默认字段列表
+        echo '<table>';
+        echo '<thead>';
+        echo '<tr>';
+        
+        // 定义需要导出的固定字段列表（与查询显示的结果一致）
+        $exportColumns = [
+            '序号',
+            '名称',
+            'IP/URL',
+            '类型',
+            '用户名',
+            '密码',
+            '备注',
+            '创建时间',
+            '类别'
+        ];
+        
+        // 输出中文表头
+        foreach ($exportColumns as $column) {
+            echo '<th>' . $column . '</th>';
+        }
+        
+        echo '</tr>';
+        echo '</thead>';
+        echo '<tbody>';
+        
+        // 输出数据
+        foreach ($data as $index => $row) {
+            echo '<tr>';
+            echo '<td>' . ($index + 1) . '</td>'; // 序号，从1开始
+            echo '<td>' . (isset($row['name']) ? $row['name'] : '') . '</td>';
+            echo '<td>' . (isset($row['ip_url']) ? $row['ip_url'] : '') . '</td>';
+            echo '<td>' . (isset($row['type']) ? $row['type'] : '') . '</td>';
+            echo '<td>' . (isset($row['username']) ? $row['username'] : '') . '</td>';
+            echo '<td>' . (isset($row['password']) ? $row['password'] : '') . '</td>';
+            echo '<td>' . (isset($row['remark']) ? $row['remark'] : '') . '</td>';
+            echo '<td>' . (isset($row['created_at']) ? $row['created_at'] : '') . '</td>';
+            echo '<td>' . (isset($row['category']) ? $row['category'] : '') . '</td>';
+            echo '</tr>';
+        }
+        
+        echo '</tbody>';
+        echo '</table>';
+    }
+    
+    echo '</body>';
+    echo '</html>';
+    
+    $htmlContent = ob_get_clean();
+    
+    // 设置响应头，确保中文文件名正确显示
+    // 先清除可能存在的旧响应头
+    header_remove('Content-Disposition');
+    
+    // 设置正确的Content-Type和字符集
+    header('Content-Type: text/html; charset=utf-8');
+    
+    // 使用RFC 5987编码处理中文文件名
+    $encodedFilename = urlencode($filename);
+    header('Content-Disposition: attachment; filename*=UTF-8\'\'' . $encodedFilename);
+    header('Cache-Control: max-age=0');
+    
+    // 输出HTML内容，浏览器会自动处理
+    echo $htmlContent;
+    exit;
+}
+
+/**
+ * 查询指定表
+ * @param PDO $pdo PDO连接对象
+ * @param string $table 表名
+ * @param string $keyword1 第一个关键词
+ * @param string $keyword2 第二个关键词
+ * @param int $page 页码
+ * @param int $pageSize 每页数量
+ * @param array $requestData 请求数据
+ * @return array 查询结果
+ */
+function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requestData = []) {
+    $results = [];
+    $total = 0;
+    
+    // 准备参数数组
+    $params = [];
+    
+    // 基础查询SQL
+    $baseSql = '';
+    $whereClause = '';
+    $orderClause = '';
+    $category = '';
+    
+    // 根据表名构建不同的查询逻辑
+    switch ($table) {
+        case 'login_info':
+            // 查询信息系统登录信息 - 返回所有字段
+            $baseSql = "SELECT 
+                        *, 
+                        login_info_id as id, 
+                        login_info_system_name as name, 
+                        login_info_ip_url as ip_url, 
+                        login_info_login_type as type, 
+                        login_info_username as username, 
+                        login_info_password as password, 
+                        login_info_remark as remark, 
+                        login_info_created_at as created_at,
+                        'system' as category
+                    FROM login_info 
+                    WHERE login_info_is_active = 1";
+            $orderClause = " ORDER BY login_info_created_at DESC";
+            $category = 'system';
+            break;
+            
+        case 'server_cred':
+            // 查询服务器账号密码 - 返回所有字段
+            $baseSql = "SELECT 
+                        *, 
+                        server_cred_server_name as name, 
+                        server_cred_server_ip as ip_url, 
+                        server_cred_server_port as port, 
+                        server_cred_server_os as os, 
+                        server_cred_login_username as username, 
+                        server_cred_login_password as password, 
+                        server_cred_notes as description, 
+                        server_cred_notes as remark,
+                        'server' as category
+                    FROM server_cred 
+                    WHERE is_active = 1";
+            $orderClause = " ORDER BY created_at DESC";
+            $category = 'server';
+            break;
+            
+        case 'net_dev_cred':
+            // 查询网络设备登录信息 - 返回所有字段
+            $baseSql = "SELECT 
+                        *, 
+                        net_dev_cred_chinese_name as name, 
+                        net_dev_cred_management_ip as ip_url, 
+                        net_dev_cred_protocol as protocol, 
+                        net_dev_cred_port as port, 
+                        net_dev_cred_dev_type as dev_type, 
+                        net_dev_cred_username as username, 
+                        net_dev_cred_password_hash as password, 
+                        net_dev_cred_enable_password_hash as enable_password, 
+                        net_dev_cred_description as remark,
+                        'network' as category
+                    FROM net_dev_cred";
+            $orderClause = " ORDER BY created_at DESC";
+            $category = 'network';
+            break;
+            
+        case 'cluster':
+            // 查询宿主机集群信息 - 包含集群宿主机数量
+            $baseSql = "SELECT 
+                        c.*, 
+                        c.cluster_name, 
+                        c.cluster_address, 
+                        c.cluster_username, 
+                        c.cluster_password, 
+                        COUNT(pm.cluster_pm_id) as pm_count, 
+                        'cluster' as category
+                    FROM cluster c
+                    LEFT JOIN cluster_physical_machine pm ON c.cluster_id = pm.cluster_id
+                    GROUP BY c.cluster_id";
+            $orderClause = " ORDER BY c.cluster_created_at DESC";
+            $category = 'cluster';
+            break;
+            
+        case 'cluster_physical_machine':
+            // 查询集群关联的物理机信息
+            $baseSql = "SELECT 
+                        pm.*, 
+                        pm.cluster_pm_ip, 
+                        pm.cluster_pm_username, 
+                        pm.cluster_pm_password, 
+                        pm.cluster_pm_bmc_password, 
+                        pm.cluster_pm_created_at, 
+                        'cluster_physical_machine' as category
+                    FROM cluster_physical_machine pm
+                    WHERE 1=1";
+            
+            // 添加cluster_id过滤条件
+            if (isset($requestData['clusterId'])) {
+                $baseSql .= " AND pm.cluster_id = :clusterId";
+                $params[':clusterId'] = $requestData['clusterId'];
+            }
+            
+            $orderClause = " ORDER BY pm.cluster_pm_created_at DESC";
+            $category = 'cluster_physical_machine';
+            break;
+            
+        default:
+            throw new Exception('无效的表名');
+    }
+    
+    // 获取表的所有字段名
+    $fields = [];
+    try {
+        $stmt = $pdo->query("DESCRIBE $table");
+        $columns = $stmt->fetchAll();
+        foreach ($columns as $column) {
+            $fields[] = $column['Field'];
+        }
+    } catch (Exception $e) {
+        error_log("获取表 $table 字段失败: " . $e->getMessage());
+        throw new Exception("获取表结构失败: " . $e->getMessage());
+    }
+    
+    // 构建查询条件
+    $conditions = [];
+    
+    // 处理第一个关键词
+    if (!empty($keyword1)) {
+        $keyword1Param = '%' . $keyword1 . '%';
+        $keyword1Conditions = [];
+        
+        foreach ($fields as $field) {
+            // 跳过不需要搜索的字段
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'is_active', 'login_info_is_active'])) {
+                continue;
+            }
+            $keyword1Conditions[] = "$field LIKE :keyword1";
+        }
+        
+        if (!empty($keyword1Conditions)) {
+            $conditions[] = '(' . implode(' OR ', $keyword1Conditions) . ')';
+            $params[':keyword1'] = $keyword1Param;
+        }
+    }
+    
+    // 处理第二个关键词
+    if (!empty($keyword2)) {
+        $keyword2Param = '%' . $keyword2 . '%';
+        $keyword2Conditions = [];
+        
+        foreach ($fields as $field) {
+            // 跳过不需要搜索的字段
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'is_active', 'login_info_is_active'])) {
+                continue;
+            }
+            $keyword2Conditions[] = "$field LIKE :keyword2";
+        }
+        
+        if (!empty($keyword2Conditions)) {
+            $conditions[] = '(' . implode(' OR ', $keyword2Conditions) . ')';
+            $params[':keyword2'] = $keyword2Param;
+        }
+    }
+    
+    // 组合查询条件
+    $sql = $baseSql;
+    if (!empty($conditions)) {
+        // 检查baseSql中是否已经包含WHERE子句
+        if (strpos($baseSql, 'WHERE') !== false) {
+            $sql .= ' AND ' . implode(' AND ', $conditions);
+        } else {
+            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+        }
+    }
+    $sql .= $orderClause;
+    
+    // 计算总数 - 对于使用LEFT JOIN和GROUP BY的查询，需要特殊处理
+    // 宿主机集群查询使用了LEFT JOIN和GROUP BY，直接计数会导致结果不准确
+    // 需要使用子查询或单独的计数逻辑
+    $countSql = '';
+    
+    if ($table === 'cluster') {
+        // 对于cluster表，构建专门的集群计数查询
+        // 直接统计cluster表的记录数，而非LEFT JOIN后的行数
+        $countSql = "SELECT COUNT(*) as total FROM cluster c";
+        
+        // 添加WHERE条件（从主查询中提取）
+        $wherePos = strpos($sql, 'WHERE');
+        if ($wherePos !== false) {
+            $whereClause = substr($sql, $wherePos);
+            $countSql .= ' ' . $whereClause;
+        }
+    } else {
+        // 其他表使用原来的计数查询逻辑
+        $fromPos = strpos($sql, 'FROM');
+        $orderPos = strpos($sql, 'ORDER BY');
+        
+        if ($fromPos !== false) {
+            // 提取FROM子句及之后的部分
+            $fromClause = substr($sql, $fromPos);
+            
+            // 移除ORDER BY子句（如果存在）
+            if ($orderPos !== false) {
+                $fromClause = substr($fromClause, 0, $orderPos - $fromPos);
+            }
+            
+            // 构建计数查询
+            $countSql = 'SELECT COUNT(*) as total ' . $fromClause;
+        } else {
+            // 如果无法提取FROM子句，使用简单的计数查询
+            $countSql = "SELECT COUNT(*) as total FROM $table";
+            
+            // 添加WHERE条件（如果有）
+            $wherePos = strpos($sql, 'WHERE');
+            if ($wherePos !== false) {
+                $whereClause = substr($sql, $wherePos);
+                $countSql .= ' ' . $whereClause;
+            }
+        }
+    }
+    
+    // 调试计数查询
+    error_log('计数查询SQL: ' . $countSql);
+    error_log('计数查询参数: ' . json_encode($params));
+    
+    $countStmt = $pdo->prepare($countSql);
+    
+    // 绑定参数
+    foreach ($params as $param => $value) {
+        $countStmt->bindValue($param, $value, PDO::PARAM_STR);
+    }
+    
+    $countStmt->execute();
+    $total = $countStmt->fetchColumn();
+    
+    // 确保total是数字类型
+    $total = intval($total);
+    
+    // 调试计数结果
+    error_log('计数结果: ' . $total);
+    
+    // 分页查询
+    $offset = ($page - 1) * $pageSize;
+    $sql .= " LIMIT :offset, :pageSize";
+    
+    $stmt = $pdo->prepare($sql);
+    
+    // 绑定参数
+    foreach ($params as $param => $value) {
+        $stmt->bindValue($param, $value, PDO::PARAM_STR);
+    }
+    
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+    $stmt->bindParam(':pageSize', $pageSize, PDO::PARAM_INT);
+    $stmt->execute();
+    
+    $results = $stmt->fetchAll();
+    
+    // 解密密码（如果需要）并清理数据
+        foreach ($results as &$result) {
+            // 先执行解密逻辑，再执行清理数据逻辑
+            // 因为加密后的密码可能包含特殊字符，清理逻辑会移除这些字符导致解密失败
+            
+            // 获取当前用户信息用于审计日志
+            $currentUser = SecurityUtils::getCurrentUser();
+            
+            // 对于信息查询功能，允许解密密码
+            $hasDecryptPermission = true;
+            
+            // 如果无法获取用户信息，使用默认用户名
+            if ($currentUser === null) {
+                $currentUser = 'system';
+            }
+            
+            // 解密密码字段（包括别名和原始字段名）
+            if (isset($result['password']) && $hasDecryptPermission) {
+                // 记录解密操作前的密码状态
+                $passwordBefore = $result['password'];
+                
+                // 根据不同表的加密方式解密
+                switch ($table) {
+                    case 'login_info':
+                    case 'server_cred':
+                    case 'net_dev_cred':
+                    case 'cluster':
+                        // 这些表使用SecurityUtils::encrypt加密
+                        $decryptedPassword = SecurityUtils::decrypt($result['password']);
+                        $result['password'] = $decryptedPassword;
+                        
+                        // 记录解密操作到日志
+                        error_log("[AUDIT] Password decrypted for {$table} by {$currentUser}: " . 
+                                 (isset($result['name']) ? $result['name'] : (isset($result['cluster_name']) ? $result['cluster_name'] : 'unknown')));
+                        break;
+                }
+            }
+            
+            // 解密集群密码字段
+            if (isset($result['cluster_password']) && $hasDecryptPermission) {
+                // 记录解密操作前的密码状态
+                $passwordBefore = $result['cluster_password'];
+                
+                // 根据不同表的加密方式解密
+                if ($table === 'cluster') {
+                    // cluster表使用SecurityUtils::encrypt加密
+                    $decryptedPassword = SecurityUtils::decrypt($result['cluster_password']);
+                    $result['cluster_password'] = $decryptedPassword;
+                    
+                    // 记录解密操作到日志
+                    error_log("[AUDIT] Cluster password decrypted for cluster by {$currentUser}: " . 
+                             (isset($result['cluster_name']) ? $result['cluster_name'] : 'unknown'));
+                }
+            }
+            
+            // 解密原始密码字段（用于悬浮窗显示）
+            if (isset($result['server_cred_login_password']) && $hasDecryptPermission) {
+                $decryptedRawPassword = SecurityUtils::decrypt($result['server_cred_login_password']);
+                $result['server_cred_login_password'] = $decryptedRawPassword;
+            }
+            
+            if (isset($result['login_info_password']) && $hasDecryptPermission) {
+                $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password']);
+                $result['login_info_password'] = $decryptedRawPassword;
+            }
+            
+            // 解密原始密码字段（用于悬浮窗显示）
+            if (isset($result['net_dev_cred_password_hash']) && $hasDecryptPermission) {
+                $decryptedRawPassword = SecurityUtils::decrypt($result['net_dev_cred_password_hash']);
+                $result['net_dev_cred_password_hash'] = $decryptedRawPassword;
+            }
+            
+            // 解密使能密码（包括别名和原始字段名）
+            if (isset($result['enable_password']) && $hasDecryptPermission) {
+                // 使用SecurityUtils::encrypt加密
+                $decryptedEnablePassword = SecurityUtils::decrypt($result['enable_password']);
+                $result['enable_password'] = $decryptedEnablePassword;
+            }
+            
+            // 解密原始使能密码字段（用于悬浮窗显示）
+            if (isset($result['net_dev_cred_enable_password_hash']) && $hasDecryptPermission) {
+                $decryptedEnablePassword = SecurityUtils::decrypt($result['net_dev_cred_enable_password_hash']);
+                $result['net_dev_cred_enable_password_hash'] = $decryptedEnablePassword;
+            }
+            
+            // 解密SNMP团体字（如果存在）
+            if (isset($result['net_dev_cred_snmp']) && $hasDecryptPermission) {
+                // 使用SecurityUtils::encrypt加密
+                $decryptedSnmp = SecurityUtils::decrypt($result['net_dev_cred_snmp']);
+                $result['net_dev_cred_snmp'] = $decryptedSnmp;
+            }
+            
+            // 解密物理机密码和BMC密码
+            if ($table === 'cluster_physical_machine' && $hasDecryptPermission) {
+                // 解密物理机密码
+                if (isset($result['cluster_pm_password']) && !empty($result['cluster_pm_password'])) {
+                    $decryptedPassword = SecurityUtils::decrypt($result['cluster_pm_password']);
+                    $result['cluster_pm_password'] = $decryptedPassword;
+                    
+                    // 记录解密操作到日志
+                    error_log("[AUDIT] Physical machine password decrypted by {$currentUser}: cluster_id={$result['cluster_id']}, pm_ip={$result['cluster_pm_ip']}");
+                }
+                
+                // 解密BMC密码
+                if (isset($result['cluster_pm_bmc_password']) && !empty($result['cluster_pm_bmc_password'])) {
+                    $decryptedBMCPassword = SecurityUtils::decrypt($result['cluster_pm_bmc_password']);
+                    $result['cluster_pm_bmc_password'] = $decryptedBMCPassword;
+                    
+                    // 记录解密操作到日志
+                    error_log("[AUDIT] BMC password decrypted by {$currentUser}: cluster_id={$result['cluster_id']}, pm_ip={$result['cluster_pm_ip']}");
+                }
+            }
+            
+            // 然后执行清理数据逻辑
+            // 确保所有字符串值都是有效的UTF-8
+            foreach ($result as $key => &$value) {
+                if (is_string($value)) {
+                    // 直接使用原始字符串，不进行转换，避免编码问题
+                    // 移除控制字符和无效字符，使用UTF-8标志
+                    $value = preg_replace('/[\x00-\x1F\x7F]/u', '', $value);
+                    // 确保字符串不是空的或只包含空格
+                    $value = trim($value);
+                } elseif (is_null($value)) {
+                    // 将NULL值转换为空字符串
+                    $value = '';
+                } elseif (is_resource($value)) {
+                    // 资源类型转换为字符串
+                    $value = (string)$value;
+                }
+            }
+        }
+    
+    return [
+        'data' => $results,
+        'total' => $total
+    ];
+}

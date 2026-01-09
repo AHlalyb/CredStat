@@ -1,0 +1,800 @@
+[2025-12-15 22:25:21] [cluster_69401a51e5dbf3.87338780] 开始处理宿主机集群录入请求
+[2025-12-15 22:25:21] [cluster_69401a51e5dbf3.87338780] 请求数据: 
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 开始处理宿主机集群录入请求
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 请求数据: {"clusterName":"测试集群","clusterAddress":"192.168.1.1","clusterUsername":"admin","clusterPassword":"password","physicalMachines":[{"pmIp":"192.168.1.2","pmUsername":"root","pmPassword":"password"}]}
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 数据库连接成功
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 绑定参数: cluster_name=测试集群, cluster_address=192.168.1.1, cluster_username=admin, cluster_created_by=system
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 集群插入成功
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 绑定物理机参数: cluster_id=3, cluster_pm_ip=192.168.1.2, cluster_pm_username=root, cluster_pm_created_by=system
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 物理机插入成功: cluster_id=3, pm_ip=192.168.1.2
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 事务提交成功
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"3"}}
+[2025-12-15 22:26:30] [cluster_69401a96ee3b24.30574144] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"3"}}
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 开始处理宿主机集群录入请求
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 请求数据: {"clusterName":"testjiqun","clusterAddress":"3.3.21.1","clusterUsername":"ad","clusterPassword":"sas","physicalMachines":[{"id":"pm_1","pmIp":"21.12.1.1","pmUsername":"wq","pmPassword":"wq","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1765856265785,"pmPasswordKey":1765856265785,"pmBmcUsernameKey":1765856265785,"pmBmcPasswordKey":1765856265785}]}
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 数据库连接成功
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 绑定参数: cluster_name=testjiqun, cluster_address=3.3.21.1, cluster_username=ad, cluster_created_by=system
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 集群插入成功
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 绑定物理机参数: cluster_id=4, cluster_pm_ip=21.12.1.1, cluster_pm_username=wq, cluster_pm_created_by=system
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 物理机插入成功: cluster_id=4, pm_ip=21.12.1.1
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 事务提交成功
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"4"}}
+[2025-12-16 11:38:07] [cluster_6940d41f8915f9.74464025] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"4"}}
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 开始处理宿主机集群录入请求
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 请求数据: {"clusterName":"ceshio","clusterAddress":"21.12.12.1","clusterUsername":"wqq","clusterPassword":"212","physicalMachines":[{"id":"pm_1","pmIp":"21.212.12.1","pmUsername":"ad","pmPassword":"sa","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1765864013765,"pmPasswordKey":1765864013765,"pmBmcUsernameKey":1765864013765,"pmBmcPasswordKey":1765864013765}]}
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 数据库连接成功
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 绑定参数: cluster_name=ceshio, cluster_address=21.12.12.1, cluster_username=wqq, cluster_created_by=system
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 集群插入成功
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 绑定物理机参数: cluster_id=5, cluster_pm_ip=21.212.12.1, cluster_pm_username=ad, cluster_pm_created_by=system
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 物理机插入成功: cluster_id=5, pm_ip=21.212.12.1
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 事务提交成功
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"5"}}
+[2025-12-16 13:47:14] [cluster_6940f262b303f7.13909669] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"5"}}
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 开始处理宿主机集群录入请求
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 请求数据: {"clusterName":"sas","clusterAddress":"212.212.1.2","clusterUsername":"sas","clusterPassword":"sas","physicalMachines":[{"id":"pm_1","pmIp":"21.1.21.1","pmUsername":"wqwq","pmPassword":"xaxa","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1765882163395,"pmPasswordKey":1765882163395,"pmBmcUsernameKey":1765882163395,"pmBmcPasswordKey":1765882163395}]}
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 数据库连接成功
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 绑定参数: cluster_name=sas, cluster_address=212.212.1.2, cluster_username=sas, cluster_created_by=lyb
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 集群插入成功
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 绑定物理机参数: cluster_id=6, cluster_pm_ip=21.1.21.1, cluster_pm_username=wqwq, cluster_pm_created_by=lyb
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 物理机插入成功: cluster_id=6, pm_ip=21.1.21.1
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 事务提交成功
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"6"}}
+[2025-12-16 18:49:40] [cluster_69413944b5adf3.88657565] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"6"}}
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 开始处理宿主机集群录入请求
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 请求数据: {"clusterName":"DMZ-VM虚拟化集群","clusterAddress":"https://172.27.2.11","clusterUsername":"administrator@vsphere.local","clusterPassword":"PCak@la_8276","physicalMachines":[{"id":"pm_1","pmIp":"172.27.2.1","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.31","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766740812558,"pmPasswordKey":1766740812558,"pmBmcUsernameKey":1766740812558,"pmBmcPasswordKey":1766740812558},{"id":"pm_1766741391773_716","pmIp":"172.27.2.2","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.32","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741391773,"pmPasswordKey":1766741391773,"pmBmcUsernameKey":1766741391773,"pmBmcPasswordKey":1766741391773},{"id":"pm_1766741392194_898","pmIp":"172.27.2.3","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.33","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741392194,"pmPasswordKey":1766741392194,"pmBmcUsernameKey":1766741392194,"pmBmcPasswordKey":1766741392194},{"id":"pm_1766741392524_882","pmIp":"172.27.2.4","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.34","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741392524,"pmPasswordKey":1766741392524,"pmBmcUsernameKey":1766741392524,"pmBmcPasswordKey":1766741392524},{"id":"pm_1766741392727_724","pmIp":"172.27.2.5","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.35","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741392727,"pmPasswordKey":1766741392727,"pmBmcUsernameKey":1766741392727,"pmBmcPasswordKey":1766741392727},{"id":"pm_1766741395555_876","pmIp":"172.27.2.6","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.36","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741395555,"pmPasswordKey":1766741395555,"pmBmcUsernameKey":1766741395555,"pmBmcPasswordKey":1766741395555},{"id":"pm_1766741395855_371","pmIp":"172.27.2.7","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.37","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741395855,"pmPasswordKey":1766741395855,"pmBmcUsernameKey":1766741395855,"pmBmcPasswordKey":1766741395855},{"id":"pm_1766741396132_641","pmIp":"172.27.2.8","pmUsername":"root","pmPassword":"XDak@la_8274","pmBmcIp":"172.168.1.38","pmBmcUsername":"root","pmBmcPassword":"zHb2Z~xwrm28","pmUsernameKey":1766741396132,"pmPasswordKey":1766741396132,"pmBmcUsernameKey":1766741396132,"pmBmcPasswordKey":1766741396132}]}
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 数据库连接成功
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定参数: cluster_name=DMZ-VM虚拟化集群, cluster_address=https://172.27.2.11, cluster_username=administrator@vsphere.local, cluster_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 集群插入成功
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.1, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.1
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.2, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.2
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.3, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.3
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.4, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.4
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.5, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.5
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.6, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.6
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.7, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.7
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 绑定物理机参数: cluster_id=1, cluster_pm_ip=172.27.2.8, cluster_pm_username=root, cluster_pm_created_by=lyb
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 物理机插入成功: cluster_id=1, pm_ip=172.27.2.8
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 事务提交成功
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"1"}}
+[2025-12-26 17:33:41] [cluster_694e5675cdea18.07655524] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"1"}}
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 开始处理宿主机集群录入请求
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 请求数据: {"clusterName":"测试集群-765","clusterAddress":"192.168.173.221","clusterUsername":"admin","clusterPassword":"Test@123456","physicalMachines":[{"id":"pm_1767748387726_0","pmName":"测试物理机1","pmIp":"172.217.2.1","pmUsername":"root","pmPassword":"PM_Pass@1","pmBmcIp":"172.168.1.31","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@1","pmUsernameKey":1767748387726,"pmPasswordKey":1767748387726,"pmBmcUsernameKey":1767748387726,"pmBmcPasswordKey":1767748387726},{"id":"pm_1767748387726_1","pmName":"测试物理机2","pmIp":"172.217.2.2","pmUsername":"root","pmPassword":"PM_Pass@2","pmBmcIp":"172.168.1.32","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@2","pmUsernameKey":1767748387726,"pmPasswordKey":1767748387726,"pmBmcUsernameKey":1767748387726,"pmBmcPasswordKey":1767748387726},{"id":"pm_1767748387726_2","pmName":"测试物理机3","pmIp":"172.217.2.3","pmUsername":"root","pmPassword":"PM_Pass@3","pmBmcIp":"172.168.1.33","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@3","pmUsernameKey":1767748387726,"pmPasswordKey":1767748387726,"pmBmcUsernameKey":1767748387726,"pmBmcPasswordKey":1767748387726}]}
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 数据库连接成功
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 绑定参数: cluster_name=测试集群-765, cluster_address=192.168.173.221, cluster_username=admin, cluster_created_by=system
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 集群插入成功
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 绑定物理机参数: cluster_id=2, cluster_pm_ip=172.217.2.1, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 物理机插入成功: cluster_id=2, pm_ip=172.217.2.1
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 绑定物理机参数: cluster_id=2, cluster_pm_ip=172.217.2.2, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 物理机插入成功: cluster_id=2, pm_ip=172.217.2.2
+[2026-01-07 09:13:17] [cluster_695db32df2a9e2.33401250] 绑定物理机参数: cluster_id=2, cluster_pm_ip=172.217.2.3, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 09:13:18] [cluster_695db32df2a9e2.33401250] 物理机插入成功: cluster_id=2, pm_ip=172.217.2.3
+[2026-01-07 09:13:18] [cluster_695db32df2a9e2.33401250] 事务提交成功
+[2026-01-07 09:13:18] [cluster_695db32df2a9e2.33401250] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"2"}}
+[2026-01-07 09:13:18] [cluster_695db32df2a9e2.33401250] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"2"}}
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 开始处理宿主机集群录入请求
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 请求数据: {"clusterName":"深信服超融合主机群","clusterAddress":"https://172.168.1.207/#/","clusterUsername":"admin","clusterPassword":"Layy@2023!1","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"172.168.1.195","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767748539658,"pmPasswordKey":1767748539658,"pmBmcUsernameKey":1767748539658,"pmBmcPasswordKey":1767748539658},{"id":"pm_1767748594609_215","pmName":"物理机2","pmIp":"172.168.1.196","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767748594609,"pmPasswordKey":1767748594609,"pmBmcUsernameKey":1767748594609,"pmBmcPasswordKey":1767748594609},{"id":"pm_1767748594964_108","pmName":"物理机3","pmIp":"172.168.1.197","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767748594964,"pmPasswordKey":1767748594964,"pmBmcUsernameKey":1767748594964,"pmBmcPasswordKey":1767748594964},{"id":"pm_1767748595139_296","pmName":"物理机4","pmIp":"172.168.1.198","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767748595139,"pmPasswordKey":1767748595139,"pmBmcUsernameKey":1767748595139,"pmBmcPasswordKey":1767748595139},{"id":"pm_1767748595308_380","pmName":"物理机5","pmIp":"172.168.1.201","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.7","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748595308,"pmPasswordKey":1767748595308,"pmBmcUsernameKey":1767748595308,"pmBmcPasswordKey":1767748595308},{"id":"pm_1767748595473_369","pmName":"物理机6","pmIp":"172.168.1.202","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.8","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748595473,"pmPasswordKey":1767748595473,"pmBmcUsernameKey":1767748595473,"pmBmcPasswordKey":1767748595473},{"id":"pm_1767748595634_70","pmName":"物理机7","pmIp":"172.168.1.203","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.9","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748595634,"pmPasswordKey":1767748595634,"pmBmcUsernameKey":1767748595634,"pmBmcPasswordKey":1767748595634},{"id":"pm_1767748595808_658","pmName":"物理机8","pmIp":"172.168.1.204","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.10","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748595808,"pmPasswordKey":1767748595808,"pmBmcUsernameKey":1767748595808,"pmBmcPasswordKey":1767748595808},{"id":"pm_1767748598472_890","pmName":"物理机9","pmIp":"172.168.1.205","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.11","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748598472,"pmPasswordKey":1767748598472,"pmBmcUsernameKey":1767748598472,"pmBmcPasswordKey":1767748598472},{"id":"pm_1767748598857_362","pmName":"物理机10","pmIp":"172.168.1.206","pmUsername":"admin","pmPassword":"Layy@2023!1","pmBmcIp":"172.168.1.12","pmBmcUsername":"admin","pmBmcPassword":"ZCsk@la_7621","pmUsernameKey":1767748598857,"pmPasswordKey":1767748598857,"pmBmcUsernameKey":1767748598857,"pmBmcPasswordKey":1767748598857}]}
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 数据库连接成功
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 绑定参数: cluster_name=深信服超融合主机群, cluster_address=https://172.168.1.207/#/, cluster_username=admin, cluster_created_by=system
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 集群插入成功
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.195, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.195
+[2026-01-07 09:21:39] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.196, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.196
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.197, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.197
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.198, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.198
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.201, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.201
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.202, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.202
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.203, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.203
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.204, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.204
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.205, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.205
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 绑定物理机参数: cluster_id=3, cluster_pm_ip=172.168.1.206, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 物理机插入成功: cluster_id=3, pm_ip=172.168.1.206
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 事务提交成功
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"3"}}
+[2026-01-07 09:21:40] [cluster_695db523b59d28.54476375] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"3"}}
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 开始处理宿主机集群录入请求
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 请求数据: {"clusterName":"深信服超融合集成平台集群","clusterAddress":"https://172.168.1.180","clusterUsername":"admin","clusterPassword":"LasrmYy@2023","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"172.168.1.181","pmUsername":"admin","pmPassword":"LasrmYy@2023","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751002351,"pmPasswordKey":1767751002351,"pmBmcUsernameKey":1767751002351,"pmBmcPasswordKey":1767751002351},{"id":"pm_1767751049367_147","pmName":"物理机2","pmIp":"172.168.1.182","pmUsername":"admin","pmPassword":"LasrmYy@2023","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751049367,"pmPasswordKey":1767751049367,"pmBmcUsernameKey":1767751049367,"pmBmcPasswordKey":1767751049367},{"id":"pm_1767751049678_423","pmName":"物理机3","pmIp":"172.168.1.183","pmUsername":"admin","pmPassword":"LasrmYy@2023","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751049678,"pmPasswordKey":1767751049678,"pmBmcUsernameKey":1767751049678,"pmBmcPasswordKey":1767751049678},{"id":"pm_1767751049930_347","pmName":"物理机4","pmIp":"172.168.1.184","pmUsername":"admin","pmPassword":"LasrmYy@2023","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751049930,"pmPasswordKey":1767751049930,"pmBmcUsernameKey":1767751049930,"pmBmcPasswordKey":1767751049930}]}
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 数据库连接成功
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 绑定参数: cluster_name=深信服超融合集成平台集群, cluster_address=https://172.168.1.180, cluster_username=admin, cluster_created_by=system
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 集群插入成功
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 绑定物理机参数: cluster_id=4, cluster_pm_ip=172.168.1.181, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 物理机插入成功: cluster_id=4, pm_ip=172.168.1.181
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 绑定物理机参数: cluster_id=4, cluster_pm_ip=172.168.1.182, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 物理机插入成功: cluster_id=4, pm_ip=172.168.1.182
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 绑定物理机参数: cluster_id=4, cluster_pm_ip=172.168.1.183, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 物理机插入成功: cluster_id=4, pm_ip=172.168.1.183
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 绑定物理机参数: cluster_id=4, cluster_pm_ip=172.168.1.184, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 物理机插入成功: cluster_id=4, pm_ip=172.168.1.184
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 事务提交成功
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"4"}}
+[2026-01-07 09:58:58] [cluster_695dbde2550447.59693505] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"4"}}
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 开始处理宿主机集群录入请求
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 请求数据: {"clusterName":"深信服超融合备份集群","clusterAddress":"https://172.168.1.213/#/","clusterUsername":"admin","clusterPassword":"Layy@2023!","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"172.168.1.210","pmUsername":"admin","pmPassword":"Layy@2023!","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751138530,"pmPasswordKey":1767751138530,"pmBmcUsernameKey":1767751138530,"pmBmcPasswordKey":1767751138530},{"id":"pm_1767751268258_941","pmName":"物理机2","pmIp":"172.168.1.211","pmUsername":"admin","pmPassword":"Layy@2023!","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751268258,"pmPasswordKey":1767751268258,"pmBmcUsernameKey":1767751268258,"pmBmcPasswordKey":1767751268258},{"id":"pm_1767751268439_921","pmName":"物理机3","pmIp":"172.168.1.212","pmUsername":"admin","pmPassword":"Layy@2023!","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751268439,"pmPasswordKey":1767751268439,"pmBmcUsernameKey":1767751268439,"pmBmcPasswordKey":1767751268439},{"id":"pm_1767751268604_188","pmName":"物理机4","pmIp":"172.168.1.214","pmUsername":"admin","pmPassword":"Layy@2023!","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751268604,"pmPasswordKey":1767751268604,"pmBmcUsernameKey":1767751268604,"pmBmcPasswordKey":1767751268604},{"id":"pm_1767751269252_446","pmName":"物理机5","pmIp":"172.168.1.215","pmUsername":"admin","pmPassword":"Layy@2023!","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767751269252,"pmPasswordKey":1767751269252,"pmBmcUsernameKey":1767751269252,"pmBmcPasswordKey":1767751269252}]}
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 数据库连接成功
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定参数: cluster_name=深信服超融合备份集群, cluster_address=https://172.168.1.213/#/, cluster_username=admin, cluster_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 集群插入成功
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定物理机参数: cluster_id=5, cluster_pm_ip=172.168.1.210, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 物理机插入成功: cluster_id=5, pm_ip=172.168.1.210
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定物理机参数: cluster_id=5, cluster_pm_ip=172.168.1.211, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 物理机插入成功: cluster_id=5, pm_ip=172.168.1.211
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定物理机参数: cluster_id=5, cluster_pm_ip=172.168.1.212, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 物理机插入成功: cluster_id=5, pm_ip=172.168.1.212
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定物理机参数: cluster_id=5, cluster_pm_ip=172.168.1.214, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 物理机插入成功: cluster_id=5, pm_ip=172.168.1.214
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 绑定物理机参数: cluster_id=5, cluster_pm_ip=172.168.1.215, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 物理机插入成功: cluster_id=5, pm_ip=172.168.1.215
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 事务提交成功
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"5"}}
+[2026-01-07 10:01:48] [cluster_695dbe8caa8ef5.03157902] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"5"}}
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 开始处理宿主机集群录入请求
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 请求数据: {"clusterName":"深信服超融合HIS集群","clusterAddress":"https://172.29.1.31/#/","clusterUsername":"admin","clusterPassword":"LasrmYy@2025","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"172.29.1.11","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.71","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751308773,"pmPasswordKey":1767751308773,"pmBmcUsernameKey":1767751308773,"pmBmcPasswordKey":1767751308773},{"id":"pm_1767751365265_817","pmName":"物理机2","pmIp":"172.29.1.12","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.72","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751365265,"pmPasswordKey":1767751365265,"pmBmcUsernameKey":1767751365265,"pmBmcPasswordKey":1767751365265},{"id":"pm_1767751365470_655","pmName":"物理机3","pmIp":"172.29.1.13","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.73","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751365470,"pmPasswordKey":1767751365470,"pmBmcUsernameKey":1767751365470,"pmBmcPasswordKey":1767751365470},{"id":"pm_1767751365651_983","pmName":"物理机4","pmIp":"172.29.1.14","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.74","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751365651,"pmPasswordKey":1767751365651,"pmBmcUsernameKey":1767751365651,"pmBmcPasswordKey":1767751365651},{"id":"pm_1767751366059_781","pmName":"物理机5","pmIp":"172.29.1.15","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.75","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751366059,"pmPasswordKey":1767751366059,"pmBmcUsernameKey":1767751366059,"pmBmcPasswordKey":1767751366059},{"id":"pm_1767751366960_466","pmName":"物理机6","pmIp":"172.29.1.16","pmUsername":"admin","pmPassword":"LasrmYy@2025","pmBmcIp":"172.168.1.76","pmBmcUsername":"admin","pmBmcPassword":"AHif@la_8274","pmUsernameKey":1767751366960,"pmPasswordKey":1767751366960,"pmBmcUsernameKey":1767751366960,"pmBmcPasswordKey":1767751366960}]}
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 数据库连接成功
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定参数: cluster_name=深信服超融合HIS集群, cluster_address=https://172.29.1.31/#/, cluster_username=admin, cluster_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 集群插入成功
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.11, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.11
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.12, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.12
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.13, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.13
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.14, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.14
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.15, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.15
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 绑定物理机参数: cluster_id=6, cluster_pm_ip=172.29.1.16, cluster_pm_username=admin, cluster_pm_created_by=system
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 物理机插入成功: cluster_id=6, pm_ip=172.29.1.16
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 事务提交成功
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"6"}}
+[2026-01-07 10:04:11] [cluster_695dbf1b189073.28146261] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"6"}}
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 开始处理宿主机集群录入请求
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 请求数据: {"clusterName":"测试集群-155","clusterAddress":"192.168.222.248","clusterUsername":"admin","clusterPassword":"Test@123456","physicalMachines":[{"id":"pm_1767754441624_0","pmName":"测试物理机1","pmIp":"172.27.2.1","pmUsername":"root","pmPassword":"PM_Pass@1","pmBmcIp":"172.168.1.31","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@1","pmUsernameKey":1767754441624,"pmPasswordKey":1767754441624,"pmBmcUsernameKey":1767754441624,"pmBmcPasswordKey":1767754441624},{"id":"pm_1767754441624_1","pmName":"测试物理机2","pmIp":"172.27.2.2","pmUsername":"root","pmPassword":"PM_Pass@2","pmBmcIp":"172.168.1.32","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@2","pmUsernameKey":1767754441624,"pmPasswordKey":1767754441624,"pmBmcUsernameKey":1767754441624,"pmBmcPasswordKey":1767754441624},{"id":"pm_1767754441624_2","pmName":"测试物理机3","pmIp":"172.27.2.3","pmUsername":"root","pmPassword":"PM_Pass@3","pmBmcIp":"172.168.1.33","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@3","pmUsernameKey":1767754441624,"pmPasswordKey":1767754441624,"pmBmcUsernameKey":1767754441624,"pmBmcPasswordKey":1767754441624}]}
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 数据库连接成功
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 绑定参数: cluster_name=测试集群-155, cluster_address=192.168.222.248, cluster_username=admin, cluster_created_by=system
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 集群插入成功
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 绑定物理机参数: cluster_id=7, cluster_pm_ip=172.27.2.1, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 物理机插入成功: cluster_id=7, pm_ip=172.27.2.1
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 绑定物理机参数: cluster_id=7, cluster_pm_ip=172.27.2.2, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 物理机插入成功: cluster_id=7, pm_ip=172.27.2.2
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 绑定物理机参数: cluster_id=7, cluster_pm_ip=172.27.2.3, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 物理机插入成功: cluster_id=7, pm_ip=172.27.2.3
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 事务提交成功
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"7"}}
+[2026-01-07 10:54:06] [cluster_695dcace596179.32777393] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"7"}}
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 开始处理宿主机集群录入请求
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 请求数据: {"clusterName":"测试集群-119","clusterAddress":"192.168.150.75","clusterUsername":"admin","clusterPassword":"Test@123456","physicalMachines":[{"id":"pm_1767754575882_0","pmName":"测试物理机1","pmIp":"172.27.2.1","pmUsername":"root","pmPassword":"PM_Pass@1","pmBmcIp":"172.168.1.31","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@1","pmUsernameKey":1767754575882,"pmPasswordKey":1767754575882,"pmBmcUsernameKey":1767754575882,"pmBmcPasswordKey":1767754575882},{"id":"pm_1767754575882_1","pmName":"测试物理机2","pmIp":"172.27.2.2","pmUsername":"root","pmPassword":"PM_Pass@2","pmBmcIp":"172.168.1.32","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@2","pmUsernameKey":1767754575882,"pmPasswordKey":1767754575882,"pmBmcUsernameKey":1767754575882,"pmBmcPasswordKey":1767754575882},{"id":"pm_1767754575882_2","pmName":"测试物理机3","pmIp":"172.27.2.3","pmUsername":"root","pmPassword":"PM_Pass@3","pmBmcIp":"172.168.1.33","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@3","pmUsernameKey":1767754575882,"pmPasswordKey":1767754575882,"pmBmcUsernameKey":1767754575882,"pmBmcPasswordKey":1767754575882}]}
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 数据库连接成功
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 绑定参数: cluster_name=测试集群-119, cluster_address=192.168.150.75, cluster_username=admin, cluster_created_by=system
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 集群插入成功
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 绑定物理机参数: cluster_id=8, cluster_pm_ip=172.27.2.1, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 物理机插入成功: cluster_id=8, pm_ip=172.27.2.1
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 绑定物理机参数: cluster_id=8, cluster_pm_ip=172.27.2.2, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 物理机插入成功: cluster_id=8, pm_ip=172.27.2.2
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 绑定物理机参数: cluster_id=8, cluster_pm_ip=172.27.2.3, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 物理机插入成功: cluster_id=8, pm_ip=172.27.2.3
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 事务提交成功
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"8"}}
+[2026-01-07 10:56:19] [cluster_695dcb5317b384.53063034] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"8"}}
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 开始处理宿主机集群录入请求
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 请求数据: {"clusterName":"测试集群-238","clusterAddress":"192.168.62.142","clusterUsername":"admin","clusterPassword":"Test@123456","physicalMachines":[{"id":"pm_1767754890262_0","pmName":"测试物理机1","pmIp":"172.27.2.1","pmUsername":"root","pmPassword":"PM_Pass@1","pmBmcIp":"172.168.1.31","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@1","pmUsernameKey":1767754890262,"pmPasswordKey":1767754890262,"pmBmcUsernameKey":1767754890262,"pmBmcPasswordKey":1767754890262},{"id":"pm_1767754890262_1","pmName":"测试物理机2","pmIp":"172.27.2.2","pmUsername":"root","pmPassword":"PM_Pass@2","pmBmcIp":"172.168.1.32","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@2","pmUsernameKey":1767754890262,"pmPasswordKey":1767754890262,"pmBmcUsernameKey":1767754890262,"pmBmcPasswordKey":1767754890262},{"id":"pm_1767754890262_2","pmName":"测试物理机3","pmIp":"172.27.2.3","pmUsername":"root","pmPassword":"PM_Pass@3","pmBmcIp":"172.168.1.33","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@3","pmUsernameKey":1767754890262,"pmPasswordKey":1767754890262,"pmBmcUsernameKey":1767754890262,"pmBmcPasswordKey":1767754890262},{"id":"pm_1767754890262_3","pmName":"测试物理机4","pmIp":"172.27.2.4","pmUsername":"root","pmPassword":"PM_Pass@4","pmBmcIp":"172.168.1.34","pmBmcUsername":"root","pmBmcPassword":"BMC_Pass@4","pmUsernameKey":1767754890262,"pmPasswordKey":1767754890262,"pmBmcUsernameKey":1767754890262,"pmBmcPasswordKey":1767754890262}]}
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 数据库连接成功
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 绑定参数: cluster_name=测试集群-238, cluster_address=192.168.62.142, cluster_username=admin, cluster_created_by=system
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 集群插入成功
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_name, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_name, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 绑定物理机参数: cluster_id=9, cluster_pm_name=测试物理机1, cluster_pm_ip=172.27.2.1, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 物理机插入成功: cluster_id=9, pm_name=测试物理机1, pm_ip=172.27.2.1
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 绑定物理机参数: cluster_id=9, cluster_pm_name=测试物理机2, cluster_pm_ip=172.27.2.2, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 物理机插入成功: cluster_id=9, pm_name=测试物理机2, pm_ip=172.27.2.2
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 绑定物理机参数: cluster_id=9, cluster_pm_name=测试物理机3, cluster_pm_ip=172.27.2.3, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 物理机插入成功: cluster_id=9, pm_name=测试物理机3, pm_ip=172.27.2.3
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 绑定物理机参数: cluster_id=9, cluster_pm_name=测试物理机4, cluster_pm_ip=172.27.2.4, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 物理机插入成功: cluster_id=9, pm_name=测试物理机4, pm_ip=172.27.2.4
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 事务提交成功
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"9"}}
+[2026-01-07 11:01:32] [cluster_695dcc8c450660.37558667] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"9"}}
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 开始处理宿主机集群录入请求
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 请求数据: {"clusterName":"自助打印服务器2—恒安-EXSI","clusterAddress":"https://192.168.206.69/ui/","clusterUsername":"root","clusterPassword":"Fuji2017film.","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"192.168.206.69","pmUsername":"root","pmPassword":"Fuji2017film.","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767755420983,"pmPasswordKey":1767755420983,"pmBmcUsernameKey":1767755420983,"pmBmcPasswordKey":1767755420983}]}
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 数据库连接成功
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 绑定参数: cluster_name=自助打印服务器2—恒安-EXSI, cluster_address=https://192.168.206.69/ui/, cluster_username=root, cluster_created_by=system
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 集群插入成功
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_name, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_name, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 绑定物理机参数: cluster_id=10, cluster_pm_name=物理机1, cluster_pm_ip=192.168.206.69, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 物理机插入成功: cluster_id=10, pm_name=物理机1, pm_ip=192.168.206.69
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 事务提交成功
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"10"}}
+[2026-01-07 11:11:36] [cluster_695dcee8d9d559.58739784] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"10"}}
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 开始处理宿主机集群录入请求
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 请求数据: {"clusterName":"自助打印服务器1—恒安-EXSI","clusterAddress":"https://192.168.206.65/ui/#/login","clusterUsername":"root","clusterPassword":"Fuji2017film.","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"192.168.206.65","pmUsername":"root","pmPassword":"Fuji2017film.","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767755496938,"pmPasswordKey":1767755496938,"pmBmcUsernameKey":1767755496938,"pmBmcPasswordKey":1767755496938}]}
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 数据库连接成功
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 绑定参数: cluster_name=自助打印服务器1—恒安-EXSI, cluster_address=https://192.168.206.65/ui/#/login, cluster_username=root, cluster_created_by=system
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 集群插入成功
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_name, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_name, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 绑定物理机参数: cluster_id=11, cluster_pm_name=物理机1, cluster_pm_ip=192.168.206.65, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 物理机插入成功: cluster_id=11, pm_name=物理机1, pm_ip=192.168.206.65
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 事务提交成功
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"11"}}
+[2026-01-07 11:12:13] [cluster_695dcf0d706476.89649461] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"11"}}
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 开始处理宿主机集群录入请求
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 请求数据: {"clusterName":"云影像服务器（PACS胶片打印）-恒安（虚拟化平台）","clusterAddress":"https://192.168.201.108/ui/#/login","clusterUsername":"root","clusterPassword":"192.168.201.108","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"192.168.201.108","pmUsername":"root","pmPassword":"192.168.201.108","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767755533592,"pmPasswordKey":1767755533592,"pmBmcUsernameKey":1767755533592,"pmBmcPasswordKey":1767755533592}]}
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 数据库连接成功
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 绑定参数: cluster_name=云影像服务器（PACS胶片打印）-恒安（虚拟化平台）, cluster_address=https://192.168.201.108/ui/#/login, cluster_username=root, cluster_created_by=system
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 集群插入成功
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_name, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_name, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 绑定物理机参数: cluster_id=12, cluster_pm_name=物理机1, cluster_pm_ip=192.168.201.108, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 物理机插入成功: cluster_id=12, pm_name=物理机1, pm_ip=192.168.201.108
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 事务提交成功
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"12"}}
+[2026-01-07 11:12:53] [cluster_695dcf35934966.79231915] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"12"}}
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 开始处理宿主机集群录入请求
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 请求数据: {"clusterName":"自助打印服务器（PACS报告）-恒安 （虚拟化平台）","clusterAddress":"https://192.168.201.216/ui/","clusterUsername":"root","clusterPassword":"Fuji2017film.","physicalMachines":[{"id":"pm_1","pmName":"物理机1","pmIp":"192.168.201.216","pmUsername":"root","pmPassword":"Fuji2017film.","pmBmcIp":"","pmBmcUsername":"","pmBmcPassword":"","pmUsernameKey":1767755573656,"pmPasswordKey":1767755573656,"pmBmcUsernameKey":1767755573656,"pmBmcPasswordKey":1767755573656}]}
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 数据库连接成功
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 执行集群插入SQL: INSERT INTO cluster (
+            cluster_name, 
+            cluster_address, 
+            cluster_username, 
+            cluster_password, 
+            cluster_created_by
+        ) VALUES (
+            :cluster_name, 
+            :cluster_address, 
+            :cluster_username, 
+            :cluster_password, 
+            :cluster_created_by
+        )
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 绑定参数: cluster_name=自助打印服务器（PACS报告）-恒安 （虚拟化平台）, cluster_address=https://192.168.201.216/ui/, cluster_username=root, cluster_created_by=system
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 集群插入成功
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 执行物理机插入SQL: INSERT INTO cluster_physical_machine (
+                cluster_id, 
+                cluster_pm_name, 
+                cluster_pm_ip, 
+                cluster_pm_username, 
+                cluster_pm_password, 
+                cluster_pm_bmc_ip, 
+                cluster_pm_bmc_username, 
+                cluster_pm_bmc_password, 
+                cluster_pm_created_by
+            ) VALUES (
+                :cluster_id, 
+                :cluster_pm_name, 
+                :cluster_pm_ip, 
+                :cluster_pm_username, 
+                :cluster_pm_password, 
+                :cluster_pm_bmc_ip, 
+                :cluster_pm_bmc_username, 
+                :cluster_pm_bmc_password, 
+                :cluster_pm_created_by
+            )
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 绑定物理机参数: cluster_id=13, cluster_pm_name=物理机1, cluster_pm_ip=192.168.201.216, cluster_pm_username=root, cluster_pm_created_by=system
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 物理机插入成功: cluster_id=13, pm_name=物理机1, pm_ip=192.168.201.216
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 事务提交成功
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 响应数据: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"13"}}
+[2026-01-07 11:13:34] [cluster_695dcf5e2e8cd6.04480653] 返回响应: {"success":true,"message":"\u4fdd\u5b58\u6210\u529f","data":{"clusterId":"13"}}
