@@ -179,6 +179,24 @@ router.beforeEach((to, from, next) => {
   } else if (to.name === 'login' && isLoggedIn && currentUser) {
     // 已登录访问登录页，跳转到首页
     next({ name: 'welcome', replace: true });
+  } else if (isLoggedIn && currentUser) {
+    // 检查是否需要管理权限
+    const requiresManagePermission = ['databaseSettings', 'userSettings'].includes(to.name);
+    if (requiresManagePermission && currentUser.permissions?.manage !== 1) {
+      // 没有管理权限，跳转到首页并显示提示
+      next({ name: 'welcome', replace: true });
+      // 这里需要在全局事件总线或Vuex中触发提示，暂时只做跳转
+    } else {
+      // 检查是否需要信息录入权限
+      const requiresInfoEntryPermission = ['systemLoginEntry', 'serverCredEntry', 'switchCredEntry', 'clusterEntry', 'phyServerEntry', 'domainCertEntry'].includes(to.name);
+      if (requiresInfoEntryPermission && currentUser.permissions?.add !== 1) {
+        // 没有信息录入权限，跳转到首页并显示提示
+        next({ name: 'welcome', replace: true });
+      } else {
+        // 正常访问
+        next();
+      }
+    }
   } else {
     // 正常访问
     next();

@@ -40,7 +40,7 @@
             <i class="fas fa-search me-2"></i> 信息查询
           </router-link>
         </li>
-        <li class="menu-item">
+        <li class="menu-item" v-if="hasInfoEntryPermission">
           <a href="#" class="menu-link has-submenu" data-target="infoEntrySubmenu">
             <i class="fas fa-keyboard me-2"></i> 信息录入
           </a>
@@ -82,12 +82,12 @@
             <i class="fas fa-cog me-2"></i> 系统设置
           </a>
           <ul class="submenu" id="settingsSubmenu">
-            <li class="menu-item">
+            <li class="menu-item" v-if="hasManagePermission">
               <router-link to="/database-settings" class="menu-link">
                 <i class="fas fa-database me-2"></i> 数据库设置
               </router-link>
             </li>
-            <li class="menu-item">
+            <li class="menu-item" v-if="hasManagePermission">
               <router-link to="/user-settings" class="menu-link">
                 <i class="fas fa-users-cog me-2"></i> 用户设置
               </router-link>
@@ -258,6 +258,14 @@ export default {
         return this.avatarPreview;
       }
       return this.currentUser?.avatar || this.defaultAvatar;
+    },
+    // 检查用户是否拥有管理权限
+    hasManagePermission() {
+      return this.currentUser?.permissions?.manage === 1 || false;
+    },
+    // 检查用户是否拥有信息录入权限
+    hasInfoEntryPermission() {
+      return this.currentUser?.permissions?.add === 1 || false;
     }
   },
   mounted() {
@@ -303,12 +311,13 @@ export default {
           
           const data = await response.json();
           if (data.success && data.user) {
-            // 更新用户信息，使用数据库返回的name和avatar
+            // 更新用户信息，使用数据库返回的name、avatar和权限信息
             currentUser = {
               ...currentUser,
               name: data.user.name || currentUser.username, // 使用数据库返回的name，否则使用username
               id: data.user.id, // 保存用户ID
-              avatar: data.user.avatar || currentUser.avatar || this.defaultAvatar // 使用数据库返回的avatar
+              avatar: data.user.avatar || currentUser.avatar || this.defaultAvatar, // 使用数据库返回的avatar
+              permissions: data.user.permissions // 保存完整的权限信息
             };
             
             // 更新sessionStorage

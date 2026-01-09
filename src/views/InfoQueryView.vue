@@ -168,35 +168,41 @@
             </el-table-column>
             
             <!-- 操作列 -->
-            <el-table-column label="操作" width="120" align="center" fixed="right">
+            <el-table-column label="操作" width="160" align="center" fixed="right">
               <template #default="scope">
                 <div class="action-buttons">
+                  <!-- 编辑按钮 -->
                   <el-tooltip content="编辑" placement="top">
                     <el-button
                       type="primary"
                       circle
                       size="small"
                       @click="editRecord(scope.row)"
+                      :disabled="!hasPermission('edit')"
                     >
                       <el-icon><Edit /></el-icon>
                     </el-button>
                   </el-tooltip>
+                  <!-- 删除按钮 -->
                   <el-tooltip content="删除" placement="top">
                     <el-button
                       type="danger"
                       circle
                       size="small"
                       @click="deleteRecord(scope.row)"
+                      :disabled="!hasPermission('delete')"
                     >
                       <el-icon><Delete /></el-icon>
                     </el-button>
                   </el-tooltip>
+                  <!-- 查询详情按钮 -->
                   <el-tooltip content="查询详情" placement="top">
                     <el-button
                       type="primary"
                       circle
                       size="small"
                       @click="handleDetailQuery(scope.row)"
+                      :disabled="!hasPermission('query')"
                     >
                       <el-icon><Search /></el-icon>
                     </el-button>
@@ -1350,6 +1356,13 @@ export default {
   },
   data() {
     return {
+      // 权限检查相关
+      userPermissions: {
+        add: 0,
+        delete: 0,
+        edit: 0,
+        query: 0
+      },
       // 查询表单数据
       searchForm: {
         keyword1: '',
@@ -1649,7 +1662,7 @@ export default {
         'dev_type': '设备类型',
         'net_type': '网络类型',
         'name': '中文名称(系统名称)',
-        'brand_sign': '设备品牌(设备标识)',
+        'brand_sign': '设备品牌(设备型号)',
         'ip_port_protocol': '管理IP:端口(协议)',
         'enable_password': '使能密码',
         'dev_brand': '设备品牌',
@@ -1670,13 +1683,172 @@ export default {
       }
     };
   },
+  created() {
+    // 从localStorage获取用户权限
+    console.log('Checking localStorage for user info...');
+    
+    // Check specific keys that might contain user info
+    const potentialKeys = ['userInfo', 'currentUser', 'loginUser', 'user'];
+    let foundUserInfo = null;
+    let foundKey = null;
+    
+    // Try to find user info in any of the potential keys
+    for (const key of potentialKeys) {
+      const value = localStorage.getItem(key);
+      if (value) {
+        try {
+          const parsed = JSON.parse(value);
+          console.log(`Found data in localStorage.${key}:`, parsed);
+          foundUserInfo = parsed;
+          foundKey = key;
+          break; // Use the first found user info
+        } catch (e) {
+          console.log(`Found non-JSON data in localStorage.${key}:`, value);
+        }
+      }
+    }
+    
+    // Debug: if no user info found, create a test user with full permissions
+    if (!foundUserInfo) {
+      console.log('No user info found in localStorage, creating test permissions');
+      // Create test permissions with full access for debugging
+      this.userPermissions = {
+        add: 1,
+        delete: 1,
+        edit: 1,
+        query: 1
+      };
+      console.log('Set test permissions with full access');
+    } else {
+      console.log(`Using found user info from key '${foundKey}':`, foundUserInfo);
+      
+      // Check various permission property names
+      const permissionProperties = ['permissions', 'userPermissions', 'auth', 'rights', 'privileges'];
+      let foundPermissions = null;
+      
+      for (const prop of permissionProperties) {
+        if (foundUserInfo[prop]) {
+          foundPermissions = foundUserInfo[prop];
+          console.log(`Found permissions in '${prop}' property:`, foundPermissions);
+          break;
+        }
+      }
+      
+      // Additional check: if permissions are directly on the user object
+      if (!foundPermissions) {
+        // Check if the user object itself has permission-like properties
+        const directPermissions = {};
+        const permissionKeys = ['add', 'delete', 'edit', 'query'];
+        let hasDirectPermissions = false;
+        
+        for (const key of permissionKeys) {
+          if (foundUserInfo[key] !== undefined) {
+            directPermissions[key] = foundUserInfo[key];
+            hasDirectPermissions = true;
+          }
+        }
+        
+        if (hasDirectPermissions) {
+          foundPermissions = directPermissions;
+          console.log('Found direct permissions on user object:', foundPermissions);
+        } else {
+          // Fallback: create default permissions from user info if possible
+          console.log('No explicit permissions found, checking for role-based permissions');
+          // Try to infer permissions from user role or other properties
+          const userRole = foundUserInfo.role || foundUserInfo.position || '';
+          console.log(`User role: ${userRole}`);
+          
+          // Example role-based permission mapping (adjust based on actual roles)
+          if (userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('管理员')) {
+            foundPermissions = {
+              add: 1,
+              delete: 1,
+              edit: 1,
+              query: 1
+            };
+            console.log('Set admin permissions based on user role');
+          }
+        }
+      }
+      
+      if (foundPermissions) {
+        // Merge found permissions with default structure and normalize values
+        const normalizedPermissions = {};
+        const defaultPermissionKeys = Object.keys(this.userPermissions);
+        
+        // Ensure all default permission keys are included
+        for (const key of defaultPermissionKeys) {
+          let value = foundPermissions[key] !== undefined ? foundPermissions[key] : this.userPermissions[key];
+          
+          // Normalize the value to a number
+          let normalizedValue = 0;
+          if (typeof value === 'string') {
+            // Handle various string representations
+            if (value.toLowerCase() === 'true' || value === '1' || value === 'yes' || value === 'on') {
+              normalizedValue = 1;
+            } else if (value.toLowerCase() === 'false' || value === '0' || value === 'no' || value === 'off') {
+              normalizedValue = 0;
+            } else {
+              normalizedValue = parseInt(value) || 0;
+            }
+          } else if (typeof value === 'boolean') {
+            normalizedValue = value ? 1 : 0;
+          } else if (typeof value === 'number') {
+            normalizedValue = value;
+          }
+          
+          normalizedPermissions[key] = normalizedValue;
+          console.log(`Normalized permission ${key}: ${value} -> ${normalizedValue}`);
+        }
+        
+        this.userPermissions = normalizedPermissions;
+      } else {
+        console.log('No permissions found in user info, using default permissions');
+        // Set default full permissions for debugging
+        this.userPermissions = {
+          add: 1,
+          delete: 1,
+          edit: 1,
+          query: 1
+        };
+      }
+      
+      console.log('Final userPermissions:', this.userPermissions);
+    }
+    
+    // Verify permissions are working correctly
+    console.log('Permission verification:');
+    console.log('- Has edit permission:', this.hasPermission('edit'));
+    console.log('- Has delete permission:', this.hasPermission('delete'));
+    console.log('- Has query permission:', this.hasPermission('query'));
+  },
   methods: {
+    // 权限检查函数
+    hasPermission(action) {
+      // Permission values are already normalized to numbers during initialization
+      return this.userPermissions[action] === 1;
+    },
+    // 检查是否有任何操作权限
+    hasAnyPermission() {
+      // Permission values are already normalized to numbers during initialization
+      return Object.values(this.userPermissions).some(perm => perm === 1);
+    },
     // 导出结果
     exportResults(format) {
       // 验证是否选择了查询类别
       if (!this.searchForm.queryType) {
         this.showSearchMessage('请先选择查询类别', 'danger');
         return;
+      }
+      
+      // 获取当前登录用户名
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      const localUser = localStorage.getItem('userInfo');
+      if (sessionUser) {
+        username = JSON.parse(sessionUser).username;
+      } else if (localUser) {
+        username = JSON.parse(localUser).username || JSON.parse(localUser).account;
       }
       
       // 显示导出进度对话框
@@ -1713,7 +1885,8 @@ export default {
           page: 1,
           pageSize: 1000000, // 导出所有数据（使用足够大的数值）
           export: true,
-          exportFormat: format === 'html' ? 'pdf' : 'excel'
+          exportFormat: format === 'html' ? 'pdf' : 'excel',
+          username: username
         })
       })
       .then(response => {
@@ -1789,6 +1962,16 @@ export default {
         return;
       }
       
+      // 获取当前登录用户名
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      const localUser = localStorage.getItem('userInfo');
+      if (sessionUser) {
+        username = JSON.parse(sessionUser).username;
+      } else if (localUser) {
+        username = JSON.parse(localUser).username || JSON.parse(localUser).account;
+      }
+      
       // 显示搜索状态消息
       this.showSearchMessage('正在搜索...', 'info');
       
@@ -1805,7 +1988,8 @@ export default {
           keyword2MatchType: this.searchForm.keyword2MatchType,
           queryType: this.searchForm.queryType,
           page: page,
-          pageSize: this.pageSize
+          pageSize: this.pageSize,
+          username: username
         })
       })
       .then(response => {
@@ -2199,6 +2383,12 @@ export default {
     
     // 编辑记录
     editRecord(record) {
+      // 检查是否有编辑权限
+      if (!this.hasPermission('edit')) {
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        return;
+      }
+      
       this.currentRecord = record;
       this.editRecordVisible = true;
       
@@ -2228,7 +2418,7 @@ export default {
         case 'system':
           // 信息系统登录信息
           this.editFormData = {
-            id: record.id || record.login_info_id || '',
+            login_info_id: record.id || record.login_info_id || '',
             systemName: record.name || record.login_info_system_name || '',
             ipUrl: record.ip_url || record.login_info_ip_url || '',
             type: record.type || record.login_info_type || '',
@@ -2240,7 +2430,7 @@ export default {
         case 'server':
           // 服务器账号密码
           this.editFormData = {
-            id: record.id || record.server_cred_id || '',
+            server_cred_id: record.id || record.server_cred_id || '',
             name: record.name || record.server_cred_name || '',
             ip: record.ip || record.server_cred_server_ip || '',
             port: record.port || record.server_cred_server_port || '',
@@ -2289,7 +2479,7 @@ export default {
             const brandSign = `${devBrand} (${devSign})`;
             
             this.editFormData = {
-              id: netDevCredId,
+              net_dev_cred_id: netDevCredId,
               // 设备基本信息
               dev_type: devType,
               net_type: netType,
@@ -2353,7 +2543,7 @@ export default {
           this.loadPhysicalMachines(record.cluster_id);
           break;
         default:
-          // 默认表单数据
+          // 默认表单数据 - 使用 generic id
           this.editFormData = {
             id: record.id || ''
           };
@@ -2371,12 +2561,24 @@ export default {
     
     // 删除记录
     deleteRecord(record) {
+      // 检查是否有删除权限
+      if (!this.hasPermission('delete')) {
+        ElMessage.error('您没有删除权限，请联系管理员获取相应权限');
+        return;
+      }
+      
       this.currentRecord = record;
       this.deleteConfirmVisible = true;
     },
     
     // 查询详细信息
     handleDetailQuery(record) {
+      // 检查是否有查询权限
+      if (!this.hasPermission('query')) {
+        ElMessage.error('您没有查询详情权限，请联系管理员获取相应权限');
+        return;
+      }
+      
       // 设置当前记录
       this.currentRecord = record;
       // 打开详细信息对话框
@@ -2437,116 +2639,284 @@ export default {
     
     // 确认删除记录
     confirmDelete() {
+      // 再次检查是否有删除权限（双重保障）
+      if (!this.hasPermission('delete')) {
+        ElMessage.error('您没有删除权限，请联系管理员获取相应权限');
+        this.deleteConfirmVisible = false;
+        return;
+      }
+      
       // 关闭确认对话框
       this.deleteConfirmVisible = false;
       
       // 显示加载状态
       this.showSearchMessage('正在删除记录...', 'info');
       
-      // 模拟删除请求
-      setTimeout(() => {
-        // 实际删除逻辑：从搜索结果中移除当前记录
-        const index = this.searchData.findIndex(item => item === this.currentRecord);
-        if (index > -1) {
-          this.searchData.splice(index, 1);
-          this.total--;
-          this.showSearchMessage('记录删除成功', 'success');
+      // 获取当前登录用户名
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      const localUser = localStorage.getItem('userInfo');
+      if (sessionUser) {
+        username = JSON.parse(sessionUser).username;
+      } else if (localUser) {
+        const parsedLocalUser = JSON.parse(localUser);
+        username = parsedLocalUser.username || parsedLocalUser.account;
+      }
+      
+      // 获取记录类型
+      const recordType = this.currentRecord.category || 'unknown';
+      console.log(`Deleting record of type: ${recordType}`);
+      
+      // 映射前端记录类型到后端更新类型
+      const typeMapping = {
+        'system': 'login_info',
+        'server': 'server_cred',
+        'network': 'net_dev_cred',
+        'cluster': 'cluster_cred'
+      };
+      
+      // 获取对应的后端更新类型
+      const finalType = typeMapping[recordType] || recordType;
+      console.log(`Mapping frontend type '${recordType}' to backend delete type '${finalType}'`);
+      
+      // 发送真实的API请求
+      fetch('search_api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          type: finalType,
+          id: this.currentRecord.id || this.currentRecord.login_info_id || this.currentRecord.server_cred_id || this.currentRecord.net_dev_cred_id,
+          username: username
+        })
+      })
+      .then(response => {
+        // 先检查响应是否为JSON格式
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json().catch(parseError => {
+            // JSON解析失败，返回错误响应
+            console.error('JSON解析失败:', parseError);
+            return {
+              success: false,
+              message: '服务器返回了无效的JSON格式，请联系管理员检查服务器日志'
+            };
+          });
         } else {
-          this.showSearchMessage('记录删除失败：未找到记录', 'danger');
+          // 如果不是JSON，返回错误响应
+          return {
+            success: false,
+            message: '无法连接到服务器，请确保PHP环境正常运行'
+          };
         }
-      }, 1000);
+      })
+      .then(data => {
+        if (data.success) {
+          // 更新成功，刷新搜索结果
+          this.performSearch(this.currentPage);
+          
+          // 显示成功消息
+          this.showSearchMessage('记录删除成功', 'success');
+          ElMessage.success('记录删除成功');
+        } else {
+          // 删除失败
+          throw new Error(data.message || '未知错误');
+        }
+      })
+      .catch(error => {
+        // 显示错误消息
+        this.showSearchMessage(`记录删除失败：${error.message}`, 'danger');
+        ElMessage.error(`记录删除失败：${error.message}`);
+        console.error('删除记录出错:', error);
+      });
     },
     
     // 处理保存修改
     handleSaveEdit() {
-      console.log('=== 开始保存修改 ===', new Date().toISOString());
-      console.log('当前表单数据:', this.editFormData);
-      console.log('当前记录:', this.currentRecord);
+      console.group('=== 保存修改流程开始 ===', new Date().toISOString());
       
-      // 获取记录类型
+      // 1. 初始状态记录
+      console.log('1. 初始状态:');
+      console.log('   - 当前记录:', JSON.stringify(this.currentRecord, null, 2));
+      console.log('   - 当前表单数据:', JSON.stringify(this.editFormData, null, 2));
+      
+      // 2. 权限检查
+      console.log('\n2. 权限检查:');
+      const hasEditPerm = this.hasPermission('edit');
+      console.log('   - hasPermission(edit):', hasEditPerm);
+      
+      if (!hasEditPerm) {
+        console.error('   - 权限检查失败: 用户没有修改权限');
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        console.groupEnd();
+        return;
+      }
+      console.log('   - 权限检查通过');
+      
+      // 3. 记录类型处理
+      console.log('\n3. 记录类型处理:');
       const recordType = this.currentRecord.category || 'unknown';
+      console.log('   - 前端记录类型 recordType:', recordType);
       
-      // 表单验证
+      // 3.1 类型映射
+      const typeMapping = {
+        'system': 'login_info',
+        'server': 'server_cred',
+        'network': 'net_dev_cred',
+        'cluster': 'cluster_cred'
+      };
+      console.log('   - 类型映射表:', typeMapping);
+      
+      const finalType = typeMapping[recordType] || recordType;
+      console.log('   - 最终发送到后端的类型 finalType:', finalType);
+      
+      // 4. 获取用户名
+      console.log('\n4. 获取用户名:');
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      console.log('   - sessionUser 存在:', !!sessionUser);
+      const localUser = localStorage.getItem('userInfo');
+      console.log('   - localUser 存在:', !!localUser);
+      
+      if (sessionUser) {
+        const parsedSession = JSON.parse(sessionUser);
+        username = parsedSession.username;
+        console.log('   - 从 sessionStorage 获取用户名:', username);
+      } else if (localUser) {
+        const parsedLocal = JSON.parse(localUser);
+        username = parsedLocal.username || parsedLocal.account;
+        console.log('   - 从 localStorage 获取用户名:', username);
+      }
+      console.log('   - 最终用户名:', username);
+      
+      // 5. 表单验证
+      console.log('\n5. 表单验证:');
       this.$refs.editFormRef.validate((valid, invalidFields) => {
-        console.log('验证结果:', { valid, invalidFields });
+        console.log('   - 验证结果:', { valid });
+        if (invalidFields && Object.keys(invalidFields).length > 0) {
+          console.log('   - 验证失败字段:', JSON.stringify(invalidFields, null, 2));
+        }
         
         if (valid) {
-          // 验证通过，保存数据
+          // 6. 表单验证通过，准备API请求
+          console.log('\n6. 表单验证通过，准备API请求:');
           this.saveEditLoading = true;
           
-          // 发送真实的API请求
+          // 6.1 构建请求数据
+          const apiRequest = {
+            action: 'update',
+            type: finalType, // 使用映射后的类型
+            data: this.editFormData,
+            username: username
+          };
+          console.log('   - API请求数据:', JSON.stringify(apiRequest, null, 2));
+          
+          // 7. 发送API请求
+          console.log('\n7. 发送API请求:');
+          console.log('   - URL: search_api.php');
+          console.log('   - 方法: POST');
+          
           fetch('search_api.php', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              action: 'update',
-              queryType: recordType,
-              data: this.editFormData
-            })
+            body: JSON.stringify(apiRequest)
           })
           .then(response => {
-            // 先检查响应是否为JSON格式
+            console.log('\n8. API响应接收:');
+            console.log('   - 状态码:', response.status);
+            console.log('   - 状态文本:', response.statusText);
+            console.log('   - 响应头:', Object.fromEntries(response.headers));
+            
+            // 8.1 检查响应类型
             const contentType = response.headers.get('content-type');
+            console.log('   - Content-Type:', contentType);
+            
             if (contentType && contentType.includes('application/json')) {
+              console.log('   - 响应是JSON格式，开始解析');
               return response.json().catch(parseError => {
-                // JSON解析失败，返回错误响应
-                console.error('JSON解析失败:', parseError);
+                console.error('   - JSON解析失败:', parseError.stack || parseError);
                 return {
                   success: false,
                   message: '服务器返回了无效的JSON格式，请联系管理员检查服务器日志'
                 };
               });
             } else {
-              // 如果不是JSON，返回错误响应
+              console.error('   - 响应不是JSON格式');
               return {
                 success: false,
                 message: '无法连接到服务器，请确保PHP环境正常运行'
               };
             }
           })
-          .then(data => {
-            if (data.success) {
-              // 更新成功，刷新搜索结果
+          .then(apiResponse => {
+            console.log('\n9. API响应处理:');
+            console.log('   - 响应数据:', JSON.stringify(apiResponse, null, 2));
+            
+            if (apiResponse.success) {
+              // 10. 处理成功响应
+              console.log('   - 响应成功');
+              
+              // 10.1 刷新搜索结果
+              console.log('   - 刷新搜索结果...');
               this.performSearch(this.currentPage);
               
-              // 显示成功消息
+              // 10.2 显示成功消息
+              console.log('   - 显示成功消息');
               this.showSearchMessage('记录修改成功', 'success');
               ElMessage.success('记录修改成功');
               
-              // 关闭对话框
+              // 10.3 关闭对话框
+              console.log('   - 关闭对话框...');
               setTimeout(() => {
                 this.editRecordVisible = false;
                 this.saveEditLoading = false;
               }, 1000);
+              
             } else {
-              // 更新失败
-              throw new Error(data.message || '未知错误');
+              // 11. 处理失败响应
+              console.error('   - 响应失败:', apiResponse.message);
+              throw new Error(apiResponse.message || '未知错误');
             }
           })
           .catch(error => {
-            // 显示错误消息
-            this.showSearchMessage(`记录修改失败：${error.message}`, 'danger');
-            ElMessage.error(`记录修改失败：${error.message}`);
+            // 12. 错误处理
+            console.error('\n12. 错误处理:');
+            console.error('   - 捕获到错误:', error.stack || error);
+            
+            // 12.1 显示错误消息
+            const errorMsg = `记录修改失败：${error.message}`;
+            console.log('   - 显示错误消息:', errorMsg);
+            this.showSearchMessage(errorMsg, 'danger');
+            ElMessage.error(errorMsg);
+            
+            // 12.2 重置加载状态
             this.saveEditLoading = false;
-            console.error('保存修改出错:', error);
+          })
+          .finally(() => {
+            // 13. 流程结束
+            console.log('\n13. 保存修改流程结束');
+            console.groupEnd();
           });
-        } else {
-          // 验证失败，显示详细错误
-          console.error('表单验证失败，详细错误:', invalidFields);
           
-          // 显示具体的错误字段
-          let errorMessages = [];
+        } else {
+          // 表单验证失败
+          console.error('   - 表单验证失败');
+          
+          // 显示验证失败字段
+          let errorMsgs = [];
           for (const field in invalidFields) {
-            if (invalidFields[field] && invalidFields[field].length > 0) {
-              errorMessages.push(`${field}: ${invalidFields[field][0].message}`);
+            if (invalidFields[field]?.length > 0) {
+              errorMsgs.push(`${field}: ${invalidFields[field][0].message}`);
             }
           }
-          console.log('错误字段列表:', errorMessages);
+          console.log('   - 验证失败字段:', errorMsgs);
           
-          // 验证失败
           ElMessage.warning('表单验证失败，请检查输入');
+          console.groupEnd();
           return false;
         }
       });

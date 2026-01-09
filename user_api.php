@@ -16,6 +16,35 @@ $dbConfig = require __DIR__ . '/app/config/database.php';
 // 加载SecurityUtils类
 require_once __DIR__ . '/app/utils/SecurityUtils.php';
 
+// 记录日志函数
+function logOperation($pdo, $userId, $action, $details) {
+    try {
+        $sql = "INSERT INTO operation_logs (
+            operation_user_id,
+            operation_type,
+            operation_details,
+            operation_ip,
+            operation_created_at
+        ) VALUES (
+            :userId,
+            :action,
+            :details,
+            :ip,
+            NOW()
+        )";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':action', $action, PDO::PARAM_STR);
+        $stmt->bindValue(':details', $details, PDO::PARAM_STR);
+        $stmt->bindValue(':ip', $_SERVER['REMOTE_ADDR'] ?? 'unknown', PDO::PARAM_STR);
+        $stmt->execute();
+    } catch (Exception $e) {
+        // 日志记录失败不影响主流程
+        error_log('日志记录失败: ' . $e->getMessage());
+    }
+}
+
 // 初始化响应
 $response = [
     'success' => false,
@@ -142,6 +171,11 @@ function getUserList($pdo, $page, $pageSize) {
                 credstat_user_name as name,
                 credstat_user_status as credstat_user_status,
                 credstat_user_remark as remark,
+                credstat_user_perm_add as credstat_user_perm_add,
+                credstat_user_perm_delete as credstat_user_perm_delete,
+                credstat_user_perm_edit as credstat_user_perm_edit,
+                credstat_user_perm_query as credstat_user_perm_query,
+                credstat_user_perm_manage as credstat_user_perm_manage,
                 credstat_user_created_at as created_at,
                 credstat_user_updated_at as updated_at
             FROM credstat_user 
@@ -206,13 +240,23 @@ function addUser($pdo, $userData) {
         credstat_user_name,
         credstat_user_password,
         credstat_user_status,
-        credstat_user_remark
+        credstat_user_remark,
+        credstat_user_perm_add,
+        credstat_user_perm_delete,
+        credstat_user_perm_edit,
+        credstat_user_perm_query,
+        credstat_user_perm_manage
     ) VALUES (
         :account,
         :name,
         :password,
         :status,
-        :remark
+        :remark,
+        :perm_add,
+        :perm_delete,
+        :perm_edit,
+        :perm_query,
+        :perm_manage
     )";
     
     $stmt = $pdo->prepare($insertSql);
@@ -222,7 +266,29 @@ function addUser($pdo, $userData) {
     // 使用整数类型处理状态字段，前端已转换为1或0
     $stmt->bindValue(':status', $userData['credstat_user_status'] ?? 1, PDO::PARAM_INT);
     $stmt->bindValue(':remark', $userData['remark'] ?? '', PDO::PARAM_STR);
+    // 权限相关字段
+    $stmt->bindValue(':perm_add', $userData['credstat_user_perm_add'] ?? 0, PDO::PARAM_INT);
+    $stmt->bindValue(':perm_delete', $userData['credstat_user_perm_delete'] ?? 0, PDO::PARAM_INT);
+    $stmt->bindValue(':perm_edit', $userData['credstat_user_perm_edit'] ?? 0, PDO::PARAM_INT);
+    $stmt->bindValue(':perm_query', $userData['credstat_user_perm_query'] ?? 1, PDO::PARAM_INT);
+    $stmt->bindValue(':perm_manage', $userData['credstat_user_perm_manage'] ?? 0, PDO::PARAM_INT);
     $stmt->execute();
+    
+    // 记录操作日志
+    $newUserId = $pdo->lastInsertId();
+    $logDetails = json_encode([
+        'account' => $userData['account'],
+        'name' => $userData['name'] ?? '',
+        'status' => $userData['credstat_user_status'] ?? 1,
+        'permissions' => [
+            'add' => $userData['credstat_user_perm_add'] ?? 0,
+            'delete' => $userData['credstat_user_perm_delete'] ?? 0,
+            'edit' => $userData['credstat_user_perm_edit'] ?? 0,
+            'query' => $userData['credstat_user_perm_query'] ?? 1,
+            'manage' => $userData['credstat_user_perm_manage'] ?? 0
+        ]
+    ]);
+    logOperation($pdo, $newUserId, 'add_user', $logDetails);
     
     return [
         'success' => true,
@@ -292,6 +358,32 @@ function editUser($pdo, $userData) {
         $params[':remark'] = $userData['remark'];
     }
     
+    // 权限相关字段
+    if (isset($userData['credstat_user_perm_add'])) {
+        $updateFields[] = "credstat_user_perm_add = :perm_add";
+        $params[':perm_add'] = $userData['credstat_user_perm_add'];
+    }
+    
+    if (isset($userData['credstat_user_perm_delete'])) {
+        $updateFields[] = "credstat_user_perm_delete = :perm_delete";
+        $params[':perm_delete'] = $userData['credstat_user_perm_delete'];
+    }
+    
+    if (isset($userData['credstat_user_perm_edit'])) {
+        $updateFields[] = "credstat_user_perm_edit = :perm_edit";
+        $params[':perm_edit'] = $userData['credstat_user_perm_edit'];
+    }
+    
+    if (isset($userData['credstat_user_perm_query'])) {
+        $updateFields[] = "credstat_user_perm_query = :perm_query";
+        $params[':perm_query'] = $userData['credstat_user_perm_query'];
+    }
+    
+    if (isset($userData['credstat_user_perm_manage'])) {
+        $updateFields[] = "credstat_user_perm_manage = :perm_manage";
+        $params[':perm_manage'] = $userData['credstat_user_perm_manage'];
+    }
+    
     // 如果提供了密码，则更新密码
     if (!empty($userData['password'])) {
         $updateFields[] = "credstat_user_password = :password";
@@ -339,6 +431,12 @@ function deleteUser($pdo, $userId) {
     $stmt->bindValue(':id', $userId, PDO::PARAM_INT);
     $stmt->execute();
     
+    // 记录操作日志
+    $logDetails = json_encode([
+        'user_id' => $userId
+    ]);
+    logOperation($pdo, $userId, 'delete_user', $logDetails);
+    
     return [
         'success' => true,
         'message' => '删除用户成功'
@@ -374,7 +472,12 @@ function loginUser($pdo, $username, $password) {
             credstat_user_account as account,
             credstat_user_name as name,
             credstat_user_password as password,
-            credstat_user_images_path as avatar
+            credstat_user_images_path as avatar,
+            credstat_user_perm_add as perm_add,
+            credstat_user_perm_delete as perm_delete,
+            credstat_user_perm_edit as perm_edit,
+            credstat_user_perm_query as perm_query,
+            credstat_user_perm_manage as perm_manage
         FROM credstat_user 
         WHERE credstat_user_account = :account";
     
@@ -407,7 +510,14 @@ function loginUser($pdo, $username, $password) {
             'id' => $user['id'],
             'username' => $user['account'],
             'name' => $user['name'],
-            'avatar' => $user['avatar']
+            'avatar' => $user['avatar'],
+            'permissions' => [
+                'add' => (int)$user['perm_add'],
+                'delete' => (int)$user['perm_delete'],
+                'edit' => (int)$user['perm_edit'],
+                'query' => (int)$user['perm_query'],
+                'manage' => (int)$user['perm_manage']
+            ]
         ]
     ];
 }
@@ -432,7 +542,12 @@ function getCurrentUser($pdo, $username) {
             credstat_user_id as id,
             credstat_user_account as username,
             credstat_user_name as name,
-            credstat_user_images_path as avatar
+            credstat_user_images_path as avatar,
+            credstat_user_perm_add as perm_add,
+            credstat_user_perm_delete as perm_delete,
+            credstat_user_perm_edit as perm_edit,
+            credstat_user_perm_query as perm_query,
+            credstat_user_perm_manage as perm_manage
         FROM credstat_user 
         WHERE credstat_user_account = :account";
     
@@ -448,6 +563,15 @@ function getCurrentUser($pdo, $username) {
             'message' => '用户不存在'
         ];
     }
+    
+    // 添加权限信息到用户数据
+    $user['permissions'] = [
+        'add' => (int)$user['perm_add'],
+        'delete' => (int)$user['perm_delete'],
+        'edit' => (int)$user['perm_edit'],
+        'query' => (int)$user['perm_query'],
+        'manage' => (int)$user['perm_manage']
+    ];
     
     // 返回用户信息
     return [

@@ -123,14 +123,21 @@
           ></el-input>
           <div v-if="isEditingUser" class="el-form-item__help">密码为空表示不修改现有密码</div>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input
-            v-model="currentUserInfo.remark"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入备注信息（可选）"
-          ></el-input>
+        
+        <!-- 权限管理区域 -->
+        <el-divider content-position="left">权限管理</el-divider>
+        <el-form-item label="操作权限">
+          <el-checkbox v-model="permissionAll" @change="handlePermissionAllChange">全选</el-checkbox>
+          <el-checkbox-group v-model="currentUserPermissions" class="mt-2" @change="updatePermissionAll">
+            <el-checkbox label="add" border>增</el-checkbox>
+            <el-checkbox label="delete" border>删</el-checkbox>
+            <el-checkbox label="edit" border>改</el-checkbox>
+            <el-checkbox label="query" border>查</el-checkbox>
+            <el-checkbox label="manage" border>管理</el-checkbox>
+          </el-checkbox-group>
+          <div class="el-form-item__help">勾选表示授予相应权限</div>
         </el-form-item>
+        
         <el-form-item label="账号状态">
           <el-switch
             v-model="currentUserInfo.status"
@@ -138,6 +145,15 @@
             inactive-color="#ff4949"
           ></el-switch>
           <div class="el-form-item__help">{{ currentUserInfo.status ? '启用' : '禁用' }}</div>
+        </el-form-item>
+        
+        <el-form-item label="备注">
+          <el-input
+            v-model="currentUserInfo.remark"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入备注信息（可选）"
+          ></el-input>
         </el-form-item>
       </el-form>
     </el-dialog>
@@ -175,8 +191,17 @@ export default {
         name: '',
         password: '',
         remark: '',
-        status: true
+        status: true,
+        // 权限相关字段
+        perm_add: 0,
+        perm_delete: 0,
+        perm_edit: 0,
+        perm_query: 1,
+        perm_manage: 0
       },
+      // 权限相关
+      permissionAll: false,
+      currentUserPermissions: [],
       userMessageVisible: false,
       userMessageText: '',
       userMessageType: 'info',
@@ -237,7 +262,13 @@ export default {
           name: user.name || '',
           status: user.status || true,
           password: '',
-          remark: user.remark || ''
+          remark: user.remark || '',
+          // 权限相关字段
+          perm_add: parseInt(user.credstat_user_perm_add) || 0,
+          perm_delete: parseInt(user.credstat_user_perm_delete) || 0,
+          perm_edit: parseInt(user.credstat_user_perm_edit) || 0,
+          perm_query: parseInt(user.credstat_user_perm_query) || 1,
+          perm_manage: parseInt(user.credstat_user_perm_manage) || 0
         };
       } else {
         // 添加模式 - 当user为null或id为空时是添加模式
@@ -248,14 +279,62 @@ export default {
           name: '',
           status: true,
           password: '',
-          remark: ''
+          remark: '',
+          // 权限相关字段
+          perm_add: 0,
+          perm_delete: 0,
+          perm_edit: 0,
+          perm_query: 1,
+          perm_manage: 0
         };
       }
+      
+      // 初始化权限选择
+      this.initPermissions();
       
       console.log('Modal opened with mode:', this.isEditingUser ? 'edit' : 'add', 'and user:', user);
       
       // 显示模态框
       this.userModalVisible = true;
+    },
+    
+    // 初始化权限选择
+    initPermissions() {
+      // 从currentUserInfo中同步权限到currentUserPermissions
+      const permissions = [];
+      if (this.currentUserInfo.perm_add) permissions.push('add');
+      if (this.currentUserInfo.perm_delete) permissions.push('delete');
+      if (this.currentUserInfo.perm_edit) permissions.push('edit');
+      if (this.currentUserInfo.perm_query) permissions.push('query');
+      if (this.currentUserInfo.perm_manage) permissions.push('manage');
+      
+      this.currentUserPermissions = permissions;
+      this.updatePermissionAll();
+    },
+    
+    // 处理全选/取消全选
+    handlePermissionAllChange(value) {
+      if (value) {
+        this.currentUserPermissions = ['add', 'delete', 'edit', 'query', 'manage'];
+      } else {
+        this.currentUserPermissions = [];
+      }
+      this.syncPermissions();
+    },
+    
+    // 当单个权限变化时更新全选状态
+    updatePermissionAll() {
+      this.permissionAll = this.currentUserPermissions.length === 5;
+      this.syncPermissions();
+    },
+    
+    // 同步权限到currentUserInfo
+    syncPermissions() {
+      this.currentUserInfo.perm_add = this.currentUserPermissions.includes('add') ? 1 : 0;
+      this.currentUserInfo.perm_delete = this.currentUserPermissions.includes('delete') ? 1 : 0;
+      this.currentUserInfo.perm_edit = this.currentUserPermissions.includes('edit') ? 1 : 0;
+      this.currentUserInfo.perm_query = this.currentUserPermissions.includes('query') ? 1 : 0;
+      this.currentUserInfo.perm_manage = this.currentUserPermissions.includes('manage') ? 1 : 0;
     },
     
     // 处理账号状态变更
@@ -353,12 +432,21 @@ export default {
       
       this.savingUser = true;
       
+      // 同步最新权限到currentUserInfo
+      this.syncPermissions();
+      
       const userData = {
         account: this.currentUserInfo.account.trim(),
         name: this.currentUserInfo.name.trim(),
         credstat_user_status: this.currentUserInfo.status ? 1 : 0,
         password: this.currentUserInfo.password,
-        remark: this.currentUserInfo.remark.trim()
+        remark: this.currentUserInfo.remark.trim(),
+        // 权限相关字段
+        credstat_user_perm_add: this.currentUserInfo.perm_add,
+        credstat_user_perm_delete: this.currentUserInfo.perm_delete,
+        credstat_user_perm_edit: this.currentUserInfo.perm_edit,
+        credstat_user_perm_query: this.currentUserInfo.perm_query,
+        credstat_user_perm_manage: this.currentUserInfo.perm_manage
       };
       
       // 只在编辑用户时添加ID
@@ -429,7 +517,13 @@ export default {
               updated_at: user.updated_at,
               // 正确转换状态值为布尔类型，确保switch开关能准确反映实际状态
               // 使用parseInt确保数值比较，避免字符串"0"被Boolean()转换为true
-              status: parseInt(user.credstat_user_status) === 1
+              status: parseInt(user.credstat_user_status) === 1,
+              // 包含权限相关字段
+              credstat_user_perm_add: user.credstat_user_perm_add,
+              credstat_user_perm_delete: user.credstat_user_perm_delete,
+              credstat_user_perm_edit: user.credstat_user_perm_edit,
+              credstat_user_perm_query: user.credstat_user_perm_query,
+              credstat_user_perm_manage: user.credstat_user_perm_manage
             };
           });
           this.total = data.total;

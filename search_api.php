@@ -67,6 +67,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $export = isset($requestData['export']) ? boolval($requestData['export']) : false;
     $exportFormat = isset($requestData['exportFormat']) ? strtolower(trim($requestData['exportFormat'])) : 'excel';
     $data = isset($requestData['data']) ? $requestData['data'] : [];
+    $username = isset($requestData['username']) ? trim($requestData['username']) : '';
+    
+    // 验证用户权限
+    try {
+        // 连接数据库验证用户权限
+        $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ];
+        $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+        
+        // 获取用户权限
+        $userPermissions = [
+            'add' => 0,
+            'delete' => 0,
+            'edit' => 0,
+            'query' => 0
+        ];
+        
+        if (!empty($username)) {
+            $userSql = "SELECT 
+                credstat_user_perm_add, 
+                credstat_user_perm_delete, 
+                credstat_user_perm_edit, 
+                credstat_user_perm_query 
+            FROM credstat_user 
+            WHERE credstat_user_account = :username";
+            $stmt = $pdo->prepare($userSql);
+            $stmt->bindValue(':username', $username, PDO::PARAM_STR);
+            $stmt->execute();
+            $user = $stmt->fetch();
+            
+            if ($user) {
+                $userPermissions = [
+                    'add' => intval($user['credstat_user_perm_add']),
+                    'delete' => intval($user['credstat_user_perm_delete']),
+                    'edit' => intval($user['credstat_user_perm_edit']),
+                    'query' => intval($user['credstat_user_perm_query'])
+                ];
+            }
+        }
+        
+        // 检查权限
+        if ($action === 'update' && $userPermissions['edit'] !== 1) {
+            throw new Exception('您没有修改权限');
+        }
+        
+        if ($action === 'search' && $userPermissions['query'] !== 1) {
+            throw new Exception('您没有查询权限');
+        }
+        
+        // 其他操作的权限检查可以在这里添加
+        
+    } catch (PDOException $e) {
+        error_log('权限验证数据库错误: ' . $e->getMessage());
+        // 如果权限验证失败，默认只允许查询
+        $userPermissions = [
+            'add' => 0,
+            'delete' => 0,
+            'edit' => 0,
+            'query' => 1
+        ];
+    } catch (Exception $e) {
+        $response['success'] = false;
+        $response['message'] = $e->getMessage();
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     
     // 添加调试日志
     error_log('解析后的查询参数:');
