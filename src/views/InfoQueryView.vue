@@ -13,20 +13,44 @@
           <el-row :gutter="[20, 20]">
             <el-col :xs="24" :sm="12" :md="6">
               <el-form-item label="关键词1">
-                <el-input
-                  v-model="searchForm.keyword1"
-                  placeholder="请输入第一个关键词，支持模糊匹配"
-                  clearable
-                ></el-input>
+                <div class="keyword-input-wrapper">
+                  <el-input
+                    v-model="searchForm.keyword1"
+                    placeholder="请输入第一个关键词，支持模糊匹配"
+                    clearable
+                    class="keyword-input"
+                  ></el-input>
+                  <el-select
+                    v-model="searchForm.keyword1MatchType"
+                    placeholder="匹配方式"
+                    class="match-type-select"
+                    style="width: 120px;"
+                  >
+                    <el-option label="包含" value="include"></el-option>
+                    <el-option label="不包含" value="exclude"></el-option>
+                  </el-select>
+                </div>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="6">
               <el-form-item label="关键词2">
-                <el-input
-                  v-model="searchForm.keyword2"
-                  placeholder="请输入第二个关键词，支持模糊匹配"
-                  clearable
-                ></el-input>
+                <div class="keyword-input-wrapper">
+                  <el-input
+                    v-model="searchForm.keyword2"
+                    placeholder="请输入第二个关键词，支持模糊匹配"
+                    clearable
+                    class="keyword-input"
+                  ></el-input>
+                  <el-select
+                    v-model="searchForm.keyword2MatchType"
+                    placeholder="匹配方式"
+                    class="match-type-select"
+                    style="width: 120px;"
+                  >
+                    <el-option label="包含" value="include"></el-option>
+                    <el-option label="不包含" value="exclude"></el-option>
+                  </el-select>
+                </div>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="6">
@@ -974,28 +998,184 @@
     >
       <div class="detail-dialog-content">
         <div v-if="currentRecord" class="detail-info">
-          <el-descriptions
-            border
-            :column="1"
-            :size="'medium'"
-            class="detail-descriptions"
-          >
-            <el-descriptions-item
-              v-for="(value, key) in getDisplayFields()"
-              :key="key"
-              :label="getFieldName(key)"
+          <!-- 服务器账号密码详情 -->
+          <div v-if="currentRecord.category === 'server'" class="server-detail">
+            <el-descriptions
+              border
+              :column="2"
+              :size="'medium'"
+              class="detail-descriptions"
             >
-              <div class="field-value">
-                <span v-if="value === '' || value === null || value === undefined">无</span>
-                <span v-else-if="typeof value === 'object'">
-                  {{ JSON.stringify(value) }}
-                </span>
-                <span v-else class="value-text" :title="value.length > 50 ? value : ''">
-                  {{ value.length > 50 ? value.substring(0, 50) + '...' : value }}
-                </span>
-              </div>
-            </el-descriptions-item>
-          </el-descriptions>
+              <!-- 第一行 -->
+              <el-descriptions-item label="服务器所属网络区域">
+                <span>{{ currentRecord.server_cred_network_area || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="服务器类型">
+                <span>{{ currentRecord.server_cred_server_type || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第二行 -->
+              <el-descriptions-item label="宿主机集群">
+                <span>{{ currentRecord.server_cred_host_cluster || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="服务器名称">
+                <span>{{ currentRecord.server_cred_server_name || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第三行 -->
+              <el-descriptions-item label="服务器IP">
+                <span>{{ currentRecord.server_cred_server_ip || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="操作系统类型">
+                <span>{{ currentRecord.server_cred_server_os || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第四行 -->
+              <el-descriptions-item label="端口号">
+                <span>{{ currentRecord.server_cred_server_port || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="登录用户名">
+                <span>{{ currentRecord.server_cred_login_username || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第五行 -->
+              <el-descriptions-item label="密码">
+                <span>{{ currentRecord.server_cred_login_password || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="备注信息">
+                <span>{{ currentRecord.server_cred_notes || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第六行 -->
+              <el-descriptions-item label="创建时间">
+                <span>{{ currentRecord.created_at || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="修改时间">
+                <span>{{ currentRecord.updated_at || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第七行 -->
+              <el-descriptions-item label="创建人">
+                <span>{{ currentRecord.server_cred_created_by || '无' }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          <!-- 网络设备登录信息详情 -->
+          <div v-else-if="currentRecord.category === 'network'" class="network-detail">
+            <el-descriptions
+              border
+              :column="2"
+              :size="'medium'"
+              class="detail-descriptions"
+            >
+              <!-- 第一列：1-10项 -->
+              <!-- 第一行 -->
+              <el-descriptions-item label="网络设备类型">
+                <span>{{ currentRecord.net_dev_cred_dev_type || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="网络设备所属网络">
+                <span>{{ currentRecord.net_dev_cred_net_type || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第二行 -->
+              <el-descriptions-item label="网络设备所属物理区域">
+                <span>{{ currentRecord.net_dev_cred_physical_area || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="网络设备所属楼宇-楼层">
+                <span>{{ currentRecord.net_dev_cred_building_floor || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第三行 -->
+              <el-descriptions-item label="网络设备所在楼层位置">
+                <span>{{ currentRecord.net_dev_cred_floor_location || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="中文命名">
+                <span>{{ currentRecord.net_dev_cred_chinese_name || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第四行 -->
+              <el-descriptions-item label="系统命名">
+                <span>{{ currentRecord.net_dev_cred_system_name || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="设备品牌">
+                <span>{{ currentRecord.net_dev_cred_dev_brand || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第五行 -->
+              <el-descriptions-item label="设备型号">
+                <span>{{ currentRecord.net_dev_cred_dev_sign || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="管理IP">
+                <span>{{ currentRecord.net_dev_cred_management_ip || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第二列：11-20项 -->
+              <!-- 第六行 -->
+              <el-descriptions-item label="管理协议">
+                <span>{{ currentRecord.net_dev_cred_protocol || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="端口">
+                <span>{{ currentRecord.net_dev_cred_port || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第七行 -->
+              <el-descriptions-item label="用户名">
+                <span>{{ currentRecord.net_dev_cred_username || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="密码">
+                <span>{{ currentRecord.net_dev_cred_password_hash || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第八行 -->
+              <el-descriptions-item label="特权密码">
+                <span>{{ currentRecord.net_dev_cred_enable_password_hash || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="SNMP团体字">
+                <span>{{ currentRecord.net_dev_cred_snmp || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第九行 -->
+              <el-descriptions-item label="创建人">
+                <span>{{ currentRecord.net_dev_cred_created_by || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="创建日期">
+                <span>{{ currentRecord.created_at || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第十行 -->
+              <el-descriptions-item label="更新日期">
+                <span>{{ currentRecord.updated_at || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="备注">
+                <span>{{ currentRecord.net_dev_cred_description || '无' }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
+          <!-- 其他类型记录详情 -->
+          <div v-else>
+            <el-descriptions
+              border
+              :column="2"
+              :size="'medium'"
+              class="detail-descriptions"
+            >
+              <el-descriptions-item
+                v-for="(value, key) in getDisplayFields()"
+                :key="key"
+                :label="getFieldName(key)"
+              >
+                <div class="field-value">
+                  <span v-if="value === '' || value === null || value === undefined">无</span>
+                  <span v-else-if="typeof value === 'object'">
+                    {{ JSON.stringify(value) }}
+                  </span>
+                  <span v-else class="value-text" :title="value.length > 50 ? value : ''">
+                    {{ value.length > 50 ? value.substring(0, 50) + '...' : value }}
+                  </span>
+                </div>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
         </div>
         <div v-else class="no-data">
           <el-empty description="未找到记录信息"></el-empty>
@@ -1134,6 +1314,22 @@
   padding: 8px 0;
   line-height: 1.4;
 }
+
+/* 关键词输入框和匹配方式选择器布局 */
+.keyword-input-wrapper {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.keyword-input {
+  flex: 1;
+}
+
+.match-type-select {
+  width: 120px;
+}
 </style>
 
 <script>
@@ -1167,7 +1363,9 @@ export default {
       // 查询表单数据
       searchForm: {
         keyword1: '',
+        keyword1MatchType: 'include',
         keyword2: '',
+        keyword2MatchType: 'include',
         queryType: ''
       },
       // 查询结果
@@ -1441,16 +1639,28 @@ export default {
         'remark': '备注',
         // 服务器账号密码
         'name': '服务器名称',
-        'ip': 'IP',
-        'port': '服务器端口',
-        'os': '服务器操作系统',
+        'ip': '服务器IP',
+        'port': '端口号',
+        'os': '操作系统类型',
         'loginUsername': '登录用户名',
-        'loginPassword': '登录密码',
-        'networkArea': '网络区域',
+        'loginPassword': '密码',
+        'networkArea': '服务器所属网络区域',
         'serverType': '服务器类型',
         'hostCluster': '宿主机集群',
         'description': '服务器描述',
         'notes': '服务器备注',
+        // 服务器账号密码原始字段
+        'server_cred_server_name': '服务器名称',
+        'server_cred_server_ip': '服务器IP',
+        'server_cred_server_port': '端口号',
+        'server_cred_server_os': '操作系统类型',
+        'server_cred_login_username': '登录用户名',
+        'server_cred_login_password': '密码',
+        'server_cred_notes': '服务器备注',
+        'server_cred_network_area': '服务器所属网络区域',
+        'server_cred_server_type': '服务器类型',
+        'server_cred_host_cluster': '宿主机集群',
+        'server_cred_description': '服务器描述',
         // 网络设备登录信息
         'dev_type': '设备类型',
         'net_type': '网络类型',
@@ -1512,7 +1722,9 @@ export default {
         },
         body: JSON.stringify({
           keyword1: this.searchForm.keyword1,
+          keyword1MatchType: this.searchForm.keyword1MatchType,
           keyword2: this.searchForm.keyword2,
+          keyword2MatchType: this.searchForm.keyword2MatchType,
           queryType: this.searchForm.queryType,
           page: 1,
           pageSize: 1000000, // 导出所有数据（使用足够大的数值）
@@ -1604,7 +1816,9 @@ export default {
         },
         body: JSON.stringify({
           keyword1: this.searchForm.keyword1,
+          keyword1MatchType: this.searchForm.keyword1MatchType,
           keyword2: this.searchForm.keyword2,
+          keyword2MatchType: this.searchForm.keyword2MatchType,
           queryType: this.searchForm.queryType,
           page: page,
           pageSize: this.pageSize
@@ -2191,30 +2405,30 @@ export default {
       return this.fieldNameMap[fieldKey] || fieldKey;
     },
     
-    // 获取要显示的字段，过滤掉重复的原始字段
+    // 获取要显示的字段，根据记录类型决定是否显示原始字段
     getDisplayFields() {
       if (!this.currentRecord) {
         return {};
       }
       
       const displayFields = {};
-      const originalFields = [];
+      const recordType = this.currentRecord.category || 'unknown';
       
       // 遍历所有字段
       for (const key in this.currentRecord) {
-        // 过滤掉原始数据库字段名（以表前缀开头的字段名）
-        if (this.isOriginalField(key)) {
-          originalFields.push(key);
-          continue;
-        }
-        
         // 过滤掉category字段（内部使用，不需要显示）
         if (key === 'category') {
           continue;
         }
         
-        // 添加到显示字段
-        displayFields[key] = this.currentRecord[key];
+        // 对于服务器账号密码类型，显示所有字段，包括原始字段
+        if (recordType === 'server') {
+          displayFields[key] = this.currentRecord[key];
+        } 
+        // 对于其他类型，仍然过滤掉原始数据库字段名
+        else if (!this.isOriginalField(key)) {
+          displayFields[key] = this.currentRecord[key];
+        }
       }
       
       return displayFields;

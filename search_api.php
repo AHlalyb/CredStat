@@ -1001,6 +1001,10 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
     // 构建查询条件
     $conditions = [];
     
+    // 获取关键词匹配方式，默认包含
+    $keyword1MatchType = isset($requestData['keyword1MatchType']) ? $requestData['keyword1MatchType'] : 'include';
+    $keyword2MatchType = isset($requestData['keyword2MatchType']) ? $requestData['keyword2MatchType'] : 'include';
+    
     // 处理第一个关键词
     if (!empty($keyword1)) {
         $keyword1Param = '%' . $keyword1 . '%';
@@ -1015,7 +1019,13 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
         }
         
         if (!empty($keyword1Conditions)) {
-            $conditions[] = '(' . implode(' OR ', $keyword1Conditions) . ')';
+            if ($keyword1MatchType === 'exclude') {
+                // 排除包含关键词的记录：NOT (field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = 'NOT (' . implode(' OR ', $keyword1Conditions) . ')';
+            } else {
+                // 包含关键词的记录：(field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = '(' . implode(' OR ', $keyword1Conditions) . ')';
+            }
             $params[':keyword1'] = $keyword1Param;
         }
     }
@@ -1034,7 +1044,13 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
         }
         
         if (!empty($keyword2Conditions)) {
-            $conditions[] = '(' . implode(' OR ', $keyword2Conditions) . ')';
+            if ($keyword2MatchType === 'exclude') {
+                // 排除包含关键词的记录：NOT (field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = 'NOT (' . implode(' OR ', $keyword2Conditions) . ')';
+            } else {
+                // 包含关键词的记录：(field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = '(' . implode(' OR ', $keyword2Conditions) . ')';
+            }
             $params[':keyword2'] = $keyword2Param;
         }
     }
