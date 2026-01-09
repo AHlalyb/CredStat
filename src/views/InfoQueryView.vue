@@ -481,9 +481,10 @@
         
         <!-- 网络设备登录信息表单 -->
         <div v-else-if="currentRecord && currentRecord.category === 'network'" class="mb-4">
-          <h6 class="text-bold mb-3">网络设备登录信息</h6>
-          <!-- 第一行：网络设备类型、设备所属网络、设备所属物理区域、设备所属楼宇-楼层、设备所在楼层位置 -->
-          <el-row :gutter="[20, 20]">
+          <!-- 加载状态 -->
+          <el-skeleton :loading="saveEditLoading" animated :rows="10" style="margin-bottom: 20px;">
+            <!-- 第一行：网络设备类型、设备所属网络、设备所属物理区域、设备所属楼宇-楼层、设备所在楼层位置 -->
+            <el-row :gutter="[20, 20]">
             <el-col :xs="24" :sm="12" :md="6" :lg="4">
               <el-form-item label="网络设备类型" prop="dev_type" required>
                 <el-select
@@ -539,21 +540,21 @@
             </el-col>
           </el-row>
           
-          <!-- 第二行：中文名称、系统名称、设备品牌、设备型号 -->
+          <!-- 第二行：中文命名、系统命名、设备品牌、设备型号 -->
           <el-row :gutter="[20, 20]">
             <el-col :xs="24" :sm="12" :md="6" :lg="6">
-              <el-form-item label="中文名称" prop="name" required>
+              <el-form-item label="中文命名" prop="name" required>
                 <el-input
                   v-model="editFormData.name"
-                  placeholder="请输入设备中文名称"
+                  placeholder="请输入设备中文命名"
                 ></el-input>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="6" :lg="6">
-              <el-form-item label="系统名称" prop="dev_sign" required>
+              <el-form-item label="系统命名" prop="system_name" required>
                 <el-input
-                  v-model="editFormData.dev_sign"
-                  placeholder="请输入设备系统名称"
+                  v-model="editFormData.system_name"
+                  placeholder="请输入设备系统命名"
                 ></el-input>
               </el-form-item>
             </el-col>
@@ -590,22 +591,41 @@
             </el-col>
           </el-row>
           
-          <!-- 第三行：管理IP:端口(协议)、设备品牌(设备标识) -->
+          <!-- 管理信息 -->
           <el-row :gutter="[20, 20]">
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
-              <el-form-item label="管理IP:端口(协议)" prop="ip_port_protocol" required>
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="管理IP" prop="management_ip" required>
                 <el-input
-                  v-model="editFormData.ip_port_protocol"
-                  placeholder="请输入管理IP:端口(协议)"
+                  v-model="editFormData.management_ip"
+                  placeholder="请输入管理IP地址"
                 ></el-input>
               </el-form-item>
             </el-col>
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
-              <el-form-item label="设备品牌(设备标识)" prop="brand_sign" required>
-                <el-input
-                  v-model="editFormData.brand_sign"
-                  placeholder="请输入设备品牌(设备标识)"
-                ></el-input>
+            
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="管理协议" prop="protocol" required>
+                <el-select
+                  v-model="editFormData.protocol"
+                  placeholder="请选择管理协议"
+                  style="width: 100%"
+                >
+                  <el-option label="SSH" value="SSH"></el-option>
+                  <el-option label="Telnet" value="Telnet"></el-option>
+                  <el-option label="HTTP" value="HTTP"></el-option>
+                  <el-option label="HTTPS" value="HTTPS"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="端口" prop="port" required>
+                <el-input-number
+                  v-model="editFormData.port"
+                  :min="1"
+                  :max="65535"
+                  placeholder="请输入端口号"
+                  style="width: 100%"
+                ></el-input-number>
               </el-form-item>
             </el-col>
           </el-row>
@@ -655,6 +675,39 @@
               </el-form-item>
             </el-col>
           </el-row>
+          
+          <!-- 第五行：SNMP团体字 -->
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="SNMP团体字" prop="snmp_community">
+                <el-input
+                  v-model="editFormData.snmp_community"
+                  type="password"
+                  placeholder="请输入SNMP团体字"
+                  show-password
+                  autocomplete="new-snmp-community"
+                  :name="'random-snmp-community-' + Math.random().toString(36).substring(2, 15)"
+                  readonly
+                  @focus="$event.target.removeAttribute('readonly')"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <!-- 第六行：备注 -->
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="24" :md="24" :lg="24">
+              <el-form-item label="备注" prop="remark">
+                <el-input
+                  v-model="editFormData.remark"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="请输入备注信息（可选）"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          </el-skeleton>
         </div>
         
         <!-- 宿主机集群信息表单 -->
@@ -1255,47 +1308,57 @@ export default {
         
         // 网络设备登录信息验证规则
         dev_type: [
-          { required: true, message: '请输入设备类型', trigger: 'blur' },
-          { max: 50, message: '设备类型不能超过50个字符', trigger: 'blur' }
+          { required: true, message: '请选择网络设备类型', trigger: 'change' }
         ],
         net_type: [
-          { required: true, message: '请输入网络类型', trigger: 'blur' },
-          { max: 50, message: '网络类型不能超过50个字符', trigger: 'blur' }
-        ],
-        brand_sign: [
-          { required: true, message: '请输入设备品牌(设备标识)', trigger: 'blur' },
-          { max: 100, message: '设备品牌(设备标识)不能超过100个字符', trigger: 'blur' }
-        ],
-        ip_port_protocol: [
-          { required: true, message: '请输入管理IP:端口(协议)', trigger: 'blur' },
-          { max: 100, message: '管理IP:端口(协议)不能超过100个字符', trigger: 'blur' }
-        ],
-        enable_password: [
-          { max: 100, message: '使能密码不能超过100个字符', trigger: 'blur' }
-        ],
-        dev_brand: [
-          { max: 50, message: '设备品牌不能超过50个字符', trigger: 'blur' }
-        ],
-        dev_model: [
-          { max: 50, message: '设备型号不能超过50个字符', trigger: 'blur' }
-        ],
-        dev_sign: [
-          { max: 50, message: '设备标识不能超过50个字符', trigger: 'blur' }
-        ],
-        area: [
-          { max: 50, message: '设备区域不能超过50个字符', trigger: 'blur' }
-        ],
-        building_floor: [
-          { max: 50, message: '设备楼宇-楼层不能超过50个字符', trigger: 'blur' }
-        ],
-        location: [
-          { max: 50, message: '设备位置不能超过50个字符', trigger: 'blur' }
+          { required: true, message: '请选择设备所属网络', trigger: 'change' }
         ],
         physical_area: [
-          { max: 50, message: '设备物理区域不能超过50个字符', trigger: 'blur' }
+          { required: true, message: '请输入设备所属物理区域', trigger: 'blur' }
+        ],
+        building_floor: [
+          { required: true, message: '请输入设备所属楼宇-楼层', trigger: 'blur' }
         ],
         floor_location: [
-          { max: 50, message: '设备楼层位置不能超过50个字符', trigger: 'blur' }
+          { required: true, message: '请输入设备所在楼层位置', trigger: 'blur' }
+        ],
+        name: [
+          { required: true, message: '请输入中文命名', trigger: 'blur' }
+        ],
+        system_name: [
+          { required: true, message: '请输入系统命名', trigger: 'blur' }
+        ],
+        dev_brand: [
+          { required: true, message: '请选择设备品牌', trigger: 'change' }
+        ],
+        dev_model: [
+          { required: true, message: '请选择设备型号', trigger: 'change' }
+        ],
+        management_ip: [
+          { required: true, message: '请输入管理IP', trigger: 'blur' }
+        ],
+        protocol: [
+          { required: true, message: '请选择管理协议', trigger: 'change' }
+        ],
+        port: [
+          { required: true, message: '请输入端口', trigger: 'blur' }
+        ],
+        username: [
+          { required: true, message: '请输入用户名', trigger: 'blur' },
+          { max: 50, message: '用户名不能超过50个字符', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { max: 100, message: '密码不能超过100个字符', trigger: 'blur' }
+        ],
+        enable_password: [
+          { max: 100, message: '特权密码不能超过100个字符', trigger: 'blur' }
+        ],
+        snmp_community: [
+          { max: 100, message: 'SNMP团体字不能超过100个字符', trigger: 'blur' }
+        ],
+        remark: [
+          { max: 255, message: '备注不能超过255个字符', trigger: 'blur' }
         ],
         
         // 宿主机集群信息验证规则
@@ -1995,25 +2058,75 @@ export default {
           break;
         case 'network':
           // 网络设备登录信息
-          this.editFormData = {
-            id: record.id || record.net_dev_cred_id || '',
-            dev_type: record.dev_type || record.net_dev_cred_dev_type || '',
-            net_type: record.net_type || record.net_dev_cred_net_type || '',
-            name: record.name || record.net_dev_cred_name || '',
-            brand_sign: record.brand_sign || record.net_dev_cred_brand_sign || '',
-            ip_port_protocol: record.ip_port_protocol || record.net_dev_cred_ip_port_protocol || '',
-            enable_password: record.enable_password || record.net_dev_cred_enable_password || '',
-            dev_brand: record.dev_brand || record.net_dev_cred_dev_brand || '',
-            dev_model: record.dev_model || record.net_dev_cred_dev_model || '',
-            dev_sign: record.dev_sign || record.net_dev_cred_dev_sign || '',
-            area: record.area || record.net_dev_cred_area || '',
-            building_floor: record.building_floor || record.net_dev_cred_building_floor || '',
-            location: record.location || record.net_dev_cred_location || '',
-            physical_area: record.physical_area || record.net_dev_cred_physical_area || '',
-            floor_location: record.floor_location || record.net_dev_cred_floor_location || '',
-            username: record.username || record.net_dev_cred_username || '',
-            password: record.password || record.net_dev_cred_password || ''
-          };
+          // 显示加载状态
+          this.saveEditLoading = true;
+          
+          try {
+            // 从record中提取原始字段值，确保使用正确的字段名
+            const netDevCredId = record.id || record.net_dev_cred_id || '';
+            const devType = record.dev_type || record.net_dev_cred_dev_type || '';
+            const netType = record.net_type || record.net_dev_cred_net_type || '';
+            const chineseName = record.name || record.net_dev_cred_chinese_name || '';
+            const systemName = record.system_name || record.net_dev_cred_system_name || '';
+            const devBrand = record.dev_brand || record.net_dev_cred_dev_brand || '';
+            // 设备型号从net_dev_cred_dev_sign字段获取
+            const devModel = record.dev_model || record.net_dev_cred_dev_sign || '';
+            const devSign = record.dev_sign || record.net_dev_cred_dev_sign || '';
+            const managementIp = record.net_dev_cred_management_ip || '';
+            const protocol = record.net_dev_cred_protocol || '';
+            const port = record.net_dev_cred_port || '';
+            // 设备所属物理区域从net_dev_cred_physical_area字段获取
+            const physicalArea = record.physical_area || record.net_dev_cred_physical_area || '';
+            const buildingFloor = record.building_floor || record.net_dev_cred_building_floor || '';
+            // 设备所在楼层位置从net_dev_cred_floor_location字段获取
+            const floorLocation = record.floor_location || record.net_dev_cred_floor_location || '';
+            const username = record.username || record.net_dev_cred_username || '';
+            const password = record.password || record.net_dev_cred_password || '';
+            const enablePassword = record.enable_password || record.net_dev_cred_enable_password || '';
+            const snmpCommunity = record.snmp_community || record.net_dev_cred_snmp || '';
+            const remark = record.remark || record.net_dev_cred_description || '';
+            
+            // 构建组合字段
+            const ipPortProtocol = `${managementIp}:${port} (${protocol})`;
+            const brandSign = `${devBrand} (${devSign})`;
+            
+            this.editFormData = {
+              id: netDevCredId,
+              // 设备基本信息
+              dev_type: devType,
+              net_type: netType,
+              name: chineseName, // 中文命名
+              system_name: systemName, // 系统命名
+              dev_brand: devBrand,
+              dev_model: devModel, // 设备型号，来自net_dev_cred_dev_sign
+              dev_sign: devSign,
+              // 设备位置信息
+              physical_area: physicalArea, // 设备所属物理区域，来自net_dev_cred_physical_area
+              building_floor: buildingFloor, // 设备所属楼宇-楼层
+              floor_location: floorLocation, // 设备所在楼层位置，来自net_dev_cred_floor_location
+              // 管理信息
+              management_ip: managementIp, // 管理IP
+              protocol: protocol, // 管理协议
+              port: port, // 端口
+              // 认证信息
+              username: username,
+              password: password,
+              enable_password: enablePassword, // 特权密码/使能密码
+              snmp_community: snmpCommunity, // SNMP团体字
+              remark: remark, // 备注
+              // 组合字段（用于显示）
+              ip_port_protocol: ipPortProtocol,
+              brand_sign: brandSign
+            };
+          } catch (error) {
+            console.error('加载网络设备数据失败:', error);
+            this.$message.error('加载网络设备数据失败，请稍后重试');
+            // 重置表单数据
+            this.resetEditForm();
+          } finally {
+            // 隐藏加载状态
+            this.saveEditLoading = false;
+          }
           break;
         case 'cluster':
           // 宿主机集群信息

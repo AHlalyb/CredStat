@@ -190,6 +190,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     break;
+                case 'network':
+                    // 更新网络设备登录信息
+                    if (isset($data['id']) && !empty($data['id'])) {
+                        $netDevId = $data['id'];
+                        
+                        // 更新网络设备基本信息
+                        $updateSql = "UPDATE net_dev_cred SET 
+                            net_dev_cred_dev_type = :dev_type,
+                            net_dev_cred_net_type = :net_type,
+                            net_dev_cred_chinese_name = :name,
+                            net_dev_cred_system_name = :system_name,
+                            net_dev_cred_dev_brand = :dev_brand,
+                            net_dev_cred_dev_sign = :dev_sign,
+                            net_dev_cred_physical_area = :physical_area,
+                            net_dev_cred_building_floor = :building_floor,
+                            net_dev_cred_floor_location = :floor_location,
+                            net_dev_cred_management_ip = :management_ip,
+                            net_dev_cred_protocol = :protocol,
+                            net_dev_cred_port = :port,
+                            net_dev_cred_username = :username,
+                            net_dev_cred_password_hash = :password,
+                            net_dev_cred_enable_password_hash = :enable_password,
+                            net_dev_cred_snmp = :snmp_community,
+                            net_dev_cred_description = :remark,
+                            updated_at = NOW()
+                            WHERE id = :id";
+                        
+                        $stmt = $pdo->prepare($updateSql);
+                        $stmt->bindValue(':dev_type', $data['dev_type'], PDO::PARAM_STR);
+                        $stmt->bindValue(':net_type', $data['net_type'], PDO::PARAM_STR);
+                        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+                        $stmt->bindValue(':system_name', $data['system_name'], PDO::PARAM_STR);
+                        $stmt->bindValue(':dev_brand', $data['dev_brand'], PDO::PARAM_STR);
+                        $stmt->bindValue(':dev_sign', $data['dev_sign'], PDO::PARAM_STR);
+                        $stmt->bindValue(':physical_area', $data['physical_area'], PDO::PARAM_STR);
+                        $stmt->bindValue(':building_floor', $data['building_floor'], PDO::PARAM_STR);
+                        $stmt->bindValue(':floor_location', $data['floor_location'], PDO::PARAM_STR);
+                        $stmt->bindValue(':management_ip', $data['management_ip'], PDO::PARAM_STR);
+                        $stmt->bindValue(':protocol', $data['protocol'], PDO::PARAM_STR);
+                        $stmt->bindValue(':port', $data['port'], PDO::PARAM_STR);
+                        $stmt->bindValue(':username', $data['username'], PDO::PARAM_STR);
+                        // 加密密码
+                        $encryptedPassword = SecurityUtils::encrypt($data['password']);
+                        $stmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
+                        // 加密使能密码
+                        $encryptedEnablePassword = SecurityUtils::encrypt($data['enable_password']);
+                        $stmt->bindValue(':enable_password', $encryptedEnablePassword, PDO::PARAM_STR);
+                        // 加密SNMP团体字
+                        $encryptedSnmp = SecurityUtils::encrypt($data['snmp_community']);
+                        $stmt->bindValue(':snmp_community', $encryptedSnmp, PDO::PARAM_STR);
+                        $stmt->bindValue(':remark', $data['remark'], PDO::PARAM_STR);
+                        $stmt->bindValue(':id', $netDevId, PDO::PARAM_INT);
+                        $stmt->execute();
+                        error_log('网络设备信息更新成功');
+                    }
+                    break;
                 default:
                     throw new Exception('不支持的更新类型: ' . $queryType);
             }
@@ -869,6 +925,7 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
             // 查询网络设备登录信息 - 返回所有字段
             $baseSql = "SELECT 
                         *, 
+                        id as id, 
                         net_dev_cred_chinese_name as name, 
                         net_dev_cred_management_ip as ip_url, 
                         net_dev_cred_protocol as protocol, 
