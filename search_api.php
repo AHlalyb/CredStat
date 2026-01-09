@@ -178,8 +178,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             error_log('执行更新操作');
             error_log('更新数据: ' . json_encode($data));
             
-            // 根据查询类型处理不同的更新逻辑
-            switch ($queryType) {
+            // 获取更新类型（前端发送的是type字段，查询操作使用queryType字段）
+            $updateType = isset($requestData['type']) ? trim($requestData['type']) : '';
+            error_log('更新类型: ' . $updateType);
+            
+            // 根据更新类型处理不同的更新逻辑
+            switch ($updateType) {
                 case 'cluster':
                     // 更新集群信息
                     if (isset($data['cluster_id']) && !empty($data['cluster_id'])) {
@@ -315,7 +319,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log('网络设备信息更新成功');
                     }
                     break;
-                case 'server':
+                case 'login_info':
+                    // 更新系统登录信息
+                    // 兼容前端不同的字段名
+                    $loginInfoId = isset($data['id']) ? $data['id'] : (isset($data['login_info_id']) ? $data['login_info_id'] : '');
+                    if (!empty($loginInfoId)) {
+                        // 更新系统登录信息
+                        $updateSql = "UPDATE login_info SET 
+                            login_info_system_name = :systemName,
+                            login_info_ip_url = :ip,
+                            login_info_login_type = :loginType,
+                            login_info_username = :account,
+                            login_info_password = :password,
+                            login_info_remark = :remark,
+                            login_info_updated_at = NOW()
+                            WHERE login_info_id = :id";
+                        
+                        $stmt = $pdo->prepare($updateSql);
+                        // 获取前端可能使用的不同字段名
+                        $systemName = isset($data['systemName']) ? $data['systemName'] : (isset($data['name']) ? $data['name'] : '');
+                        $ip = isset($data['ip']) ? $data['ip'] : (isset($data['ipUrl']) ? $data['ipUrl'] : '');
+                        $loginType = isset($data['loginType']) ? $data['loginType'] : (isset($data['type']) ? $data['type'] : '');
+                        $account = isset($data['account']) ? $data['account'] : (isset($data['username']) ? $data['username'] : '');
+                        $password = isset($data['password']) ? $data['password'] : '';
+                        $remark = isset($data['remark']) ? $data['remark'] : '';
+                        
+                        $stmt->bindValue(':systemName', $systemName, PDO::PARAM_STR);
+                        $stmt->bindValue(':ip', $ip, PDO::PARAM_STR);
+                        $stmt->bindValue(':loginType', $loginType, PDO::PARAM_STR);
+                        $stmt->bindValue(':account', $account, PDO::PARAM_STR);
+                        // 加密密码
+                        $encryptedPassword = SecurityUtils::encrypt($password);
+                        $stmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
+                        $stmt->bindValue(':remark', $remark, PDO::PARAM_STR);
+                        $stmt->bindValue(':id', $loginInfoId, PDO::PARAM_INT);
+                        $stmt->execute();
+                        error_log('系统登录信息更新成功');
+                    }
+                    break;
+                case 'server_cred':
                     // 更新服务器账号密码
                     if (isset($data['id']) && !empty($data['id'])) {
                         $serverId = $data['id'];
@@ -354,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     break;
                 default:
-                    throw new Exception('不支持的更新类型: ' . $queryType);
+                    throw new Exception('不支持的更新类型: ' . $updateType);
             }
             
             // 提交事务
