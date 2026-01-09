@@ -478,19 +478,9 @@
             </el-col>
           </el-row>
           
-          <!-- 第五行：服务器描述、服务器备注 -->
+          <!-- 第五行：服务器备注 -->
           <el-row :gutter="[20, 20]">
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
-              <el-form-item label="服务器描述" prop="description">
-                <el-input
-                  v-model="editFormData.description"
-                  placeholder="请输入服务器描述"
-                  type="textarea"
-                  rows="3"
-                ></el-input>
-              </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-col :xs="24" :sm="24" :md="24" :lg="24">
               <el-form-item label="服务器备注" prop="notes">
                 <el-input
                   v-model="editFormData.notes"
@@ -1412,7 +1402,6 @@ export default {
         networkArea: '',
         serverType: '',
         hostCluster: '',
-        description: '',
         notes: '',
         // 网络设备登录信息
         dev_type: '',
@@ -1496,9 +1485,6 @@ export default {
         ],
         hostCluster: [
           { max: 100, message: '宿主机集群不能超过100个字符', trigger: 'blur' }
-        ],
-        description: [
-          { max: 255, message: '服务器描述不能超过255个字符', trigger: 'blur' }
         ],
         notes: [
           { max: 255, message: '服务器备注不能超过255个字符', trigger: 'blur' }
@@ -1647,7 +1633,6 @@ export default {
         'networkArea': '服务器所属网络区域',
         'serverType': '服务器类型',
         'hostCluster': '宿主机集群',
-        'description': '服务器描述',
         'notes': '服务器备注',
         // 服务器账号密码原始字段
         'server_cred_server_name': '服务器名称',
@@ -1660,7 +1645,6 @@ export default {
         'server_cred_network_area': '服务器所属网络区域',
         'server_cred_server_type': '服务器类型',
         'server_cred_host_cluster': '宿主机集群',
-        'server_cred_description': '服务器描述',
         // 网络设备登录信息
         'dev_type': '设备类型',
         'net_type': '网络类型',

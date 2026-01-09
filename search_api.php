@@ -246,6 +246,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         error_log('网络设备信息更新成功');
                     }
                     break;
+                case 'server':
+                    // 更新服务器账号密码
+                    if (isset($data['id']) && !empty($data['id'])) {
+                        $serverId = $data['id'];
+                        
+                        // 更新服务器账号密码信息
+                        $updateSql = "UPDATE server_cred SET 
+                            server_cred_server_name = :name,
+                            server_cred_server_ip = :ip,
+                            server_cred_server_port = :port,
+                            server_cred_server_os = :os,
+                            server_cred_login_username = :loginUsername,
+                            server_cred_login_password = :loginPassword,
+                            server_cred_network_area = :networkArea,
+                            server_cred_server_type = :serverType,
+                            server_cred_host_cluster = :hostCluster,
+                            server_cred_notes = :notes,
+                            updated_at = NOW()
+                            WHERE id = :id";
+                        
+                        $stmt = $pdo->prepare($updateSql);
+                        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
+                        $stmt->bindValue(':ip', $data['ip'], PDO::PARAM_STR);
+                        $stmt->bindValue(':port', $data['port'], PDO::PARAM_INT);
+                        $stmt->bindValue(':os', $data['os'], PDO::PARAM_STR);
+                        $stmt->bindValue(':loginUsername', $data['loginUsername'], PDO::PARAM_STR);
+                        // 加密密码
+                        $encryptedPassword = SecurityUtils::encrypt($data['loginPassword']);
+                        $stmt->bindValue(':loginPassword', $encryptedPassword, PDO::PARAM_STR);
+                        $stmt->bindValue(':networkArea', $data['networkArea'], PDO::PARAM_STR);
+                        $stmt->bindValue(':serverType', $data['serverType'], PDO::PARAM_STR);
+                        $stmt->bindValue(':hostCluster', $data['hostCluster'], PDO::PARAM_STR);
+                        $stmt->bindValue(':notes', $data['notes'], PDO::PARAM_STR);
+                        $stmt->bindValue(':id', $serverId, PDO::PARAM_INT);
+                        $stmt->execute();
+                        error_log('服务器账号密码更新成功');
+                    }
+                    break;
                 default:
                     throw new Exception('不支持的更新类型: ' . $queryType);
             }
