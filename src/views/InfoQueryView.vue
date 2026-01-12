@@ -787,7 +787,7 @@
           <div class="mb-4">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
               <h6 style="font-weight: bold;">物理机信息</h6>
-              <el-button type="primary" @click="addPhysicalMachine" :icon="Plus" size="small">
+              <el-button type="primary" @click="addPhysicalMachine" :icon="Plus" size="small" :disabled="!hasPermission('edit')">
                 添加物理机
               </el-button>
             </div>
@@ -944,6 +944,7 @@
                       :icon="Delete"
                       circle
                       title="删除"
+                      :disabled="!hasPermission('edit')"
                     ></el-button>
                   </template>
                 </el-table-column>
@@ -954,13 +955,13 @@
         
         <!-- 表单操作按钮 -->
         <el-form-item>
-          <el-button @click="resetEditForm" :icon="RefreshRight">重置</el-button>
           <el-button
-            type="primary"
-            @click="handleSaveEdit"
-            :icon="Check"
-            :loading="saveEditLoading"
-          >保存修改</el-button>
+          type="primary"
+          @click="handleSaveEdit"
+          :icon="Check"
+          :loading="saveEditLoading"
+          :disabled="!hasPermission('edit')"
+        >保存修改</el-button>
         </el-form-item>
       </el-form>
     </el-dialog>
@@ -1722,51 +1723,67 @@ export default {
     } else {
       console.log(`Using found user info from key '${foundKey}':`, foundUserInfo);
       
-      // Check various permission property names
-      const permissionProperties = ['permissions', 'userPermissions', 'auth', 'rights', 'privileges'];
-      let foundPermissions = null;
+      // Try to infer permissions from user role first (role-based permissions take precedence)
+      const userRole = foundUserInfo.role || foundUserInfo.position || '';
+      console.log(`User role: ${userRole}`);
       
-      for (const prop of permissionProperties) {
-        if (foundUserInfo[prop]) {
-          foundPermissions = foundUserInfo[prop];
-          console.log(`Found permissions in '${prop}' property:`, foundPermissions);
-          break;
-        }
+      // Role-based permission mapping
+      let foundPermissions = null;
+      if (userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('管理员')) {
+        foundPermissions = {
+          add: 1,
+          delete: 1,
+          edit: 1,
+          query: 1
+        };
+        console.log('Set admin permissions based on user role');
+      } else if (userRole.toLowerCase().includes('search') || userRole.toLowerCase().includes('查询')) {
+        foundPermissions = {
+          add: 0,
+          delete: 0,
+          edit: 0,
+          query: 1
+        };
+        console.log('Set search-only permissions based on user role');
+      } else if (userRole.toLowerCase().includes('delete') || userRole.toLowerCase().includes('删除')) {
+        foundPermissions = {
+          add: 0,
+          delete: 1,
+          edit: 0,
+          query: 1
+        };
+        console.log('Set delete permissions based on user role');
       }
       
-      // Additional check: if permissions are directly on the user object
+      // If no role-based permissions, check for explicit permissions in user info
       if (!foundPermissions) {
-        // Check if the user object itself has permission-like properties
-        const directPermissions = {};
-        const permissionKeys = ['add', 'delete', 'edit', 'query'];
-        let hasDirectPermissions = false;
-        
-        for (const key of permissionKeys) {
-          if (foundUserInfo[key] !== undefined) {
-            directPermissions[key] = foundUserInfo[key];
-            hasDirectPermissions = true;
+        // Check various permission property names
+        const permissionProperties = ['permissions', 'userPermissions', 'auth', 'rights', 'privileges'];
+        for (const prop of permissionProperties) {
+          if (foundUserInfo[prop]) {
+            foundPermissions = foundUserInfo[prop];
+            console.log(`Found permissions in '${prop}' property:`, foundPermissions);
+            break;
           }
         }
         
-        if (hasDirectPermissions) {
-          foundPermissions = directPermissions;
-          console.log('Found direct permissions on user object:', foundPermissions);
-        } else {
-          // Fallback: create default permissions from user info if possible
-          console.log('No explicit permissions found, checking for role-based permissions');
-          // Try to infer permissions from user role or other properties
-          const userRole = foundUserInfo.role || foundUserInfo.position || '';
-          console.log(`User role: ${userRole}`);
+        // Additional check: if permissions are directly on the user object
+        if (!foundPermissions) {
+          // Check if the user object itself has permission-like properties
+          const directPermissions = {};
+          const permissionKeys = ['add', 'delete', 'edit', 'query'];
+          let hasDirectPermissions = false;
           
-          // Example role-based permission mapping (adjust based on actual roles)
-          if (userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('管理员')) {
-            foundPermissions = {
-              add: 1,
-              delete: 1,
-              edit: 1,
-              query: 1
-            };
-            console.log('Set admin permissions based on user role');
+          for (const key of permissionKeys) {
+            if (foundUserInfo[key] !== undefined) {
+              directPermissions[key] = foundUserInfo[key];
+              hasDirectPermissions = true;
+            }
+          }
+          
+          if (hasDirectPermissions) {
+            foundPermissions = directPermissions;
+            console.log('Found direct permissions on user object:', foundPermissions);
           }
         }
       }
@@ -1803,12 +1820,12 @@ export default {
         
         this.userPermissions = normalizedPermissions;
       } else {
-        console.log('No permissions found in user info, using default permissions');
-        // Set default full permissions for debugging
+        console.log('No permissions found in user info, setting default search-only permissions');
+        // Set default search-only permissions for security
         this.userPermissions = {
-          add: 1,
-          delete: 1,
-          edit: 1,
+          add: 0,
+          delete: 0,
+          edit: 0,
           query: 1
         };
       }
@@ -2313,6 +2330,12 @@ export default {
     
     // 添加物理机
     addPhysicalMachine() {
+      // 检查是否有编辑权限
+      if (!this.hasPermission('edit')) {
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        return;
+      }
+      
       const nextNumber = this.editFormData.physicalMachines.length + 1;
       this.editFormData.physicalMachines.push({
         id: 'pm_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
@@ -2332,6 +2355,12 @@ export default {
     
     // 删除物理机
     removePhysicalMachine(index) {
+      // 检查是否有编辑权限
+      if (!this.hasPermission('edit')) {
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        return;
+      }
+      
       if (this.editFormData.physicalMachines.length > 1) {
         this.editFormData.physicalMachines.splice(index, 1);
       } else {

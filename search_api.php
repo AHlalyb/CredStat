@@ -406,6 +406,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response['success'] = true;
             $response['message'] = '更新成功';
             $response['data'] = $data;
+        } elseif ($action === 'delete') {
+            // 删除操作
+            error_log('执行删除操作');
+            
+            // 检查删除权限
+            if ($userPermissions['delete'] !== 1) {
+                throw new Exception('您没有删除权限');
+            }
+            
+            // 获取删除类型和ID
+            $deleteType = isset($requestData['type']) ? trim($requestData['type']) : '';
+            $id = isset($requestData['id']) ? $requestData['id'] : '';
+            error_log('删除类型: ' . $deleteType);
+            error_log('删除ID: ' . $id);
+            
+            if (empty($deleteType) || empty($id)) {
+                throw new Exception('删除参数不完整');
+            }
+            
+            // 根据删除类型执行不同的删除逻辑
+            switch ($deleteType) {
+                case 'login_info':
+                    // 删除系统登录信息
+                    $deleteSql = "DELETE FROM login_info WHERE login_info_id = :id";
+                    break;
+                case 'server_cred':
+                    // 删除服务器账号密码
+                    $deleteSql = "DELETE FROM server_cred WHERE server_cred_id = :id";
+                    break;
+                case 'net_dev_cred':
+                    // 删除网络设备登录信息
+                    $deleteSql = "DELETE FROM net_dev_cred WHERE net_dev_cred_id = :id";
+                    break;
+                case 'cluster_cred':
+                    // 删除集群信息
+                    $deleteSql = "DELETE FROM cluster WHERE cluster_id = :id";
+                    break;
+                default:
+                    throw new Exception('不支持的删除类型: ' . $deleteType);
+            }
+            
+            // 执行删除操作
+            $stmt = $pdo->prepare($deleteSql);
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+            error_log('删除成功，影响行数: ' . $stmt->rowCount());
+            
+            // 提交事务
+            $pdo->commit();
+            
+            // 返回成功响应
+            $response['success'] = true;
+            $response['message'] = '删除成功';
+            $response['data'] = [];
         } else {
             // 查询操作
             // 初始化变量
