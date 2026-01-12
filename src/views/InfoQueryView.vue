@@ -168,7 +168,7 @@
             </el-table-column>
             
             <!-- 操作列 -->
-            <el-table-column label="操作" width="160" align="center" fixed="right">
+            <el-table-column label="操作" width="115" align="center" fixed="right">
               <template #default="scope">
                 <div class="action-buttons">
                   <!-- 编辑按钮 -->
@@ -2167,7 +2167,7 @@ export default {
           columns = [
             { prop: 'name', label: '系统名称', minWidth: 150 },
             { prop: 'ip_url', label: 'IP/URL', minWidth: 150 },
-            { prop: 'type', label: '登录方式', minWidth: 120 },
+            { prop: 'type', label: '登录方式', minWidth: 45 },
             { prop: 'username', label: '用户名', minWidth: 120 },
             { prop: 'password', label: '密码', minWidth: 120 }
           ];
@@ -2177,7 +2177,7 @@ export default {
           columns = [
             { prop: 'name', label: '服务器名称', minWidth: 150 },
             { prop: 'ip', label: 'IP', minWidth: 120 },
-            { prop: 'port', label: '服务器端口', minWidth: 110 },
+            { prop: 'port', label: '服务器端口', minWidth: 60 },
             { prop: 'os', label: '服务器操作系统', minWidth: 150 },
             { prop: 'username', label: '登录用户名', minWidth: 120 },
             { prop: 'password', label: '登录密码', minWidth: 120 }
@@ -2202,8 +2202,8 @@ export default {
             { prop: 'cluster_name', label: '集群名称', minWidth: 150 },
             { prop: 'cluster_address', label: '集群地址', minWidth: 150 },
             { prop: 'cluster_username', label: '集群用户名', minWidth: 120 },
-            { prop: 'cluster_password', label: '集群密码', minWidth: 120 },
-            { prop: 'pm_count', label: '集群宿主机数量', minWidth: 120 }
+            { prop: 'cluster_password', label: '集群密码', minWidth: 90 },
+            { prop: 'pm_count', label: '集群宿主机数量', minWidth: 65 }
           ];
           break;
         default:

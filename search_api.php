@@ -115,8 +115,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('您没有修改权限');
         }
         
-        if ($action === 'search' && $userPermissions['query'] !== 1) {
-            throw new Exception('您没有查询权限');
+        // 拥有编辑权限的用户也可以执行查询操作
+        // 获取集群列表数据的操作无需权限验证
+        if ($action === 'search' && $userPermissions['query'] !== 1 && $userPermissions['edit'] !== 1) {
+            // 检查是否是获取集群列表的操作
+            $queryType = isset($requestData['queryType']) ? trim($requestData['queryType']) : '';
+            if ($queryType !== 'cluster') {
+                throw new Exception('您没有查询权限');
+            }
         }
         
         // 其他操作的权限检查可以在这里添加
@@ -410,8 +416,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 删除操作
             error_log('执行删除操作');
             
-            // 检查删除权限
-            if ($userPermissions['delete'] !== 1) {
+            // 检查删除权限，拥有编辑权限的用户也可以执行删除操作
+            if ($userPermissions['delete'] !== 1 && $userPermissions['edit'] !== 1) {
                 throw new Exception('您没有删除权限');
             }
             
