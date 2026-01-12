@@ -172,37 +172,40 @@
               <template #default="scope">
                 <div class="action-buttons">
                   <!-- 编辑按钮 -->
-                  <el-tooltip content="编辑" placement="top">
+                  <el-tooltip :content="hasPermission('edit') ? '编辑' : '您没有修改权限'" placement="top">
                     <el-button
                       type="primary"
                       circle
                       size="small"
                       @click="editRecord(scope.row)"
                       :disabled="!hasPermission('edit')"
+                      :class="{ 'permission-disabled': !hasPermission('edit') }"
                     >
                       <el-icon><Edit /></el-icon>
                     </el-button>
                   </el-tooltip>
                   <!-- 删除按钮 -->
-                  <el-tooltip content="删除" placement="top">
+                  <el-tooltip :content="hasPermission('delete') ? '删除' : '您没有删除权限'" placement="top">
                     <el-button
                       type="danger"
                       circle
                       size="small"
                       @click="deleteRecord(scope.row)"
                       :disabled="!hasPermission('delete')"
+                      :class="{ 'permission-disabled': !hasPermission('delete') }"
                     >
                       <el-icon><Delete /></el-icon>
                     </el-button>
                   </el-tooltip>
                   <!-- 查询详情按钮 -->
-                  <el-tooltip content="查询详情" placement="top">
+                  <el-tooltip :content="hasPermission('query') ? '查询详情' : '您没有查询权限'" placement="top">
                     <el-button
                       type="primary"
                       circle
                       size="small"
                       @click="handleDetailQuery(scope.row)"
                       :disabled="!hasPermission('query')"
+                      :class="{ 'permission-disabled': !hasPermission('query') }"
                     >
                       <el-icon><Search /></el-icon>
                     </el-button>
@@ -1312,6 +1315,13 @@
   line-height: 1.4;
 }
 
+/* 权限禁用按钮样式 */
+:deep(.permission-disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* 关键词输入框和匹配方式选择器布局 */
 .keyword-input-wrapper {
   display: flex;
@@ -1685,43 +1695,53 @@ export default {
     };
   },
   created() {
-    // 从localStorage获取用户权限
-    console.log('Checking localStorage for user info...');
+    // 从localStorage和sessionStorage获取用户权限
+    console.log('Checking localStorage and sessionStorage for user info...');
     
     // Check specific keys that might contain user info
     const potentialKeys = ['userInfo', 'currentUser', 'loginUser', 'user'];
     let foundUserInfo = null;
     let foundKey = null;
+    let storageType = null;
     
-    // Try to find user info in any of the potential keys
-    for (const key of potentialKeys) {
-      const value = localStorage.getItem(key);
-      if (value) {
-        try {
-          const parsed = JSON.parse(value);
-          console.log(`Found data in localStorage.${key}:`, parsed);
-          foundUserInfo = parsed;
-          foundKey = key;
-          break; // Use the first found user info
-        } catch (e) {
-          console.log(`Found non-JSON data in localStorage.${key}:`, value);
+    // Try to find user info in sessionStorage first, then localStorage
+    const storages = [sessionStorage, localStorage];
+    const storageNames = ['sessionStorage', 'localStorage'];
+    
+    for (let i = 0; i < storages.length && !foundUserInfo; i++) {
+      const storage = storages[i];
+      const storageName = storageNames[i];
+      
+      for (const key of potentialKeys) {
+        const value = storage.getItem(key);
+        if (value) {
+          try {
+            const parsed = JSON.parse(value);
+            console.log(`Found data in ${storageName}.${key}:`, parsed);
+            foundUserInfo = parsed;
+            foundKey = key;
+            storageType = storageName;
+            break; // Use the first found user info
+          } catch (e) {
+            console.log(`Found non-JSON data in ${storageName}.${key}:`, value);
+          }
         }
       }
     }
     
-    // Debug: if no user info found, create a test user with full permissions
+    // Debug: if no user info found, create a test user with search-only permissions for better testing
     if (!foundUserInfo) {
-      console.log('No user info found in localStorage, creating test permissions');
-      // Create test permissions with full access for debugging
+      console.log('No user info found in sessionStorage or localStorage, creating test permissions');
+      // Create test permissions with search-only access for better testing
       this.userPermissions = {
-        add: 1,
-        delete: 1,
-        edit: 1,
+        add: 0,
+        delete: 0,
+        edit: 0,
         query: 1
       };
-      console.log('Set test permissions with full access');
+      console.log('Set test permissions with search-only access');
     } else {
-      console.log(`Using found user info from key '${foundKey}':`, foundUserInfo);
+      console.log(`Using found user info from ${storageType}.${foundKey}:`, foundUserInfo);
       
       // Try to infer permissions from user role first (role-based permissions take precedence)
       const userRole = foundUserInfo.role || foundUserInfo.position || '';
