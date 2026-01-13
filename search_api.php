@@ -338,6 +338,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             login_info_username = :account,
                             login_info_password = :password,
                             login_info_remark = :remark,
+                            login_info_is_active = :isActive,
                             login_info_updated_at = NOW()
                             WHERE login_info_id = :id";
                         
@@ -349,6 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $account = isset($data['account']) ? $data['account'] : (isset($data['username']) ? $data['username'] : '');
                         $password = isset($data['password']) ? $data['password'] : '';
                         $remark = isset($data['remark']) ? $data['remark'] : '';
+                        $isActive = isset($data['isActive']) ? $data['isActive'] : '1';
                         
                         $stmt->bindValue(':systemName', $systemName, PDO::PARAM_STR);
                         $stmt->bindValue(':ip', $ip, PDO::PARAM_STR);
@@ -358,6 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $encryptedPassword = SecurityUtils::encrypt($password);
                         $stmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
                         $stmt->bindValue(':remark', $remark, PDO::PARAM_STR);
+                        $stmt->bindValue(':isActive', $isActive, PDO::PARAM_INT);
                         $stmt->bindValue(':id', $loginInfoId, PDO::PARAM_INT);
                         $stmt->execute();
                         error_log('系统登录信息更新成功');
@@ -1098,15 +1101,17 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                         *, 
                         login_info_id as id, 
                         login_info_system_name as name, 
-                        login_info_ip_url as ip_url, 
-                        login_info_login_type as type, 
+                        login_info_ip_url as ipUrl, 
+                        login_info_login_type as loginType, 
                         login_info_username as username, 
                         login_info_password as password, 
                         login_info_remark as remark, 
                         login_info_created_at as created_at,
+                        login_info_updated_at as updated_at,
+                        login_info_created_by as createdBy,
+                        login_info_is_active as isActive,
                         'system' as category
-                    FROM login_info 
-                    WHERE login_info_is_active = 1";
+                    FROM login_info";
             $orderClause = " ORDER BY login_info_created_at DESC";
             $category = 'system';
             break;

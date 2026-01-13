@@ -348,6 +348,18 @@
                 ></el-input>
               </el-form-item>
             </el-col>
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="是否有效" prop="isActive">
+                <el-select
+                  v-model="editFormData.isActive"
+                  placeholder="请选择是否有效"
+                  style="width: 100%"
+                >
+                  <el-option label="有效" value="1"></el-option>
+                  <el-option label="无效" value="0"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
             <el-col :xs="24" :sm="24" :md="24" :lg="24">
               <el-form-item label="备注" prop="remark">
                 <el-input
@@ -998,8 +1010,62 @@
     >
       <div class="detail-dialog-content">
         <div v-if="currentRecord" class="detail-info">
+          <!-- 信息系统登录信息详情 -->
+          <div v-if="currentRecord.category === 'system'" class="system-detail">
+            <el-descriptions
+              border
+              :column="2"
+              :size="'medium'"
+              class="detail-descriptions"
+            >
+              <!-- 第一行 -->
+              <el-descriptions-item label="ID">
+                <span>{{ currentRecord.id || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="系统名称">
+                <span>{{ currentRecord.systemName || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第二行 -->
+              <el-descriptions-item label="IP或URL地址">
+                <span>{{ currentRecord.ipUrl || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="登录方式">
+                <span>{{ currentRecord.loginType || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第三行 -->
+              <el-descriptions-item label="账号">
+                <span>{{ currentRecord.username || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="密码">
+                <span>{{ currentRecord.password || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第四行 -->
+              <el-descriptions-item label="备注信息">
+                <span>{{ currentRecord.remark || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="创建时间">
+                <span>{{ this.formatDateTime(currentRecord.created_at) || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第五行 -->
+              <el-descriptions-item label="更新时间">
+                <span>{{ this.formatDateTime(currentRecord.updated_at) || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="创建人">
+                <span>{{ currentRecord.createdBy || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第六行 -->
+              <el-descriptions-item label="是否有效">
+                <span>{{ Number(currentRecord.isActive) === 1 ? '有效' : '无效' }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </div>
           <!-- 服务器账号密码详情 -->
-          <div v-if="currentRecord.category === 'server'" class="server-detail">
+          <div v-else-if="currentRecord.category === 'server'" class="server-detail">
             <el-descriptions
               border
               :column="2"
@@ -1048,10 +1114,10 @@
               
               <!-- 第六行 -->
               <el-descriptions-item label="创建时间">
-                <span>{{ currentRecord.created_at || '无' }}</span>
+                <span>{{ this.formatDateTime(currentRecord.created_at) || '无' }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="修改时间">
-                <span>{{ currentRecord.updated_at || '无' }}</span>
+                <span>{{ this.formatDateTime(currentRecord.updated_at) || '无' }}</span>
               </el-descriptions-item>
               
               <!-- 第七行 -->
@@ -1139,12 +1205,12 @@
                 <span>{{ currentRecord.net_dev_cred_created_by || '无' }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="创建日期">
-                <span>{{ currentRecord.created_at || '无' }}</span>
+                <span>{{ this.formatDateTime(currentRecord.created_at) || '无' }}</span>
               </el-descriptions-item>
               
               <!-- 第十行 -->
               <el-descriptions-item label="更新日期">
-                <span>{{ currentRecord.updated_at || '无' }}</span>
+                <span>{{ this.formatDateTime(currentRecord.updated_at) || '无' }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="备注">
                 <span>{{ currentRecord.net_dev_cred_description || '无' }}</span>
@@ -1407,48 +1473,49 @@ export default {
       // 当前操作的记录
       currentRecord: null,
       // 编辑对话框相关
-      editDialogTitle: '修改记录',
-      editFormData: {
-        // 信息系统登录信息
-        systemName: '',
-        ipUrl: '',
-        type: '',
-        username: '',
-        password: '',
-        remark: '',
-        // 服务器账号密码
-        name: '',
-        ip: '',
-        port: '',
-        os: '',
-        loginUsername: '',
-        loginPassword: '',
-        networkArea: '',
-        serverType: '',
-        hostCluster: '',
-        notes: '',
-        // 网络设备登录信息
-        dev_type: '',
-        net_type: '',
-        brand_sign: '',
-        ip_port_protocol: '',
-        enable_password: '',
-        dev_brand: '',
-        dev_model: '',
-        dev_sign: '',
-        area: '',
-        building_floor: '',
-        location: '',
-        physical_area: '',
-        floor_location: '',
-        // 宿主机集群信息
-        cluster_id: '',
-        clusterName: '',
-        clusterAddress: '',
-        clusterUsername: '',
-        clusterPassword: '',
-        physicalMachines: []
-      },
+        editDialogTitle: '修改记录',
+        editFormData: {
+          // 信息系统登录信息
+          systemName: '',
+          ipUrl: '',
+          type: '',
+          username: '',
+          password: '',
+          isActive: '1',
+          remark: '',
+          // 服务器账号密码
+          name: '',
+          ip: '',
+          port: '',
+          os: '',
+          loginUsername: '',
+          loginPassword: '',
+          networkArea: '',
+          serverType: '',
+          hostCluster: '',
+          notes: '',
+          // 网络设备登录信息
+          dev_type: '',
+          net_type: '',
+          brand_sign: '',
+          ip_port_protocol: '',
+          enable_password: '',
+          dev_brand: '',
+          dev_model: '',
+          dev_sign: '',
+          area: '',
+          building_floor: '',
+          location: '',
+          physical_area: '',
+          floor_location: '',
+          // 宿主机集群信息
+          cluster_id: '',
+          clusterName: '',
+          clusterAddress: '',
+          clusterUsername: '',
+          clusterPassword: '',
+          physicalMachines: []
+        },
       editFormFields: [],
       editFormRules: {
         // 信息系统登录信息验证规则
@@ -1471,6 +1538,9 @@ export default {
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' },
           { max: 100, message: '密码不能超过100个字符', trigger: 'blur' }
+        ],
+        isActive: [
+          { required: true, message: '请选择是否有效', trigger: 'change' }
         ],
         remark: [
           { max: 255, message: '备注不能超过255个字符', trigger: 'blur' }
@@ -2166,8 +2236,8 @@ export default {
           // 信息系统登录信息 - 仅显示指定字段
           columns = [
             { prop: 'name', label: '系统名称', minWidth: 150 },
-            { prop: 'ip_url', label: 'IP/URL', minWidth: 150 },
-            { prop: 'type', label: '登录方式', minWidth: 45 },
+            { prop: 'ipUrl', label: 'IP/URL', minWidth: 150 },
+            { prop: 'loginType', label: '登录方式', minWidth: 45 },
             { prop: 'username', label: '用户名', minWidth: 120 },
             { prop: 'password', label: '密码', minWidth: 120 }
           ];
@@ -2470,9 +2540,10 @@ export default {
             login_info_id: record.id || record.login_info_id || '',
             systemName: record.name || record.login_info_system_name || '',
             ipUrl: record.ip_url || record.login_info_ip_url || '',
-            type: record.type || record.login_info_type || '',
+            type: record.loginType || record.login_info_login_type || record.type || record.login_info_type || '',
             username: record.username || record.login_info_username || '',
             password: record.password || record.login_info_password || '',
+            isActive: record.isActive || record.login_info_is_active || '1',
             remark: record.remark || record.login_info_remark || ''
           };
           break;
@@ -3063,6 +3134,23 @@ export default {
       } else {
         callback(new Error('请输入有效的IP地址')); // 验证失败
       }
+    },
+    
+    // 格式化日期时间字段为YYYY-MM-DD HH:MM:SS格式
+    formatDateTime(dateTime) {
+      if (!dateTime) return '';
+      
+      const date = new Date(dateTime);
+      if (isNaN(date.getTime())) return '';
+      
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     }
   },
   mounted() {

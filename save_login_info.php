@@ -57,6 +57,8 @@ try {
     $loginUsername = trim($_POST['username']);
     $loginPassword = trim($_POST['password']);
     $remark = isset($_POST['remark']) ? trim($_POST['remark']) : '';
+    $createdBy = isset($_POST['createdBy']) ? trim($_POST['createdBy']) : 'system';
+    $isActive = isset($_POST['isActive']) ? (int)$_POST['isActive'] : 1;
     
     // 使用SecurityUtils类进行可逆加密
     $encryptedPassword = SecurityUtils::encrypt($loginPassword);
@@ -64,8 +66,8 @@ try {
     // 准备SQL语句，插入登录信息
     $sql = "INSERT INTO login_info (login_info_system_name, login_info_ip_url, login_info_login_type, 
                                    login_info_username, login_info_password, login_info_remark, 
-                                   login_info_created_at, login_info_updated_at) 
-           VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+                                   login_info_created_at, login_info_updated_at, login_info_created_by, login_info_is_active) 
+           VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)";
     
     $stmt = $conn->prepare($sql);
     
@@ -76,6 +78,8 @@ try {
     $stmt->bindParam(4, $loginUsername, PDO::PARAM_STR);
     $stmt->bindParam(5, $encryptedPassword, PDO::PARAM_STR);
     $stmt->bindParam(6, $remark, PDO::PARAM_STR);
+    $stmt->bindParam(7, $createdBy, PDO::PARAM_STR);
+    $stmt->bindParam(8, $isActive, PDO::PARAM_INT);
     
     // 执行SQL语句
     $stmt->execute();

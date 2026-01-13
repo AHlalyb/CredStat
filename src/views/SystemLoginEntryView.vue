@@ -89,6 +89,19 @@
             </el-form-item>
           </el-col>
           
+          <el-col :xs="24" :sm="12" :md="8" :lg="8">
+            <el-form-item label="是否有效" prop="isActive">
+              <el-select
+                v-model="formData.isActive"
+                placeholder="请选择是否有效"
+                style="width: 100%"
+              >
+                <el-option label="有效" value="1"></el-option>
+                <el-option label="无效" value="0"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          
           <el-col :xs="24" :sm="24" :md="24" :lg="24">
             <el-form-item label="备注" prop="remark">
               <el-input
@@ -243,6 +256,7 @@ export default {
         loginType: '',
         username: '',
         password: '',
+        isActive: '1',
         remark: ''
       },
       // 用于防止自动填充的key，每次重置表单时更新
@@ -307,7 +321,11 @@ export default {
             // 获取当前用户信息
             let currentUser = null;
             try {
-              const userInfo = localStorage.getItem('currentUser');
+              // 先从sessionStorage获取，再尝试localStorage
+              let userInfo = sessionStorage.getItem('currentUser');
+              if (!userInfo) {
+                userInfo = localStorage.getItem('currentUser');
+              }
               if (userInfo) {
                 currentUser = JSON.parse(userInfo);
               }
@@ -322,8 +340,9 @@ export default {
               loginType: this.formData.loginType.trim(),
               username: this.formData.username.trim(),
               password: this.formData.password,
+              isActive: this.formData.isActive,
               remark: this.formData.remark.trim(),
-              createdBy: currentUser ? currentUser.username : ''
+              createdBy: currentUser ? (currentUser.name || currentUser.username) : ''
             };
             
             // 发送请求
@@ -532,7 +551,8 @@ export default {
         'loginType': '登录方式',
         'username': '账号',
         'password': '密码',
-        'remark': '备注'
+        'remark': '备注',
+        'isActive': '是否有效'
       };
     },
     
@@ -633,6 +653,8 @@ export default {
           password: this.getFieldValue(row, '密码') || '',
           // 备注
           remark: this.getFieldValue(row, '备注') || '',
+          // 是否有效
+          isActive: (this.getFieldValue(row, '是否有效') || '1'),
           // 创建人
           createdBy: currentUser ? currentUser.username : ''
         };

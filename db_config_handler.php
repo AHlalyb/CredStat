@@ -266,7 +266,7 @@ function saveLoginInfo($data) {
             ':password' => $encryptedPassword,
             ':remark' => isset($data['remark']) ? $data['remark'] : '',
             ':createdBy' => isset($data['createdBy']) ? $data['createdBy'] : 'system',
-            ':isActive' => 1
+            ':isActive' => isset($data['isActive']) ? (int)$data['isActive'] : 1
         ]);
         
         echo json_encode([
