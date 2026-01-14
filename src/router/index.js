@@ -52,15 +52,7 @@ const routes = [
       requiresAuth: true
     }
   },
-  {
-    path: '/server-cred-entry',
-    name: 'serverCredEntry',
-    component: ServerCredEntryView,
-    meta: {
-      title: '服务器账号密码录入',
-      requiresAuth: true
-    }
-  },
+  { path: '/server-cred-entry', name: 'serverCredEntry', component: ServerCredEntryView, meta: { title: '服务器基本信息录入', requiresAuth: true } },
   {
     path: '/switch-cred-entry',
     name: 'switchCredEntry',

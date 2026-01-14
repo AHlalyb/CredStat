@@ -52,7 +52,7 @@
             </li>
             <li class="menu-item">
               <router-link to="/server-cred-entry" class="menu-link">
-                <i class="fas fa-server me-2"></i> 服务器账号密码
+                <i class="fas fa-server me-2"></i> 服务器基本信息
               </router-link>
             </li>
             <li class="menu-item">

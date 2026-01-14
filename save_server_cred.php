@@ -110,6 +110,8 @@ function saveToDatabase($data) {
                   `server_cred_server_os` VARCHAR(100) NOT NULL COMMENT '操作系统类型',
                   `server_cred_login_username` VARCHAR(100) NOT NULL COMMENT '登录用户名',
                   `server_cred_login_password` VARCHAR(255) NOT NULL COMMENT '加密存储的密码',
+                  `server_cred_edr_installed` VARCHAR(10) NOT NULL DEFAULT '是' COMMENT 'EDR安装',
+                  `server_cred_ntp_configured` VARCHAR(10) NOT NULL DEFAULT '是' COMMENT 'NTP配置',
                   `server_cred_notes` TEXT COMMENT '备注信息',
                   `server_cred_network_area` VARCHAR(50) DEFAULT '内网' COMMENT '网络区域',
                   `server_cred_server_type` VARCHAR(50) DEFAULT '物理机' COMMENT '服务器类型',
@@ -122,7 +124,7 @@ function saveToDatabase($data) {
                   INDEX `idx_server_name` (`server_cred_server_name`),
                   INDEX `idx_created_at` (`created_at`),
                   INDEX `idx_created_by` (`server_cred_created_by`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器账号密码管理表';
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器基本信息表';
                 ";
                 $pdo->exec($createTableSql);
                 logOperation('数据表server_cred创建成功');
@@ -147,6 +149,8 @@ function saveToDatabase($data) {
                     'server_cred_network_area' => "VARCHAR(50) DEFAULT '内网' COMMENT '网络区域'",
                     'server_cred_server_type' => "VARCHAR(50) DEFAULT '物理机' COMMENT '服务器类型'",
                     'server_cred_host_cluster' => "VARCHAR(100) DEFAULT '' COMMENT '所属集群'",
+                    'server_cred_edr_installed' => "VARCHAR(10) NOT NULL DEFAULT '是' COMMENT 'EDR安装'",
+                    'server_cred_ntp_configured' => "VARCHAR(10) NOT NULL DEFAULT '是' COMMENT 'NTP配置'",
                     'server_cred_notes' => "TEXT COMMENT '备注信息'",
                     'is_active' => "TINYINT(1) DEFAULT 1 COMMENT '是否有效'",
                     'server_cred_created_by' => "VARCHAR(100) NOT NULL DEFAULT 'system' COMMENT '创建人'"
@@ -184,12 +188,12 @@ function saveToDatabase($data) {
         $sql = "INSERT INTO `server_cred` 
                 (`server_cred_server_name`, `server_cred_server_ip`, `server_cred_server_port`, `server_cred_server_os`, 
                  `server_cred_network_area`, `server_cred_server_type`, `server_cred_host_cluster`,
-                 `server_cred_login_username`, `server_cred_login_password`, `server_cred_notes`,
-                 `server_cred_created_by`)
+                 `server_cred_login_username`, `server_cred_login_password`, `server_cred_edr_installed`,
+                 `server_cred_ntp_configured`, `server_cred_notes`, `server_cred_created_by`)
                 VALUES (:serverName, :serverIP, :serverPort, :serverOS, 
                         :networkArea, :serverType, :hostCluster,
-                        :username, :password, :notes,
-                        :createdBy)";
+                        :username, :password, :edrInstalled,
+                        :ntpConfigured, :notes, :createdBy)";
         
         $stmt = $pdo->prepare($sql);
         
@@ -203,6 +207,8 @@ function saveToDatabase($data) {
         $stmt->bindParam(':hostCluster', $data['hostCluster'], PDO::PARAM_STR);
         $stmt->bindParam(':username', $data['username'], PDO::PARAM_STR);
         $stmt->bindParam(':password', $data['password'], PDO::PARAM_STR);
+        $stmt->bindParam(':edrInstalled', $data['edrInstalled'], PDO::PARAM_STR);
+        $stmt->bindParam(':ntpConfigured', $data['ntpConfigured'], PDO::PARAM_STR);
         $stmt->bindParam(':notes', $data['notes'], PDO::PARAM_STR);
         $stmt->bindParam(':createdBy', $data['createdBy'], PDO::PARAM_STR);
         
@@ -333,7 +339,18 @@ function processRequest() {
         $networkArea = isset($requestData['server_cred_network_area']) ? sanitizeInput($requestData['server_cred_network_area']) : '内网';
         $serverType = isset($requestData['server_cred_server_type']) ? sanitizeInput($requestData['server_cred_server_type']) : '物理机';
         $hostCluster = isset($requestData['server_cred_host_cluster']) ? sanitizeInput($requestData['server_cred_host_cluster']) : '';
-        $createdBy = isset($requestData['server_cred_created_by']) ? sanitizeInput($requestData['server_cred_created_by']) : 'system';
+        // EDR安装和NTP配置字段
+        $edrInstalled = isset($requestData['server_cred_edr_installed']) ? sanitizeInput($requestData['server_cred_edr_installed']) : '是';
+        $ntpConfigured = isset($requestData['server_cred_ntp_configured']) ? sanitizeInput($requestData['server_cred_ntp_configured']) : '是';
+        // 验证创建人信息，不能为空
+        $createdBy = isset($requestData['server_cred_created_by']) ? sanitizeInput($requestData['server_cred_created_by']) : '';
+        if (empty($createdBy)) {
+            return [
+                'success' => false,
+                'message' => '创建人信息不能为空',
+                'code' => 'MISSING_CREATED_BY'
+            ];
+        }
         
         // 验证字段映射的完整性
         $receivedFields = array_keys($requestData);
@@ -342,6 +359,7 @@ function processRequest() {
             'server_cred_server_port', 'server_cred_login_username', 'server_cred_login_password',
             'server_cred_notes',
             'server_cred_network_area', 'server_cred_server_type', 'server_cred_host_cluster',
+            'server_cred_edr_installed', 'server_cred_ntp_configured',
             'server_cred_created_by'
         ];
         
@@ -350,6 +368,106 @@ function processRequest() {
         if (!empty($unexpectedFields)) {
             logOperation('收到未预期的表单字段', ['unexpected_fields' => $unexpectedFields]);
         }
+        
+        // 验证数据格式
+        if (!validateIP($serverIP)) {
+            return [
+                'success' => false,
+                'message' => '无效的服务器IP地址'
+            ];
+        }
+        
+        // 确保端口号被正确转换为整数类型
+        $serverPort = intval($serverPort);
+        if (!validatePort($serverPort)) {
+            return [
+                'success' => false,
+                'message' => '无效的端口号，端口号必须在1-65535之间'
+            ];
+        }
+        
+        // 不再验证操作系统类型，允许任意值
+        // 移除了validateOS调用，允许用户输入任何操作系统类型
+        
+        // 验证字段长度
+        if (strlen($serverName) > 100) {
+            return [
+                'success' => false,
+                'message' => '服务器名称长度不能超过100个字符'
+            ];
+        }
+        
+        if (strlen($username) > 100) {
+            return [
+                'success' => false,
+                'message' => '用户名长度不能超过100个字符'
+            ];
+        }
+        
+        if (strlen($notes) > 65535) {
+            return [
+                'success' => false,
+                'message' => '备注信息长度不能超过65535个字符'
+            ];
+        }
+        
+        // 验证宿主机集群选择值的合法性（仅当服务器类型为虚拟机时）
+        if ($serverType === '虚拟机' && !empty($hostCluster)) {
+            // 验证宿主机集群是否存在于cluster表中
+            $dbConfig = loadDbConfig();
+            if ($dbConfig) {
+                try {
+                    $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset=utf8mb4";
+                    $options = [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                        PDO::ATTR_EMULATE_PREPARES => false,
+                    ];
+                    
+                    $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+                    
+                    // 检查宿主机集群是否存在
+                    $checkSql = "SELECT COUNT(*) as count FROM cluster WHERE cluster_name = :clusterName";
+                    $stmt = $pdo->prepare($checkSql);
+                    $stmt->bindParam(':clusterName', $hostCluster, PDO::PARAM_STR);
+                    $stmt->execute();
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($result['count'] == 0) {
+                        return [
+                            'success' => false,
+                            'message' => '选择的宿主机集群不存在，请重新选择'
+                        ];
+                    }
+                } catch (PDOException $e) {
+                    // 数据库连接或查询错误，记录日志但不影响保存
+                    logOperation('验证宿主机集群失败: ' . $e->getMessage(), [], true);
+                }
+            }
+        }
+        
+        // 对密码进行可逆加密处理，使用SecurityUtils类
+        $encryptedPassword = SecurityUtils::encrypt($password);
+        
+        // 准备保存到数据库的数据
+        $data = [
+            'serverName' => $serverName,
+            'serverIP' => $serverIP,
+            'serverPort' => $serverPort, // 已转换为整数类型
+            'serverOS' => $serverOS,
+            'networkArea' => $networkArea,
+            'serverType' => $serverType,
+            'hostCluster' => $hostCluster,
+            'username' => $username,
+            'password' => $encryptedPassword,
+            'edrInstalled' => $edrInstalled,
+            'ntpConfigured' => $ntpConfigured,
+            'notes' => $notes,
+            'createdBy' => $createdBy
+        ];
+        
+        // 保存到数据库
+        return saveToDatabase($data);
     } catch (Exception $e) {
         logOperation('数据清理和验证过程出错: ' . $e->getMessage(), [], true);
         return [
@@ -358,108 +476,7 @@ function processRequest() {
             'code' => 'DATA_PROCESSING_ERROR'
         ];
     }
-    
-    // 验证数据格式
-    if (!validateIP($serverIP)) {
-        return [
-            'success' => false,
-            'message' => '无效的服务器IP地址'
-        ];
-    }
-    
-    // 确保端口号被正确转换为整数类型
-    $serverPort = intval($serverPort);
-    if (!validatePort($serverPort)) {
-        return [
-            'success' => false,
-            'message' => '无效的端口号，端口号必须在1-65535之间'
-        ];
-    }
-    
-    // 不再验证操作系统类型，允许任意值
-    // 移除了validateOS调用，允许用户输入任何操作系统类型
-    
-    // 验证字段长度
-    if (strlen($serverName) > 100) {
-        return [
-            'success' => false,
-            'message' => '服务器名称长度不能超过100个字符'
-        ];
-    }
-    
-    if (strlen($username) > 100) {
-        return [
-            'success' => false,
-            'message' => '用户名长度不能超过100个字符'
-        ];
-    }
-    
-    if (strlen($notes) > 65535) {
-        return [
-            'success' => false,
-            'message' => '备注信息长度不能超过65535个字符'
-        ];
-    }
-    
-    // 验证宿主机集群选择值的合法性（仅当服务器类型为虚拟机时）
-    if ($serverType === '虚拟机' && !empty($hostCluster)) {
-        // 验证宿主机集群是否存在于cluster表中
-        $dbConfig = loadDbConfig();
-        if ($dbConfig) {
-            try {
-                $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset=utf8mb4";
-                $options = [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ];
-                
-                $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
-                
-                // 检查宿主机集群是否存在
-                $checkSql = "SELECT COUNT(*) as count FROM cluster WHERE cluster_name = :clusterName";
-                $stmt = $pdo->prepare($checkSql);
-                $stmt->bindParam(':clusterName', $hostCluster, PDO::PARAM_STR);
-                $stmt->execute();
-                $result = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($result['count'] == 0) {
-                    return [
-                        'success' => false,
-                        'message' => '选择的宿主机集群不存在，请重新选择'
-                    ];
-                }
-            } catch (PDOException $e) {
-                // 数据库连接或查询错误，记录日志但不影响保存
-                logOperation('验证宿主机集群失败: ' . $e->getMessage(), [], true);
-            }
-        }
-    }
-    
-    // 对密码进行可逆加密处理，使用SecurityUtils类
-    $encryptedPassword = SecurityUtils::encrypt($password);
-    
-    // 准备保存到数据库的数据
-    $data = [
-        'serverName' => $serverName,
-        'serverIP' => $serverIP,
-        'serverPort' => $serverPort, // 已转换为整数类型
-        'serverOS' => $serverOS,
-        'networkArea' => $networkArea,
-        'serverType' => $serverType,
-        'hostCluster' => $hostCluster,
-        'username' => $username,
-        'password' => $encryptedPassword,
-        'notes' => $notes,
-        'createdBy' => $createdBy
-    ];
-    
-    // 保存到数据库
-    return saveToDatabase($data);
 }
-
-// 执行处理逻辑并返回结果
-$result = processRequest();
 
 // 记录操作日志
 function logOperation($message, $data = [], $isError = false) {
@@ -483,6 +500,9 @@ function logOperation($message, $data = [], $isError = false) {
         file_put_contents('logs/server_cred.log', $logMessage . "\n", FILE_APPEND);
     }
 }
+
+// 执行处理逻辑并返回结果
+$result = processRequest();
 
 // 记录操作结果日志
 if (isset($result['success'])) {

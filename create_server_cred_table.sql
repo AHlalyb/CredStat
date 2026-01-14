@@ -1,0 +1,20 @@
+CREATE TABLE `server_cred` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `server_cred_network_area` VARCHAR(50) NOT NULL DEFAULT '内网' COMMENT '服务器所属网络区域',
+  `server_cred_server_type` VARCHAR(50) NOT NULL DEFAULT '虚拟机' COMMENT '服务器类型',
+  `server_cred_host_cluster` VARCHAR(100) DEFAULT '' COMMENT '宿主机集群',
+  `server_cred_server_name` VARCHAR(100) NOT NULL COMMENT '服务器名称',
+  `server_cred_server_ip` VARCHAR(50) NOT NULL COMMENT '服务器IP',
+  `server_cred_server_os` VARCHAR(50) DEFAULT '' COMMENT '操作系统类型',
+  `server_cred_server_port` INT(11) DEFAULT NULL COMMENT '端口号',
+  `server_cred_login_username` VARCHAR(50) NOT NULL COMMENT '登录用户名',
+  `server_cred_login_password` VARCHAR(100) NOT NULL COMMENT '密码',
+  `server_cred_edr_installed` VARCHAR(10) NOT NULL DEFAULT '否' COMMENT 'EDR安装',
+  `server_cred_ntp_configured` VARCHAR(10) NOT NULL DEFAULT '否' COMMENT 'NTP配置',
+  `server_cred_notes` TEXT COMMENT '备注信息',
+  `server_cred_created_by` VARCHAR(50) NOT NULL COMMENT '创建人',
+  `server_cred_created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `server_cred_updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_server_name_ip` (`server_cred_server_name`, `server_cred_server_ip`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器基本信息表';

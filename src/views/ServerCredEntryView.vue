@@ -3,7 +3,7 @@
     <el-card class="mt-5" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3 class="m-0">服务器账号密码录入</h3>
+          <h3 class="m-0">服务器基本信息录入</h3>
         </div>
       </template>
       
@@ -91,8 +91,15 @@
           </el-col>
         </el-row>
         
+        <!-- 隐藏的诱饵字段，用于防止浏览器自动填充 -->
+        <div class="autofill-bait" style="position: absolute; left: -9999px; top: -9999px;">
+          <input type="text" name="username" autocomplete="off" />
+          <input type="password" name="password" autocomplete="off" />
+        </div>
+        
+        <!-- 将操作系统类型、端口号、登录用户名和密码放在同一行 -->
         <el-row :gutter="[20, 20]">
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6">
             <el-form-item label="操作系统类型" prop="server_cred_server_os">
               <el-select
                 v-model="formData.server_cred_server_os"
@@ -113,7 +120,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6">
             <el-form-item label="端口号" prop="server_cred_server_port">
               <el-input-number
                 v-model="formData.server_cred_server_port"
@@ -122,16 +129,8 @@
               ></el-input-number>
             </el-form-item>
           </el-col>
-        </el-row>
-        
-        <!-- 隐藏的诱饵字段，用于防止浏览器自动填充 -->
-        <div class="autofill-bait" style="position: absolute; left: -9999px; top: -9999px;">
-          <input type="text" name="username" autocomplete="off" />
-          <input type="password" name="password" autocomplete="off" />
-        </div>
-        
-        <el-row :gutter="[20, 20]">
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          
+          <el-col :xs="24" :sm="12" :md="6" :lg="6">
             <el-form-item label="登录用户名" prop="server_cred_login_username">
               <el-input
                 v-model="formData.server_cred_login_username"
@@ -145,7 +144,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6">
             <el-form-item label="密码" prop="server_cred_login_password">
               <el-input
                 v-model="formData.server_cred_login_password"
@@ -158,6 +157,35 @@
                 @focus="$event.target.removeAttribute('readonly')"
                 :key="passwordKey"
               ></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <!-- 新增行：EDR安装、NTP配置 -->
+        <el-row :gutter="[20, 20]">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="EDR安装" prop="server_cred_edr_installed">
+              <el-select
+                v-model="formData.server_cred_edr_installed"
+                placeholder="请选择是否安装EDR"
+                style="width: 100%"
+              >
+                <el-option label="是" value="是"></el-option>
+                <el-option label="否" value="否"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="NTP配置" prop="server_cred_ntp_configured">
+              <el-select
+                v-model="formData.server_cred_ntp_configured"
+                placeholder="请选择是否配置NTP"
+                style="width: 100%"
+              >
+                <el-option label="是" value="是"></el-option>
+                <el-option label="否" value="否"></el-option>
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -322,6 +350,8 @@ export default {
         server_cred_server_port: null,
         server_cred_login_username: '',
         server_cred_login_password: '',
+        server_cred_edr_installed: '是',
+        server_cred_ntp_configured: '是',
         server_cred_notes: ''
       },
       // 用于防止自动填充的key，每次重置表单时更新
@@ -335,6 +365,38 @@ export default {
       clusterLoading: false,
       // 表单验证规则
       formRules: {
+        server_cred_server_name: [
+          { required: true, message: '请输入服务器名称', trigger: 'blur' }
+        ],
+        server_cred_server_ip: [
+          { required: true, message: '请输入服务器IP地址', trigger: 'blur' },
+          { validator: (rule, value, callback) => {
+              if (!value) {
+                callback();
+                return;
+              }
+              // 简单的IP地址验证
+              const ipRegex = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/;
+              if (ipRegex.test(value)) {
+                callback();
+              } else {
+                callback(new Error('请输入有效的IP地址'));
+              }
+            }, trigger: 'blur' }
+        ],
+        server_cred_server_os: [
+          { required: true, message: '请选择操作系统类型', trigger: 'change' }
+        ],
+        server_cred_server_port: [
+          { required: true, message: '请输入端口号', trigger: 'blur' },
+          { type: 'number', min: 1, max: 65535, message: '端口号必须在1-65535之间', trigger: 'blur' }
+        ],
+        server_cred_login_username: [
+          { required: true, message: '请输入登录用户名', trigger: 'blur' }
+        ],
+        server_cred_login_password: [
+          { required: true, message: '请输入登录密码', trigger: 'blur' }
+        ],
         // 宿主机集群验证规则，通过自定义验证器实现动态验证
         server_cred_host_cluster: [
           {
@@ -389,8 +451,7 @@ export default {
       fetch('/search_api.php', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Username': currentUser ? currentUser.username : 'system'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           keyword1: query || '',
@@ -451,8 +512,7 @@ export default {
       fetch('base_obj_api.php', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Username': currentUser ? currentUser.username : 'system'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           action: 'getBaseObject',
@@ -580,6 +640,23 @@ export default {
     
     // 保存服务器账号密码
     saveServerCred() {
+      // 先验证表单
+      if (this.$refs.serverCredFormRef) {
+        this.$refs.serverCredFormRef.validate((valid) => {
+          if (valid) {
+            this.saveServerCredAfterValidation();
+          } else {
+            this.$message.warning('请检查表单填写是否正确');
+            return false;
+          }
+        });
+      } else {
+        this.$message.error('表单引用未找到，请刷新页面重试');
+      }
+    },
+    
+    // 表单验证通过后保存数据
+    saveServerCredAfterValidation() {
       // 显示加载状态
       let saveBtn = null;
       let originalText = '';
@@ -594,15 +671,37 @@ export default {
         console.error('保存按钮未找到');
       }
       
-      // 获取当前登录用户名
-      let username = 'system';
+      // 获取当前登录用户名（使用credstat_user_name字段）
+      let username = '';
       try {
-        const userInfo = JSON.parse(localStorage.getItem('currentUser'));
-        if (userInfo && userInfo.username) {
-          username = userInfo.username;
+        // 先从sessionStorage获取，再尝试localStorage，与系统登录信息录入保持一致
+        let userInfo = sessionStorage.getItem('currentUser');
+        if (!userInfo) {
+          userInfo = localStorage.getItem('currentUser');
+        }
+        if (userInfo) {
+          const parsedUser = JSON.parse(userInfo);
+          // 优先使用name字段（对应credstat_user_name），如果不存在则使用username
+          username = parsedUser.name || parsedUser.username || '';
         }
       } catch (error) {
         console.error('获取用户信息失败:', error);
+      }
+      
+      // 如果获取不到用户名，使用默认值'system'作为备选
+      if (!username) {
+        username = 'system';
+      }
+      
+      // 验证创建人信息
+      if (!username || username.trim() === '') {
+        this.$message.error('当前登录用户信息无效，请重新登录');
+        // 恢复按钮状态
+        if (saveBtn) {
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
+        }
+        return;
       }
       
       // 构建表单数据，根据服务器类型决定是否包含宿主机集群数据
@@ -615,6 +714,8 @@ export default {
         server_cred_server_port: this.formData.server_cred_server_port,
         server_cred_login_username: this.formData.server_cred_login_username.trim(),
         server_cred_login_password: this.formData.server_cred_login_password,
+        server_cred_edr_installed: this.formData.server_cred_edr_installed,
+        server_cred_ntp_configured: this.formData.server_cred_ntp_configured,
         server_cred_notes: this.formData.server_cred_notes.trim(),
         server_cred_created_by: username
       };
@@ -628,8 +729,7 @@ export default {
       fetch('save_server_cred.php', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Username': username
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData)
       })
@@ -928,10 +1028,14 @@ export default {
     // 导入单行数据
     importRow(row) {
       return new Promise((resolve, reject) => {
-        // 获取当前用户信息
+        // 获取当前用户信息，与系统登录信息录入保持一致
         let currentUser = null;
         try {
-          const userInfo = localStorage.getItem('currentUser');
+          // 先从sessionStorage获取，再尝试localStorage
+          let userInfo = sessionStorage.getItem('currentUser');
+          if (!userInfo) {
+            userInfo = localStorage.getItem('currentUser');
+          }
           if (userInfo) {
             currentUser = JSON.parse(userInfo);
           }
@@ -959,6 +1063,10 @@ export default {
           server_cred_login_username: (this.getFieldValue(row, '用户名') || '').trim(),
           // 密码
           server_cred_login_password: this.getFieldValue(row, '密码') || '',
+          // EDR安装
+          server_cred_edr_installed: this.getFieldValue(row, 'EDR安装') || '否',
+          // NTP配置
+          server_cred_ntp_configured: this.getFieldValue(row, 'NTP配置') || '否',
           // 备注信息
           server_cred_notes: this.getFieldValue(row, '备注信息') || '',
           // 创建人
@@ -972,8 +1080,7 @@ export default {
         fetch('save_server_cred.php', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'X-Username': currentUser ? currentUser.username : 'system'
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify(formData)
         })
