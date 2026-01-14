@@ -97,26 +97,14 @@
             </el-col>
             <el-col :xs="24" :sm="6" class="text-right">
               <!-- 导出按钮 -->
-              <el-dropdown>
-                <el-button
-                  type="success"
-                  :disabled="!canExport"
-                  size="small"
-                >
-                  <el-icon><Download /></el-icon> 导出结果
-                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="exportResults('html')">
-                      <el-icon><DocumentCopy /></el-icon> 导出HTML
-                    </el-dropdown-item>
-                    <el-dropdown-item @click="exportResults('excel')">
-                      <el-icon><Document /></el-icon> 导出CSV
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <el-button
+                type="success"
+                :disabled="!canExport"
+                size="small"
+                @click="openExportDialog"
+              >
+                <el-icon><Download /></el-icon> 导出结果
+              </el-button>
             </el-col>
           </el-row>
           
@@ -1320,6 +1308,60 @@
         </div>
       </template>
     </el-dialog>
+    
+    <!-- 导出选择对话框 -->
+    <el-dialog
+      v-model="exportSelectVisible"
+      title="导出结果设置"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <div class="export-select-dialog">
+        <!-- 列选择 -->
+        <div class="mb-4">
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="text-bold m-0">导出列选择</h4>
+            <el-button type="text" @click="toggleSelectAll">
+              {{ isAllSelected ? '取消全选' : '全选' }}
+            </el-button>
+          </div>
+          <el-checkbox-group v-model="selectedColumns" class="column-select-group">
+            <el-checkbox
+              v-for="column in exportColumns"
+              :key="column.value"
+              :label="column.value"
+              class="column-checkbox"
+            >
+              {{ column.label }}
+            </el-checkbox>
+          </el-checkbox-group>
+        </div>
+        
+        <!-- 文件类型选择 -->
+        <div class="mb-4">
+          <h4 class="text-bold m-0 mb-2">导出文件类型为：</h4>
+          <div class="file-type-select">
+            <div
+              v-for="type in exportFileTypes"
+              :key="type.value"
+              class="file-type-item"
+              :class="{ 'file-type-selected': selectedFileType === type.value }"
+              @click="selectedFileType = type.value"
+            >
+              <img :src="type.icon" :alt="type.label" class="file-type-icon" />
+              <span class="file-type-label">{{ type.label }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer text-center">
+          <el-button @click="exportSelectVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmExport">确认导出</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -1402,6 +1444,117 @@
 
 .match-type-select {
   width: 120px;
+}
+
+/* 导出选择对话框样式 */
+.export-select-dialog {
+  padding: 10px 0;
+}
+
+.column-select-group {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 15px !important;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 10px;
+  width: 100%;
+}
+
+/* 穿透Element Plus样式封装，确保网格布局应用到复选框组 */
+:deep(.el-checkbox-group) {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  width: 100%;
+}
+
+/* 确保每个复选框项占满网格单元格 */
+:deep(.el-checkbox) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .column-select-group, :deep(.el-checkbox-group) {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .column-select-group, :deep(.el-checkbox-group) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.file-type-select {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.file-type-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100px;
+}
+
+.file-type-item:hover {
+  border-color: #409eff;
+}
+
+.file-type-selected {
+  border-color: #409eff;
+  background-color: #ecf5ff;
+}
+
+.file-type-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+}
+
+.file-type-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.text-bold {
+  font-weight: bold;
+}
+
+.flex {
+  display: flex;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.m-0 {
+  margin: 0;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
 }
 </style>
 
@@ -1702,6 +1855,17 @@ export default {
       physicalMachineColumns: [],
       physicalMachineCurrentPage: 1,
       
+      // 导出相关
+      exportSelectVisible: false,
+      exportColumns: [],
+      selectedColumns: [],
+      isAllSelected: false,
+      exportFileTypes: [
+        { value: 'excel', label: 'CSV格式', icon: '/icons/csv.png' },
+        { value: 'html', label: 'HTML格式', icon: '/icons/html.png' }
+      ],
+      selectedFileType: 'excel',
+      
       // 字段中文名称映射
       fieldNameMap: {
         // 通用字段
@@ -1760,7 +1924,18 @@ export default {
         'cluster_address': '集群地址',
         'cluster_username': '集群用户名',
         'cluster_password': '集群密码',
-        'pm_count': '集群宿主机数量'
+        'pm_count': '集群宿主机数量',
+        // 信息系统登录信息导出字段映射
+        'login_info_system_name': '系统名称',
+        'login_info_ip_url': 'IP或URL地址',
+        'login_info_login_type': '登录方式',
+        'login_info_username': '账号',
+        'login_info_password': '密码',
+        'login_info_remark': '备注信息',
+        'login_info_created_at': '创建时间',
+        'login_info_updated_at': '更新时间',
+        'login_info_created_by': '创建人',
+        'login_info_is_active': '是否有效'
       }
     };
   },
@@ -1940,8 +2115,61 @@ export default {
       // Permission values are already normalized to numbers during initialization
       return Object.values(this.userPermissions).some(perm => perm === 1);
     },
+    // 打开导出弹窗
+    openExportDialog() {
+      // 根据当前查询类别设置导出列
+      this.setExportColumns();
+      // 初始化选中列（默认全选）
+      this.selectedColumns = this.exportColumns.map(col => col.value);
+      this.isAllSelected = true;
+      // 打开弹窗
+      this.exportSelectVisible = true;
+    },
+    // 设置导出列
+    setExportColumns() {
+      switch (this.searchForm.queryType) {
+        case 'system':
+          // 信息系统登录信息
+          this.exportColumns = [
+            { value: 'login_info_system_name', label: '系统名称' },
+            { value: 'login_info_ip_url', label: 'IP或URL地址' },
+            { value: 'login_info_login_type', label: '登录方式' },
+            { value: 'login_info_username', label: '账号' },
+            { value: 'login_info_password', label: '密码' },
+            { value: 'login_info_remark', label: '备注信息' },
+            { value: 'login_info_created_at', label: '创建时间' },
+            { value: 'login_info_updated_at', label: '更新时间' },
+            { value: 'login_info_created_by', label: '创建人' },
+            { value: 'login_info_is_active', label: '是否有效' }
+          ];
+          break;
+        // 可以根据需要添加其他查询类别的列配置
+        default:
+          this.exportColumns = [];
+      }
+    },
+    // 全选/取消全选
+    toggleSelectAll() {
+      if (this.isAllSelected) {
+        this.selectedColumns = [];
+      } else {
+        this.selectedColumns = this.exportColumns.map(col => col.value);
+      }
+      this.isAllSelected = !this.isAllSelected;
+    },
+    // 确认导出
+    confirmExport() {
+      if (this.selectedColumns.length === 0) {
+        ElMessage.warning('请至少选择一列进行导出');
+        return;
+      }
+      // 关闭弹窗
+      this.exportSelectVisible = false;
+      // 调用导出函数
+      this.exportResults(this.selectedFileType, this.selectedColumns);
+    },
     // 导出结果
-    exportResults(format) {
+    exportResults(format, selectedColumns = []) {
       // 验证是否选择了查询类别
       if (!this.searchForm.queryType) {
         this.showSearchMessage('请先选择查询类别', 'danger');
@@ -1993,7 +2221,8 @@ export default {
           pageSize: 1000000, // 导出所有数据（使用足够大的数值）
           export: true,
           exportFormat: format === 'html' ? 'pdf' : 'excel',
-          username: username
+          username: username,
+          selectedColumns: selectedColumns
         })
       })
       .then(response => {

@@ -595,8 +595,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // 检查是否是导出请求
             if ($export) {
+                // 获取用户选择的列
+                $selectedColumns = isset($requestData['selectedColumns']) && is_array($requestData['selectedColumns']) ? $requestData['selectedColumns'] : [];
                 // 执行导出
-                exportData($cleanedResults, $exportFormat);
+                exportData($cleanedResults, $exportFormat, $selectedColumns);
                 exit;
             } else {
                 // 返回JSON响应
@@ -660,11 +662,34 @@ if ($jsonResponse === false) {
 }
 
 /**
+ * 根据字段名获取中文名称
+ * @param string $field 字段名
+ * @return string 中文名称
+ */
+function getFieldLabel($field) {
+    $fieldMap = [
+        'login_info_system_name' => '系统名称',
+        'login_info_ip_url' => 'IP或URL地址',
+        'login_info_login_type' => '登录方式',
+        'login_info_username' => '账号',
+        'login_info_password' => '密码',
+        'login_info_remark' => '备注信息',
+        'login_info_created_at' => '创建时间',
+        'login_info_updated_at' => '更新时间',
+        'login_info_created_by' => '创建人',
+        'login_info_is_active' => '是否有效'
+    ];
+    
+    return isset($fieldMap[$field]) ? $fieldMap[$field] : $field;
+}
+
+/**
  * 导出数据
  * @param array $data 要导出的数据
  * @param string $format 导出格式 (pdf 或 excel)
+ * @param array $selectedColumns 用户选择的导出列
  */
-function exportData($data, $format) {
+function exportData($data, $format, $selectedColumns = []) {
     if (empty($data)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => '没有可导出的数据']);
@@ -725,11 +750,11 @@ function exportData($data, $format) {
     // 根据格式导出
     switch ($format) {
         case 'pdf':
-            exportToPDF($data, $dataType);
+            exportToPDF($data, $dataType, $selectedColumns);
             break;
         case 'excel':
         default:
-            exportToExcel($data, $dataType);
+            exportToExcel($data, $dataType, $selectedColumns);
             break;
     }
 }
@@ -738,8 +763,9 @@ function exportData($data, $format) {
  * 导出为Excel (CSV格式)
  * @param array $data 要导出的数据
  * @param string $dataType 数据类型
+ * @param array $selectedColumns 用户选择的导出列
  */
-function exportToExcel($data, $dataType = 'default') {
+function exportToExcel($data, $dataType = 'default', $selectedColumns = []) {
     // 生成文件名，使用YYYYMMDDHHMMSS格式
     $filename = '查询结果_' . date('YmdHis') . '.csv';
     
@@ -761,7 +787,7 @@ function exportToExcel($data, $dataType = 'default') {
     // 添加BOM头，确保Excel能正确识别UTF-8编码
     fwrite($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
     
-    // 根据数据类型处理
+    // 根据数据类型和用户选择的列处理
     if ($dataType === 'cluster') {
         // 导出集群信息和物理机信息
         fputcsv($output, ['宿主机集群导出']);
@@ -822,36 +848,64 @@ function exportToExcel($data, $dataType = 'default') {
             fputcsv($output, []);
         }
     } else {
-        // 导出其他类型数据，使用默认字段列表
-        // 定义需要导出的固定字段列表（与查询显示的结果一致）
-        $exportColumns = [
-            '序号' => 'serial',
-            '名称' => 'name',
-            'IP/URL' => 'ip_url',
-            '类型' => 'type',
-            '用户名' => 'username',
-            '密码' => 'password',
-            '备注' => 'remark',
-            '创建时间' => 'created_at',
-            '类别' => 'category'
-        ];
-        
-        // 写入中文列名
-        fputcsv($output, array_keys($exportColumns));
-        
-        // 写入数据行
-        foreach ($data as $index => $row) {
-            $rowData = [];
-            $rowData[] = $index + 1; // 序号，从1开始
-            $rowData[] = isset($row['name']) ? $row['name'] : '';
-            $rowData[] = isset($row['ip_url']) ? $row['ip_url'] : '';
-            $rowData[] = isset($row['type']) ? $row['type'] : '';
-            $rowData[] = isset($row['username']) ? $row['username'] : '';
-            $rowData[] = isset($row['password']) ? $row['password'] : '';
-            $rowData[] = isset($row['remark']) ? $row['remark'] : '';
-            $rowData[] = isset($row['created_at']) ? $row['created_at'] : '';
-            $rowData[] = isset($row['category']) ? $row['category'] : '';
-            fputcsv($output, $rowData);
+        // 使用用户选择的列或默认列
+        if (!empty($selectedColumns)) {
+            // 使用用户选择的列
+            $exportColumns = $selectedColumns;
+            
+            // 写入中文列名
+            $chineseColumns = array_map('getFieldLabel', $exportColumns);
+            fputcsv($output, $chineseColumns);
+            
+            // 写入数据行
+            foreach ($data as $index => $row) {
+                $rowData = [];
+                
+                foreach ($exportColumns as $column) {
+                    $value = isset($row[$column]) ? $row[$column] : '';
+                    
+                    // 处理是否有效字段
+                    if ($column === 'login_info_is_active') {
+                        $value = $value === '1' || $value === 1 ? '有效' : '无效';
+                    }
+                    
+                    $rowData[] = $value;
+                }
+                
+                fputcsv($output, $rowData);
+            }
+        } else {
+            // 导出其他类型数据，使用默认字段列表
+            // 定义需要导出的固定字段列表（与查询显示的结果一致）
+            $exportColumns = [
+                '序号' => 'serial',
+                '名称' => 'name',
+                'IP/URL' => 'ip_url',
+                '类型' => 'type',
+                '用户名' => 'username',
+                '密码' => 'password',
+                '备注' => 'remark',
+                '创建时间' => 'created_at',
+                '类别' => 'category'
+            ];
+            
+            // 写入中文列名
+            fputcsv($output, array_keys($exportColumns));
+            
+            // 写入数据行
+            foreach ($data as $index => $row) {
+                $rowData = [];
+                $rowData[] = $index + 1; // 序号，从1开始
+                $rowData[] = isset($row['name']) ? $row['name'] : '';
+                $rowData[] = isset($row['ip_url']) ? $row['ip_url'] : '';
+                $rowData[] = isset($row['type']) ? $row['type'] : '';
+                $rowData[] = isset($row['username']) ? $row['username'] : '';
+                $rowData[] = isset($row['password']) ? $row['password'] : '';
+                $rowData[] = isset($row['remark']) ? $row['remark'] : '';
+                $rowData[] = isset($row['created_at']) ? $row['created_at'] : '';
+                $rowData[] = isset($row['category']) ? $row['category'] : '';
+                fputcsv($output, $rowData);
+            }
         }
     }
     
@@ -864,8 +918,9 @@ function exportToExcel($data, $dataType = 'default') {
  * 导出为HTML
  * @param array $data 要导出的数据
  * @param string $dataType 数据类型
+ * @param array $selectedColumns 用户选择的导出列
  */
-function exportToPDF($data, $dataType = 'default') {
+function exportToPDF($data, $dataType = 'default', $selectedColumns = []) {
     // 生成文件名，使用YYYYMMDDHHMMSS格式，使用.html扩展名
     $filename = '查询结果_' . date('YmdHis') . '.html';
     
@@ -1001,27 +1056,38 @@ function exportToPDF($data, $dataType = 'default') {
             echo '<div class="section-divider"></div>';
         }
     } else {
-        // 导出其他类型数据，使用默认字段列表
+        // 导出其他类型数据
         echo '<table>';
         echo '<thead>';
         echo '<tr>';
         
-        // 定义需要导出的固定字段列表（与查询显示的结果一致）
-        $exportColumns = [
-            '序号',
-            '名称',
-            'IP/URL',
-            '类型',
-            '用户名',
-            '密码',
-            '备注',
-            '创建时间',
-            '类别'
-        ];
-        
-        // 输出中文表头
-        foreach ($exportColumns as $column) {
-            echo '<th>' . $column . '</th>';
+        if (!empty($selectedColumns)) {
+            // 使用用户选择的列
+            $exportColumns = $selectedColumns;
+            
+            // 输出中文表头
+            foreach ($exportColumns as $column) {
+                echo '<th>' . getFieldLabel($column) . '</th>';
+            }
+        } else {
+            // 导出其他类型数据，使用默认字段列表
+            // 定义需要导出的固定字段列表（与查询显示的结果一致）
+            $exportColumns = [
+                '序号',
+                '名称',
+                'IP/URL',
+                '类型',
+                '用户名',
+                '密码',
+                '备注',
+                '创建时间',
+                '类别'
+            ];
+            
+            // 输出中文表头
+            foreach ($exportColumns as $column) {
+                echo '<th>' . $column . '</th>';
+            }
         }
         
         echo '</tr>';
@@ -1031,15 +1097,32 @@ function exportToPDF($data, $dataType = 'default') {
         // 输出数据
         foreach ($data as $index => $row) {
             echo '<tr>';
-            echo '<td>' . ($index + 1) . '</td>'; // 序号，从1开始
-            echo '<td>' . (isset($row['name']) ? $row['name'] : '') . '</td>';
-            echo '<td>' . (isset($row['ip_url']) ? $row['ip_url'] : '') . '</td>';
-            echo '<td>' . (isset($row['type']) ? $row['type'] : '') . '</td>';
-            echo '<td>' . (isset($row['username']) ? $row['username'] : '') . '</td>';
-            echo '<td>' . (isset($row['password']) ? $row['password'] : '') . '</td>';
-            echo '<td>' . (isset($row['remark']) ? $row['remark'] : '') . '</td>';
-            echo '<td>' . (isset($row['created_at']) ? $row['created_at'] : '') . '</td>';
-            echo '<td>' . (isset($row['category']) ? $row['category'] : '') . '</td>';
+            
+            if (!empty($selectedColumns)) {
+                // 使用用户选择的列
+                foreach ($selectedColumns as $column) {
+                    $value = isset($row[$column]) ? $row[$column] : '';
+                    
+                    // 处理是否有效字段
+                    if ($column === 'login_info_is_active') {
+                        $value = $value === '1' || $value === 1 ? '有效' : '无效';
+                    }
+                    
+                    echo '<td>' . $value . '</td>';
+                }
+            } else {
+                // 使用默认字段列表
+                echo '<td>' . ($index + 1) . '</td>'; // 序号，从1开始
+                echo '<td>' . (isset($row['name']) ? $row['name'] : '') . '</td>';
+                echo '<td>' . (isset($row['ip_url']) ? $row['ip_url'] : '') . '</td>';
+                echo '<td>' . (isset($row['type']) ? $row['type'] : '') . '</td>';
+                echo '<td>' . (isset($row['username']) ? $row['username'] : '') . '</td>';
+                echo '<td>' . (isset($row['password']) ? $row['password'] : '') . '</td>';
+                echo '<td>' . (isset($row['remark']) ? $row['remark'] : '') . '</td>';
+                echo '<td>' . (isset($row['created_at']) ? $row['created_at'] : '') . '</td>';
+                echo '<td>' . (isset($row['category']) ? $row['category'] : '') . '</td>';
+            }
+            
             echo '</tr>';
         }
         
