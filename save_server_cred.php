@@ -52,6 +52,34 @@ function sanitizeInput($input) {
     return $input;
 }
 
+// 解析带单位的存储容量，转换为GB为单位的数值
+function parseStorageCapacity($capacity) {
+    if (empty($capacity)) {
+        return null;
+    }
+    
+    // 正则表达式：匹配数字和单位
+    $regex = '/^\s*(\d+(?:\.\d+)?)\s*(MB|GB|TB)\s*$/i';
+    if (preg_match($regex, $capacity, $matches)) {
+        $value = (float)$matches[1];
+        $unit = strtoupper($matches[2]);
+        
+        // 转换为GB
+        switch ($unit) {
+            case 'MB':
+                return $value / 1024;
+            case 'GB':
+                return $value;
+            case 'TB':
+                return $value * 1024;
+            default:
+                return null;
+        }
+    }
+    
+    return null;
+}
+
 // 验证IP地址格式
 function validateIP($ip) {
     return filter_var($ip, FILTER_VALIDATE_IP) !== false;
@@ -184,6 +212,57 @@ function saveToDatabase($data) {
             }
         }
         
+        // 检查服务器磁盘信息表是否存在，如果不存在则创建
+        $checkDiskTableSql = "SHOW TABLES LIKE 'server_cred_volu_info'";
+        $stmt = $pdo->query($checkDiskTableSql);
+        if ($stmt->rowCount() === 0) {
+            try {
+                // 创建服务器磁盘信息表
+                $createDiskTableSql = "
+                CREATE TABLE IF NOT EXISTS `server_cred_volu_info` (
+                  `id` INT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+                  `server_cred_id` INT NOT NULL COMMENT '服务器ID，外键关联server_cred表',
+                  `os_type` ENUM('windows', 'linux') NOT NULL COMMENT '操作系统类型',
+                  
+                  -- Windows特有字段
+                  `windows_drive_letter` VARCHAR(10) DEFAULT NULL COMMENT 'Windows盘符号',
+                  `windows_disk_type` ENUM('system', 'data', 'application', 'backup') DEFAULT NULL COMMENT 'Windows磁盘类型',
+                  `windows_file_system` ENUM('ntfs', 'fat32', 'exfat') DEFAULT NULL COMMENT 'Windows文件系统格式',
+                  
+                  -- Linux特有字段
+                  `linux_device_name` VARCHAR(50) DEFAULT NULL COMMENT 'Linux设备名称',
+                  `linux_mount_point` VARCHAR(100) DEFAULT NULL COMMENT 'Linux挂载点',
+                  `linux_mount_options` VARCHAR(200) DEFAULT NULL COMMENT 'Linux挂载选项',
+                  `linux_disk_purpose` ENUM('system', 'data', 'application', 'log', 'swap') DEFAULT NULL COMMENT 'Linux磁盘用途',
+                  
+                  -- 公共字段
+                  `capacity_gb` VARCHAR(20) NOT NULL COMMENT '容量（完整字符串，如100GB、50MB、2TB）',
+                  `used_space_gb` VARCHAR(20) DEFAULT NULL COMMENT '已使用空间（完整字符串，如100GB、50MB、2TB）',
+                  `file_system_type` VARCHAR(50) DEFAULT NULL COMMENT '文件系统类型（通用）',
+                  `notes` TEXT COMMENT '磁盘信息备注（最多500字符）',
+                  
+                  -- 元数据字段
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                  `created_by` VARCHAR(100) NOT NULL COMMENT '创建人',
+                  `updated_by` VARCHAR(100) DEFAULT NULL COMMENT '更新人',
+                  
+                  -- 外键约束
+                  CONSTRAINT `fk_server_cred_volu_info_server` FOREIGN KEY (`server_cred_id`) REFERENCES `server_cred` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='服务器磁盘信息表';
+                ";
+                $pdo->exec($createDiskTableSql);
+                logOperation('数据表server_cred_volu_info创建成功');
+            } catch (PDOException $e) {
+                logOperation('磁盘信息表创建失败: ' . $e->getMessage(), [], true);
+                return [
+                    'success' => false,
+                    'message' => '磁盘信息表创建失败，请联系管理员',
+                    'code' => 'TABLE_CREATION_ERROR'
+                ];
+            }
+        }
+        
         // 准备SQL插入语句（使用新的字段名）
         $sql = "INSERT INTO `server_cred` 
                 (`server_cred_server_name`, `server_cred_server_ip`, `server_cred_server_port`, `server_cred_server_os`, 
@@ -219,6 +298,49 @@ function saveToDatabase($data) {
             // 执行插入操作
             if ($stmt->execute()) {
                 $insertId = $pdo->lastInsertId();
+                
+                // 保存磁盘信息
+                if (isset($data['disks']) && is_array($data['disks']) && count($data['disks']) > 0) {
+                    // 判断操作系统类型
+                    $osType = strtolower($data['serverOS']);
+                    $isWindows = strpos($osType, 'windows') !== false;
+                    
+                    // 准备插入磁盘信息的SQL，使用新的字段名称
+                    $insertDiskSql = "INSERT INTO `server_cred_volu_info` (
+                        `server_cred_id`, `server_cred_volu_os_type`, 
+                        `server_cred_volu_windows_drive_letter`, 
+                        `server_cred_volu_linux_device_name`, `server_cred_volu_linux_mount_point`,
+                        `server_cred_volu_capacity`, `server_cred_volu_used_space`, `server_cred_volu_file_system_type`, `server_cred_volu_notes`, `server_cred_volu_created_by`
+                    ) VALUES (
+                        :serverCredId, :osType,
+                        :windowsDriveLetter,
+                        :linuxDeviceName, :linuxMountPoint,
+                        :capacity, :usedSpace, :fileSystemType, :notes, :createdBy
+                    )";
+                    
+                    $diskStmt = $pdo->prepare($insertDiskSql);
+                    
+                    foreach ($data['disks'] as $disk) {
+                        // 直接使用前端传递的完整字符串，不进行单位转换
+                        $capacity = $disk['capacity'];
+                        $usedSpace = $disk['usedSpace'];
+                        
+                        // 重置参数
+                        $diskStmt->execute(array(
+                            ':serverCredId' => $insertId,
+                            ':osType' => $isWindows ? 'windows' : 'linux',
+                            ':windowsDriveLetter' => $isWindows ? $disk['driveLetter'] : null,
+                            ':linuxDeviceName' => !$isWindows ? $disk['deviceName'] : null,
+                            ':linuxMountPoint' => !$isWindows ? $disk['mountPoint'] : null,
+                            ':capacity' => $capacity,
+                            ':usedSpace' => $usedSpace,
+                            ':fileSystemType' => $isWindows ? null : ($disk['fileSystemType'] ?? null),
+                            ':notes' => $disk['notes'],
+                            ':createdBy' => $data['createdBy']
+                        ));
+                    }
+                }
+                
                 // 提交事务
                 $pdo->commit();
                 
@@ -352,6 +474,9 @@ function processRequest() {
             ];
         }
         
+        // 处理磁盘信息
+        $disks = isset($requestData['disks']) ? $requestData['disks'] : [];
+        
         // 验证字段映射的完整性
         $receivedFields = array_keys($requestData);
         $expectedFields = [
@@ -360,7 +485,8 @@ function processRequest() {
             'server_cred_notes',
             'server_cred_network_area', 'server_cred_server_type', 'server_cred_host_cluster',
             'server_cred_edr_installed', 'server_cred_ntp_configured',
-            'server_cred_created_by'
+            'server_cred_created_by',
+            'disks'
         ];
         
         // 记录接收到但预期外的字段，用于调试
@@ -463,7 +589,8 @@ function processRequest() {
             'edrInstalled' => $edrInstalled,
             'ntpConfigured' => $ntpConfigured,
             'notes' => $notes,
-            'createdBy' => $createdBy
+            'createdBy' => $createdBy,
+            'disks' => $disks
         ];
         
         // 保存到数据库
