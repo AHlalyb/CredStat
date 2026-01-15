@@ -2025,12 +2025,87 @@ export default {
           // 构建完整的表单数据，包括磁盘信息
           const fullData = {
             ...this.formData,
-            diskInfo: this.diskForms
+            diskInfo: this.diskForms,
+            action: 'save_server_cred' // 添加action字段，用于后端识别请求类型
           };
+          
+          // 添加加载状态
+          const loading = this.$loading({
+            lock: true,
+            text: '保存中...',
+            spinner: 'el-icon-loading',
+            background: 'rgba(0, 0, 0, 0.7)'
+          });
           
           // 发送保存请求
           console.log('保存服务器信息:', fullData);
-          this.$message.success('服务器信息保存成功');
+          
+          // 设置请求超时时间（5秒）
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+              reject(new Error('请求超时'));
+            }, 5000);
+          });
+          
+          // 使用fetch API发送POST请求，并添加超时处理
+          Promise.race([
+            fetch('server_cred_api.php', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(fullData)
+            }),
+            timeoutPromise
+          ])
+          .then(response => {
+            console.log('响应状态:', response.status);
+            console.log('响应头:', response.headers);
+            
+            // 检查响应状态码
+            if (!response.ok) {
+              throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+            
+            // 先读取响应为文本，然后尝试解析为JSON
+            return response.text().then(text => {
+              try {
+                return JSON.parse(text);
+              } catch (error) {
+                // 如果解析失败，抛出错误
+                throw new Error(`响应不是有效的JSON格式: ${text}`);
+              }
+            });
+          })
+          .then(data => {
+            loading.close();
+            console.log('响应数据:', data);
+            
+            // 检查响应状态
+            if (data.status === 'success') {
+              this.$message.success('服务器信息保存成功');
+            } else {
+              // 显示实际错误信息
+              this.$message.error(`保存失败: ${data.message || '未知错误'}`);
+            }
+          })
+          .catch(error => {
+            loading.close();
+            console.error('保存服务器信息失败:', error);
+            
+            // 根据错误类型显示更具体的错误信息
+            if (error.message.includes('请求超时')) {
+              this.$message.error('保存失败，请求超时，请稍后重试');
+            } else if (error.message.includes('HTTP错误')) {
+              this.$message.error(`保存失败，服务器错误: ${error.message}`);
+            } else if (error.message.includes('响应不是有效的JSON格式')) {
+              this.$message.error(`保存失败，服务器返回格式错误: ${error.message}`);
+            } else if (error.message.includes('NetworkError')) {
+              this.$message.error('保存失败，网络连接错误，请检查网络连接');
+            } else {
+              this.$message.error(`保存失败: ${error.message}`);
+            }
+          });
         } else {
           this.$message.error('表单验证失败，请检查填写内容');
           return false;
