@@ -8,6 +8,9 @@ header('Content-Type: application/json');
 // 加载数据库配置
 $dbConfig = require __DIR__ . '/app/config/database.php';
 
+// 引入SecurityUtils类
+require_once __DIR__ . '/app/utils/SecurityUtils.php';
+
 // 获取请求数据
 $requestBody = file_get_contents('php://input');
 $data = json_decode($requestBody, true);
@@ -93,6 +96,9 @@ function saveServerCred($data, $dbConfig) {
             throw new Exception('准备SQL语句失败: ' . $conn->error);
         }
         
+        // 加密密码
+        $encryptedPassword = SecurityUtils::encrypt($data['server_cred_login_password']);
+        
         // 绑定参数
         $createdBy = 'system';
         $bindResult = $stmt->bind_param(
@@ -105,7 +111,7 @@ function saveServerCred($data, $dbConfig) {
             $data['server_cred_server_os'],
             $data['server_cred_server_port'],
             $data['server_cred_login_username'],
-            $data['server_cred_login_password'],
+            $encryptedPassword,
             $data['server_cred_edr_installed'],
             $data['server_cred_ntp_configured'],
             $data['server_cred_notes'],
