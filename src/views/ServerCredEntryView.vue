@@ -646,7 +646,7 @@ export default {
       // Windows命令相关
       windowsCommand: 'wmic logicaldisk get DeviceID, VolumeName, Size, FreeSpace, FileSystem, Description',
       // Linux命令相关
-      linuxCommand: 'df -h',
+      linuxCommand: 'echo "=====BLKID_OUTPUT=====" &&df -h && echo "=====BLKID_OUTPUT=====" && blkid',
       linuxCommandOutput: '',
       parsedLinuxDisks: [], // 解析后的Linux磁盘信息
       // 截图提取相关变量
@@ -858,6 +858,28 @@ export default {
         const lines = this.commandOutput.split('\n');
         const parsedDisks = [];
         
+        // 检查是否为Windows wmic命令输出
+        // wmic输出格式包含"DeviceID"、"Size"、"FreeSpace"等关键字
+        let isWmicOutput = false;
+        for (const line of lines) {
+          if (line.includes('DeviceID') && (line.includes('Size') || line.includes('FreeSpace'))) {
+            isWmicOutput = true;
+            break;
+          }
+        }
+        
+        // 如果不是wmic输出，提示用户
+        if (!isWmicOutput) {
+          // 检查是否包含Linux命令输出特征
+          if (this.commandOutput.includes('df -h') || this.commandOutput.includes('=====BLKID_OUTPUT=====')) {
+            this.$message.error('检测到Linux命令输出，请切换到Linux磁盘提取标签页进行解析');
+            return;
+          } else {
+            this.$message.error('请粘贴有效的Windows wmic命令输出');
+            return;
+          }
+        }
+        
         // 跳过表头行，开始解析数据行
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
@@ -925,13 +947,15 @@ export default {
           const totalCapacity = this.formatStorageSize(totalBytes);
           const usedSpace = this.formatStorageSize(positiveUsedBytes);
           
-          // 添加到解析结果
-          parsedDisks.push({
-            driveLetter: deviceID,
-            capacity: totalCapacity,
-            usedSpace: usedSpace,
-            notes: description
-          });
+          // 只添加有效的磁盘信息（盘符号不能为空）
+          if (deviceID) {
+            parsedDisks.push({
+              driveLetter: deviceID,
+              capacity: totalCapacity,
+              usedSpace: usedSpace,
+              notes: description
+            });
+          }
         }
         
         if (parsedDisks.length === 0) {
@@ -997,6 +1021,312 @@ export default {
           driveLetter: disk.driveLetter || '',
           capacity: disk.capacity || '',
           usedSpace: disk.usedSpace || '',
+          notes: disk.notes || ''
+        });
+      });
+    },
+    
+    // 解析Linux磁盘信息
+    parseLinuxDiskInfo() {
+      if (!this.linuxCommandOutput) {
+        this.$message.error('请粘贴命令输出结果');
+        return;
+      }
+      
+      try {
+        // 分离df -h和blkid命令输出
+        const outputs = this.linuxCommandOutput.split('=====BLKID_OUTPUT=====');
+        
+        // 找到df -h输出和blkid输出
+        let dfOutput = '';
+        let blkidOutput = '';
+        
+        // 遍历所有输出片段，寻找包含"文件系统"或"Filesystem"的片段（df -h输出）
+        for (let i = 0; i < outputs.length; i++) {
+          const output = outputs[i].trim();
+          if (output.includes('文件系统') || output.includes('Filesystem')) {
+            dfOutput = output;
+            // blkid输出应该在df -h输出之后的片段中
+            if (i + 1 < outputs.length) {
+              blkidOutput = outputs.slice(i + 1).join('=====BLKID_OUTPUT=====').trim();
+            }
+            break;
+          }
+        }
+        
+        // 如果没有找到包含"文件系统"的片段，尝试查找包含"/dev/"的片段作为备选
+        if (!dfOutput) {
+          for (const output of outputs) {
+            if (output.includes('/dev/')) {
+              dfOutput = output;
+              break;
+            }
+          }
+        }
+        
+        // 解析df -h输出
+        const dfDisks = this.parseDfOutput(dfOutput);
+        
+        // 解析blkid输出
+        const blkidMap = this.parseBlkidOutput(blkidOutput);
+        
+        // 合并信息并排除系统默认挂载项
+        const finalDisks = this.mergeAndFilterDisks(dfDisks, blkidMap);
+        
+        if (finalDisks.length === 0) {
+          // 添加调试信息
+          console.log('解析Linux磁盘信息调试：');
+          console.log('原始输出:', this.linuxCommandOutput);
+          console.log('分割结果:', outputs);
+          console.log('dfOutput:', dfOutput);
+          console.log('blkidOutput:', blkidOutput);
+          console.log('dfDisks:', dfDisks);
+          console.log('blkidMap:', blkidMap);
+          
+          // 更详细的错误提示
+          if (dfDisks.length === 0) {
+            this.$message.warning('未解析到df -h输出，请检查命令输出格式');
+          } else {
+            this.$message.warning('所有磁盘信息都被过滤掉了，请检查命令输出格式');
+          }
+          return;
+        }
+        
+        // 更新解析结果
+        this.parsedLinuxDisks = finalDisks;
+        
+        // 填充到表单
+        this.fillLinuxDiskForms(finalDisks);
+        
+        this.$message.success(`成功解析 ${finalDisks.length} 个磁盘信息`);
+      } catch (error) {
+        console.error('解析Linux磁盘信息失败:', error);
+        this.$message.error('解析磁盘信息失败，请检查命令输出格式');
+      }
+    },
+    
+    // 解析df -h命令输出
+    parseDfOutput(output) {
+      const lines = output.split('\n');
+      const disks = [];
+      let foundHeader = false;
+      
+      // 遍历所有行，跳过空行和命令行
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (!line) continue;
+        
+        // 跳过命令提示符行（如[root@localhost ~]#）
+        if (line.startsWith('[') && line.includes('#')) continue;
+        
+        // 跳过命令行
+        if (line.includes('echo ') || line.includes('&&') || line.includes('blkid')) continue;
+        
+        // 跳过包含"=====BLKID_OUTPUT====="的行
+        if (line.includes('=====BLKID_OUTPUT=====')) continue;
+        
+        // 标记表头行，从下一行开始解析数据
+        if (line.includes('文件系统') || line.includes('Filesystem')) {
+          foundHeader = true;
+          continue;
+        }
+        
+        // 只有在找到表头后才解析数据行，并且确保行包含有效磁盘信息
+        if (foundHeader || (line.includes('/dev/') && !line.includes(' '))) {
+          // 解析df -h输出格式，字段之间用多个空格分隔
+          const parts = line.split(/\s+/);
+          
+          // 确保至少有6个字段（设备名称、容量、已用、可用、已用%、挂载点）
+          if (parts.length >= 6) {
+            // 找出包含%的字段索引（已用%）
+            let usePercentIndex = -1;
+            for (let j = 0; j < parts.length; j++) {
+              if (parts[j].includes('%')) {
+                usePercentIndex = j;
+                break;
+              }
+            }
+            
+            // 如果找到了已用%字段，计算挂载点起始索引
+            if (usePercentIndex >= 0) {
+              const mountPointIndex = usePercentIndex + 1;
+              
+              // 合并挂载点字段（如果挂载点包含空格）
+              const mountPoint = parts.slice(mountPointIndex).join(' ');
+              
+              disks.push({
+                deviceName: parts[0],
+                capacity: parts[1],
+                usedSpace: parts[2],
+                mountPoint: mountPoint
+              });
+            } else {
+              // 兼容不同格式，尝试默认解析
+              disks.push({
+                deviceName: parts[0],
+                capacity: parts[1],
+                usedSpace: parts[2],
+                mountPoint: parts[parts.length - 1]
+              });
+            }
+          } else if (line.includes('/dev/')) {
+            // 尝试解析简单格式的磁盘信息
+            console.log('尝试解析简单格式行:', line);
+          }
+        }
+      }
+      
+      // 如果没有找到表头但包含/dev/行，尝试重新解析所有行
+      if (disks.length === 0) {
+        for (let i = 0; i < lines.length; i++) {
+          let line = lines[i].trim();
+          if (!line) continue;
+          
+          // 直接查找包含/dev/的行，跳过其他行
+          if (line.includes('/dev/') && line.split(/\s+/).length >= 6) {
+            const parts = line.split(/\s+/);
+            disks.push({
+              deviceName: parts[0],
+              capacity: parts[1],
+              usedSpace: parts[2],
+              mountPoint: parts[parts.length - 1]
+            });
+          }
+        }
+      }
+      
+      return disks;
+    },
+    
+    // 解析blkid命令输出
+    parseBlkidOutput(output) {
+      const blkidMap = new Map();
+      const lines = output.split('\n');
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+        
+        // 跳过命令行、空行和分隔符行
+        if (trimmedLine.includes('blkid') && !trimmedLine.includes('/dev/')) continue;
+        if (trimmedLine.includes('=====BLKID_OUTPUT=====')) continue;
+        
+        // 匹配设备路径和类型信息
+        // 示例：/dev/sda1: UUID="..." TYPE="ext4" PARTUUID="..."
+        const deviceMatch = trimmedLine.match(/^([^:]+):/);
+        const typeMatch = trimmedLine.match(/TYPE="([^"]+)"/);
+        
+        if (deviceMatch && typeMatch) {
+          const devicePath = deviceMatch[1];
+          const fileSystemType = typeMatch[1];
+          blkidMap.set(devicePath, fileSystemType);
+        } else {
+          console.log('跳过无效blkid行:', trimmedLine);
+        }
+      }
+      
+      return blkidMap;
+    },
+    
+    // 合并信息并排除系统默认挂载项
+    mergeAndFilterDisks(dfDisks, blkidMap) {
+      const finalDisks = [];
+      
+      console.log('mergeAndFilterDisks调试：');
+      console.log('dfDisks数量:', dfDisks.length);
+      console.log('blkidMap条目数量:', blkidMap.size);
+      console.log('blkidMap内容:', blkidMap);
+      
+      for (const disk of dfDisks) {
+        console.log('处理磁盘:', disk);
+        
+        // 排除tmpfs、devtmpfs、overlay类型的文件系统
+        if (disk.deviceName.startsWith('tmpfs') || 
+            disk.deviceName.startsWith('devtmpfs') || 
+            disk.deviceName.startsWith('overlay')) {
+          console.log('排除系统默认挂载项:', disk.deviceName);
+          continue;
+        }
+        
+        // 排除/run/user/*和/sys/fs/cgroup路径的挂载点
+        if (disk.mountPoint.startsWith('/run/user/') || 
+            disk.mountPoint === '/sys/fs/cgroup') {
+          console.log('排除系统默认挂载点:', disk.mountPoint);
+          continue;
+        }
+        
+        // 匹配文件系统类型
+        let fileSystemType = '';
+        
+        // 直接匹配设备名称
+        if (blkidMap.has(disk.deviceName)) {
+          fileSystemType = blkidMap.get(disk.deviceName);
+          console.log('直接匹配到文件系统类型:', fileSystemType);
+        } else {
+          // 对于LVM设备（如/dev/mapper/centos-root）
+          if (disk.deviceName.startsWith('/dev/mapper/')) {
+            // 尝试从blkidMap中查找相关的物理卷
+            // 遍历blkidMap，找到对应的文件系统类型
+            let foundType = '';
+            for (const [device, type] of blkidMap) {
+              // 如果是xfs或ext4类型，直接使用
+              if (type === 'xfs' || type === 'ext4') {
+                foundType = type;
+                break;
+              }
+            }
+            fileSystemType = foundType || 'xfs'; // 默认类型
+            console.log('LVM设备使用文件系统类型:', fileSystemType);
+          } else {
+            // 尝试匹配分区名称（如/dev/sda1 -> /dev/sda）
+            const parentDevice = disk.deviceName.replace(/\d+$/, '');
+            if (blkidMap.has(parentDevice)) {
+              fileSystemType = blkidMap.get(parentDevice);
+              console.log('匹配到父设备类型:', fileSystemType);
+            } else {
+              // 尝试匹配类似的设备（如/dev/vda1 -> /dev/vda）
+              let matchingDevice = '';
+              for (const [device, type] of blkidMap) {
+                if (disk.deviceName.includes(device)) {
+                  matchingDevice = device;
+                  fileSystemType = type;
+                  break;
+                }
+              }
+              console.log('匹配到类似设备:', matchingDevice, '类型:', fileSystemType);
+            }
+          }
+        }
+        
+        // 即使没有匹配到文件系统类型，也添加到最终结果
+        finalDisks.push({
+          deviceName: disk.deviceName,
+          fileSystemType: fileSystemType,
+          capacity: disk.capacity,
+          usedSpace: disk.usedSpace,
+          mountPoint: disk.mountPoint,
+          notes: ''
+        });
+        console.log('添加到最终结果:', disk.deviceName);
+      }
+      
+      console.log('最终磁盘数量:', finalDisks.length);
+      return finalDisks;
+    },
+    
+    // 填充Linux磁盘表单
+    fillLinuxDiskForms(disks) {
+      // 清空当前磁盘表单
+      this.diskForms = [];
+      
+      // 填充解析后的磁盘信息
+      disks.forEach(disk => {
+        this.diskForms.push({
+          deviceName: disk.deviceName || '',
+          fileSystemType: disk.fileSystemType || '',
+          capacity: disk.capacity || '',
+          usedSpace: disk.usedSpace || '',
+          mountPoint: disk.mountPoint || '',
           notes: disk.notes || ''
         });
       });
@@ -1212,6 +1542,18 @@ export default {
     // 复制Windows命令到剪贴板
     copyWindowsCommand() {
       navigator.clipboard.writeText(this.windowsCommand)
+        .then(() => {
+          this.$message.success('命令已成功复制到剪贴板');
+        })
+        .catch(err => {
+          console.error('复制命令失败:', err);
+          this.$message.error('复制命令失败，请手动复制');
+        });
+    },
+    
+    // 复制Linux命令到剪贴板
+    copyLinuxCommand() {
+      navigator.clipboard.writeText(this.linuxCommand)
         .then(() => {
           this.$message.success('命令已成功复制到剪贴板');
         })
