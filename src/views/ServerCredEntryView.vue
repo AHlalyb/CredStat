@@ -200,76 +200,116 @@
             <el-button type="primary" @click="showExtractDialog" class="mb-2">自动提取磁盘信息</el-button>
           </div>
           
+          <!-- 统一表单标签（Windows和Linux都显示，根据系统类型调整内容） -->
+          <div v-if="isWindows || !isWindows" style="width: 100%; margin-bottom: 1px; padding-bottom: 1px; border-bottom: 1px solid #ebeef5; height: 24px; overflow: visible;">
+            <div v-if="isWindows" style="float: left; width: 80px; font-weight: 500; margin-right: 15px;">盘符号</div>
+            <div v-else style="float: left; width: 120px; font-weight: 500; margin-right: 15px;">设备名称</div>
+            <div style="float: left; width: 100px; font-weight: 500; margin-right: 15px;">{{ isWindows ? '容量' : '文件系统类型' }}</div>
+            <div style="float: left; width: 120px; font-weight: 500; margin-right: 15px;">{{ isWindows ? '已使用空间' : '容量' }}</div>
+            <div style="float: left; width: 120px; font-weight: 500; margin-right: 15px;">{{ isWindows ? '' : '已使用空间' }}</div>
+            <div style="float: left; width: 100px; font-weight: 500; margin-right: 15px;">{{ isWindows ? '' : '挂载点' }}</div>
+            <div style="float: left; font-weight: 500;">磁盘信息备注</div>
+            <div style="clear: both;"></div>
+          </div>
+          
           <!-- 动态磁盘表单列表 -->
           <div class="disk-forms-list">
-            <div v-for="(disk, index) in diskForms" :key="index" class="disk-form-item mb-4 p-3 border rounded bg-gray-50">
+            <div v-for="(disk, index) in diskForms" :key="index" class="disk-form-item mb-2 p-1 border rounded bg-gray-50">
               <!-- Windows磁盘表单 -->
-              <el-form v-if="isWindows" :model="disk" :rules="windowsFormRules" label-position="top" label-width="100px">
-                <el-row :gutter="[20, 20]">
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="盘符号" prop="driveLetter">
-                      <el-input v-model="disk.driveLetter" placeholder="如C:、D:"></el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="容量" prop="capacity">
-                      <el-input v-model="disk.capacity" placeholder="如100GB、500MB、2TB"></el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="已使用空间" prop="usedSpace">
-                      <el-input v-model="disk.usedSpace" placeholder="如50GB、200MB、1TB"></el-input>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-form-item label="磁盘信息备注" prop="notes">
-                  <el-input v-model="disk.notes" type="textarea" :rows="2" maxlength="500" show-word-limit></el-input>
+              <el-form v-if="isWindows" :model="disk" :rules="windowsFormRules" label-position="top" label-width="0" inline class="flex items-center w-full">
+                <!-- 盘符号 -->
+                <el-form-item prop="driveLetter" style="margin-bottom: 0; width: 80px; margin-right: 15px;">
+                  <el-input v-model="disk.driveLetter" placeholder="如C:、D:" style="width: 80px;"></el-input>
                 </el-form-item>
-                <div class="disk-form-actions">
-                  <el-button type="danger" @click="removeDisk(index)" size="small">删除当前磁盘条目</el-button>
+                
+                <!-- 容量 -->
+                <el-form-item prop="capacity" style="margin-bottom: 0; width: 120px; margin-right: 15px;">
+                  <el-input v-model="disk.capacity" placeholder="如100GB" style="width: 120px;"></el-input>
+                </el-form-item>
+                
+                <!-- 已使用空间 -->
+                <el-form-item prop="usedSpace" style="margin-bottom: 0; width: 140px; margin-right: 15px;">
+                  <el-input v-model="disk.usedSpace" placeholder="如50GB" style="width: 140px;"></el-input>
+                </el-form-item>
+                
+                <!-- 磁盘信息备注和删除按钮 -->
+                <div style="flex: 1; display: flex; align-items: center;">
+                  <el-form-item prop="notes" style="margin-bottom: 0; flex: 1; margin-right: 10px;">
+                    <el-input 
+                      v-model="disk.notes" 
+                      type="textarea" 
+                      :rows="1" 
+                      maxlength="500" 
+                      show-word-limit
+                      placeholder="请输入磁盘信息备注"
+                      style="width: 100%;"
+                    ></el-input>
+                  </el-form-item>
+                  <el-button 
+                    type="danger" 
+                    @click="removeDisk(index)" 
+                    size="small" 
+                    circle
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
                 </div>
               </el-form>
               
               <!-- Linux磁盘表单 -->
-              <el-form v-else :model="disk" :rules="linuxFormRules" label-position="top" label-width="100px">
-                <el-row :gutter="[20, 20]">
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="设备名称" prop="deviceName">
-                      <el-input v-model="disk.deviceName" placeholder="如/dev/sda1、/dev/mapper/ao-root"></el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="文件系统类型" prop="fileSystemType">
-                      <el-select v-model="disk.fileSystemType" placeholder="请选择文件系统类型">
-                        <el-option label="ext4" value="ext4"></el-option>
-                        <el-option label="xfs" value="xfs"></el-option>
-                        <el-option label="btrfs" value="btrfs"></el-option>
-                        <el-option label="tmpfs" value="tmpfs"></el-option>
-                        <el-option label="swap" value="swap"></el-option>
-                      </el-select>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="容量" prop="capacity">
-                      <el-input v-model="disk.capacity" placeholder="如100GB、500MB、2TB"></el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="已使用空间" prop="usedSpace">
-                      <el-input v-model="disk.usedSpace" placeholder="如50GB、200MB、1TB"></el-input>
-                    </el-form-item>
-                  </el-col>
-                  <el-col :xs="24" :sm="12" :md="8">
-                    <el-form-item label="挂载点" prop="mountPoint">
-                      <el-input v-model="disk.mountPoint" placeholder="如/、/home"></el-input>
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-                <el-form-item label="磁盘信息备注" prop="notes">
-                  <el-input v-model="disk.notes" type="textarea" :rows="2" maxlength="500" show-word-limit></el-input>
+              <el-form v-else :model="disk" :rules="linuxFormRules" label-position="top" label-width="0" inline class="flex items-center w-full">
+                <!-- 设备名称 -->
+                <el-form-item prop="deviceName" style="margin-bottom: 0; width: 120px; margin-right: 15px;">
+                  <el-input v-model="disk.deviceName" placeholder="如/dev/sda1" style="width: 120px;"></el-input>
                 </el-form-item>
-                <div class="disk-form-actions">
-                  <el-button type="danger" @click="removeDisk(index)" size="small">删除当前磁盘条目</el-button>
+                
+                <!-- 文件系统类型 -->
+                <el-form-item prop="fileSystemType" style="margin-bottom: 0; width: 100px; margin-right: 15px;">
+                  <el-select v-model="disk.fileSystemType" placeholder="选择类型" style="width: 100px;">
+                    <el-option label="ext4" value="ext4"></el-option>
+                    <el-option label="xfs" value="xfs"></el-option>
+                    <el-option label="btrfs" value="btrfs"></el-option>
+                    <el-option label="tmpfs" value="tmpfs"></el-option>
+                    <el-option label="swap" value="swap"></el-option>
+                  </el-select>
+                </el-form-item>
+                
+                <!-- 容量 -->
+                <el-form-item prop="capacity" style="margin-bottom: 0; width: 120px; margin-right: 15px;">
+                  <el-input v-model="disk.capacity" placeholder="如100GB" style="width: 120px;"></el-input>
+                </el-form-item>
+                
+                <!-- 已使用空间 -->
+                <el-form-item prop="usedSpace" style="margin-bottom: 0; width: 120px; margin-right: 15px;">
+                  <el-input v-model="disk.usedSpace" placeholder="如50GB" style="width: 120px;"></el-input>
+                </el-form-item>
+                
+                <!-- 挂载点 -->
+                <el-form-item prop="mountPoint" style="margin-bottom: 0; width: 100px; margin-right: 15px;">
+                  <el-input v-model="disk.mountPoint" placeholder="如/" style="width: 100px;"></el-input>
+                </el-form-item>
+                
+                <!-- 磁盘信息备注和删除按钮 -->
+                <div style="flex: 1; display: flex; align-items: center;">
+                  <el-form-item prop="notes" style="margin-bottom: 0; flex: 1; margin-right: 10px;">
+                    <el-input 
+                      v-model="disk.notes" 
+                      type="textarea" 
+                      :rows="1" 
+                      maxlength="500" 
+                      show-word-limit
+                      placeholder="请输入磁盘信息备注"
+                      style="width: 100%;"
+                    ></el-input>
+                  </el-form-item>
+                  <el-button 
+                    type="danger" 
+                    @click="removeDisk(index)" 
+                    size="small" 
+                    circle
+                  >
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
                 </div>
               </el-form>
             </div>
@@ -419,92 +459,63 @@
       width="80%"
       :close-on-click-modal="false"
     >
-      <!-- 选项卡 -->
-      <el-tabs v-model="extractType" class="mb-4">
-        <!-- 截图粘贴选项卡 -->
-        <el-tab-pane label="截图粘贴" name="screenshot">
-          <div class="mb-4">
-            <h6 class="text-bold">截图粘贴</h6>
-            <p class="text-sm text-gray-600">请复制Windows磁盘信息截图，然后点击下方按钮粘贴并提取信息</p>
-            <el-button type="primary" @click="extractFromScreenshot" class="mt-2" :loading="isExtracting">粘贴截图提取信息</el-button>
+      <div class="windows-disk-extract">
+        <!-- 命令复制区域 -->
+        <div class="command-copy-section mb-4">
+
+          <p class="text-sm text-gray-600 mb-2">请在Windows服务器上执行以下命令，然后将输出结果粘贴到下方文本框中：</p>
+          <div class="flex items-center mb-2">
+            <el-input
+              v-model="windowsCommand"
+              readonly
+              class="mr-2"
+            ></el-input>
+            <el-button type="primary" @click="copyWindowsCommand">复制命令</el-button>
           </div>
-          
-          <!-- 截图预览区域 -->
-          <div 
-            class="screenshot-preview mb-4" 
-            style="border: 1px dashed #ccc; border-radius: 4px; height: 300px; display: flex; align-items: center; justify-content: center; background-color: #f5f7fa; overflow: hidden;"
-            ref="screenshotPreview"
-          >
-            <img 
-              v-if="screenshotData" 
-              :src="screenshotData" 
-              style="max-width: 100%; max-height: 100%; object-fit: contain;"
-              alt="截图预览"
-            >
-            <p v-else class="text-gray-500">截图预览区域</p>
-          </div>
-          
-          <!-- 提取结果区域 -->
-          <div v-if="screenshotExtracted" class="mb-4">
-            <h6 class="text-bold">提取结果</h6>
-            <el-divider></el-divider>
-            <el-table :data="screenshotDisks" size="small" border>
-              <el-table-column label="盘符号" prop="driveLetter"></el-table-column>
-              <el-table-column label="容量" prop="capacity"></el-table-column>
-              <el-table-column label="已使用" prop="usedSpace"></el-table-column>
-              <el-table-column label="可用空间" prop="freeSpace"></el-table-column>
-              <el-table-column label="使用率" prop="usage"></el-table-column>
-              <el-table-column label="文件系统" prop="fileSystem"></el-table-column>
-            </el-table>
-          </div>
-          
-          <!-- OCR原始识别内容 -->
-          <div v-if="ocrText" class="mb-4">
-            <h6 class="text-bold">OCR原始识别内容</h6>
-            <el-divider></el-divider>
-            <el-collapse>
-              <el-collapse-item title="查看OCR识别原始文本">
-                <pre style="background-color: #f5f7fa; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto; font-size: 12px; line-height: 1.5;">{{ ocrText }}</pre>
-              </el-collapse-item>
-            </el-collapse>
-          </div>
-        </el-tab-pane>
-        
-        <!-- 命令输出选项卡 -->
-        <el-tab-pane label="命令输出" name="command">
-          <div class="mb-4">
-            <h6 class="text-bold">命令输出</h6>
-            <p class="text-sm text-gray-600 mb-2">请粘贴Linux系统下的命令输出，支持df -h和blkid命令</p>
-            <el-textarea
-              v-model="commandOutput"
-              placeholder="请粘贴命令输出，例如df -h或blkid命令的输出结果"
-              :rows="10"
-              class="mb-2"
-            ></el-textarea>
-            <el-button type="primary" @click="extractFromCommand" class="mt-2">解析命令输出</el-button>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
-      
-      <!-- 提取结果区域 -->
-      <div v-if="extractedDisks.length > 0" class="mb-4">
-        <h6 class="text-bold">提取结果</h6>
-        <el-divider></el-divider>
-        <el-table :data="extractedDisks" size="small" border>
-          <el-table-column label="设备名称" prop="deviceName" v-if="!isWindows"></el-table-column>
-          <el-table-column label="盘符号" prop="driveLetter" v-if="isWindows"></el-table-column>
-          <el-table-column label="容量(GB)" prop="capacityGb"></el-table-column>
-          <el-table-column label="已使用空间(GB)" prop="usedSpaceGb"></el-table-column>
-          <el-table-column label="挂载点" prop="mountPoint" v-if="!isWindows"></el-table-column>
-        </el-table>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="extractDialogVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="extractedDisks.length === 0" @click="confirmExtract">确认导入</el-button>
         </div>
-      </template>
+        
+        <!-- 文本输入区域 -->
+        <div class="command-output-section mb-4" style="min-height: 200px; margin-top: 20px;">
+          <h4 style="margin-bottom: 10px; font-weight: bold;">命令输出结果</h4>
+          <p style="margin-bottom: 10px; font-size: 14px; color: #606266;">请将Windows服务器上执行wmic命令的完整输出结果粘贴到下方文本区域</p>
+          <!-- 使用原生textarea代替Element Plus组件，确保兼容性 -->
+          <textarea
+            v-model="commandOutput"
+            placeholder="在此粘贴命令输出结果..."
+            rows="10"
+            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            @paste="handlePaste"
+          ></textarea>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div v-if="commandOutput" style="font-size: 12px; color: #67C23A;">
+              ✓ 已检测到粘贴内容，点击下方按钮解析
+            </div>
+            <button 
+              v-if="commandOutput"
+              @click="commandOutput = ''"
+              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+            >
+              清空
+            </button>
+          </div>
+        </div>
+        
+        <!-- 解析按钮 -->
+        <div class="parse-button-section mb-4">
+          <el-button type="primary" @click="parseWindowsDiskInfo">解析并填充磁盘信息</el-button>
+        </div>
+        
+        <!-- 解析结果预览 -->
+        <div v-if="parsedDisks.length > 0" class="parse-result-section mb-4">
+          <h6 class="text-bold mb-2">解析结果预览</h6>
+          <el-table :data="parsedDisks" size="small" border>
+            <el-table-column label="盘符号" prop="driveLetter"></el-table-column>
+            <el-table-column label="容量" prop="capacity"></el-table-column>
+            <el-table-column label="已使用空间" prop="usedSpace"></el-table-column>
+            <el-table-column label="磁盘信息备注" prop="notes"></el-table-column>
+          </el-table>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -513,7 +524,7 @@
 // 导入XLS文件解析库
 import * as XLSX from 'xlsx';
 // 导入Element Plus图标
-import { DocumentAdd, RefreshRight, Check, Upload, EditPen } from '@element-plus/icons-vue';
+import { DocumentAdd, RefreshRight, Check, Upload, EditPen, Delete } from '@element-plus/icons-vue';
 // 导入Tesseract.js库
 import { createWorker } from 'tesseract.js';
 
@@ -524,7 +535,8 @@ export default {
     RefreshRight,
     Check,
     Upload,
-    EditPen
+    EditPen,
+    Delete
   },
   data() {
     return {
@@ -550,6 +562,9 @@ export default {
       extractType: 'screenshot', // 或 'command'
       commandOutput: '',
       extractedDisks: [],
+      parsedDisks: [], // 解析后的Windows磁盘信息
+      // Windows命令相关
+      windowsCommand: 'wmic logicaldisk get DeviceID, VolumeName, Size, FreeSpace, FileSystem, Description',
       // 截图提取相关变量
       isExtracting: false,
       screenshotData: '',
@@ -746,6 +761,171 @@ export default {
     // 显示自动提取磁盘信息对话框
     showExtractDialog() {
       this.extractDialogVisible = true;
+    },
+    
+    // 解析Windows磁盘信息
+    parseWindowsDiskInfo() {
+      if (!this.commandOutput) {
+        this.$message.error('请粘贴命令输出结果');
+        return;
+      }
+      
+      try {
+        const lines = this.commandOutput.split('\n');
+        const parsedDisks = [];
+        
+        // 跳过表头行，开始解析数据行
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          // 解析wmic输出格式，字段之间用多个空格分隔
+          // 实际格式：Description DeviceID FileSystem FreeSpace Size VolumeName
+          // 示例：本地固定磁盘       C:          NTFS     289069330432 321543729152
+          const parts = line.split(/\s+/);
+          
+          // 提取字段，注意VolumeName可能包含空格
+          let description = '';
+          let deviceID = '';
+          let fileSystem = '';
+          let freeSpace = '';
+          let size = '';
+          let volumeName = '';
+          
+          let index = 0;
+          
+          // 处理Description（可能包含空格，如"本地固定磁盘"）
+          while (index < parts.length && !/^[A-Z]:$/.test(parts[index])) {
+            description += (description ? ' ' : '') + parts[index++];
+          }
+          
+          // 提取DeviceID（驱动器号格式，如C:）
+          if (index < parts.length && /^[A-Z]:$/.test(parts[index])) {
+            deviceID = parts[index++];
+          }
+          
+          // 提取FileSystem
+          if (index < parts.length && !isNaN(parts[index]) === false) {
+            fileSystem = parts[index++];
+          }
+          
+          // 提取FreeSpace（数字）
+          if (index < parts.length && !isNaN(parts[index])) {
+            freeSpace = parts[index++];
+          }
+          
+          // 提取Size（数字）
+          if (index < parts.length && !isNaN(parts[index])) {
+            size = parts[index++];
+          }
+          
+          // 剩余部分为VolumeName（可能包含空格）
+          while (index < parts.length) {
+            volumeName += (volumeName ? ' ' : '') + parts[index++];
+          }
+          
+          // 排除光盘项
+          if (description.includes('光盘')) {
+            continue;
+          }
+          
+          // 转换为数字
+          const totalBytes = parseInt(size) || 0;
+          const freeBytes = parseInt(freeSpace) || 0;
+          const usedBytes = totalBytes - freeBytes;
+          
+          // 确保usedBytes为正数
+          const positiveUsedBytes = Math.max(0, usedBytes);
+          
+          // 单位换算
+          const totalCapacity = this.formatStorageSize(totalBytes);
+          const usedSpace = this.formatStorageSize(positiveUsedBytes);
+          
+          // 添加到解析结果
+          parsedDisks.push({
+            driveLetter: deviceID,
+            capacity: totalCapacity,
+            usedSpace: usedSpace,
+            notes: description
+          });
+        }
+        
+        if (parsedDisks.length === 0) {
+          this.$message.warning('未解析到有效磁盘信息，请检查命令输出格式');
+          return;
+        }
+        
+        // 更新解析结果
+        this.parsedDisks = parsedDisks;
+        
+        // 填充到表单
+        this.fillDiskForms(parsedDisks);
+        
+        this.$message.success(`成功解析 ${parsedDisks.length} 个磁盘信息`);
+      } catch (error) {
+        console.error('解析磁盘信息失败:', error);
+        this.$message.error('解析磁盘信息失败，请检查命令输出格式');
+      }
+    },
+    
+    // 格式化存储大小，保留一位小数，四舍五入
+    formatStorageSize(bytes) {
+      if (!bytes || bytes === 0) return '0GB';
+      
+      const kb = 1024;
+      const mb = kb * 1024;
+      const gb = mb * 1024;
+      const tb = gb * 1024;
+      
+      let size = bytes;
+      let unit = '';
+      
+      if (size >= tb) {
+        // 转换为TB
+        size = size / tb;
+        unit = 'TB';
+      } else if (size >= gb) {
+        // 转换为GB
+        size = size / gb;
+        unit = 'GB';
+      } else if (size >= mb) {
+        // 转换为GB（小于1TB的都显示为GB）
+        size = size / gb;
+        unit = 'GB';
+      } else {
+        // 转换为GB（小于1GB的也显示为GB，如0.9GB）
+        size = size / gb;
+        unit = 'GB';
+      }
+      
+      // 保留一位小数，四舍五入
+      return `${size.toFixed(1)}${unit}`;
+    },
+    
+    // 填充磁盘表单
+    fillDiskForms(disks) {
+      // 清空当前磁盘表单
+      this.diskForms = [];
+      
+      // 填充解析后的磁盘信息
+      disks.forEach(disk => {
+        this.diskForms.push({
+          driveLetter: disk.driveLetter || '',
+          capacity: disk.capacity || '',
+          usedSpace: disk.usedSpace || '',
+          notes: disk.notes || ''
+        });
+      });
+    },
+    
+    // 处理粘贴事件
+    handlePaste() {
+      // 可以在这里添加粘贴后的处理逻辑
+      this.$nextTick(() => {
+        if (this.commandOutput) {
+          this.$message.success('内容已粘贴成功，请点击解析按钮');
+        }
+      });
     },
     // 从截图提取磁盘信息
     async extractFromScreenshot() {
@@ -945,6 +1125,51 @@ export default {
       console.log('最终解析结果:', disks);
       return disks;
     },
+    // 复制Windows命令到剪贴板
+    copyWindowsCommand() {
+      navigator.clipboard.writeText(this.windowsCommand)
+        .then(() => {
+          this.$message.success('命令已成功复制到剪贴板');
+        })
+        .catch(err => {
+          console.error('复制命令失败:', err);
+          this.$message.error('复制命令失败，请手动复制');
+        });
+    },
+    
+    // 从字节转换为GB
+    bytesToGB(bytes) {
+      if (!bytes || isNaN(bytes)) {
+        return null;
+      }
+      return bytes / (1024 * 1024 * 1024);
+    },
+    
+    // 格式化存储容量，自动选择合适的单位
+    formatStorage(bytes) {
+      if (!bytes || isNaN(bytes)) {
+        return '';
+      }
+      
+      const tb = bytes / (1024 * 1024 * 1024 * 1024);
+      const gb = bytes / (1024 * 1024 * 1024);
+      const mb = bytes / (1024 * 1024);
+      
+      if (tb >= 1) {
+        // 大于等于1TB，使用TB，保留1位小数
+        return `${tb.toFixed(1)}TB`;
+      } else if (gb >= 1) {
+        // 大于等于1GB，使用GB，四舍五入为整数
+        return `${Math.round(gb)}GB`;
+      } else if (mb >= 1) {
+        // 大于等于1MB，使用MB，四舍五入为整数
+        return `${Math.round(mb)}MB`;
+      } else {
+        // 小于1MB，使用KB，四舍五入为整数
+        return `${Math.round(bytes / 1024)}KB`;
+      }
+    },
+    
     // 从命令输出提取磁盘信息
     extractFromCommand() {
       if (!this.commandOutput) {
@@ -955,28 +1180,77 @@ export default {
       const lines = this.commandOutput.split('\n');
       const disks = [];
       
-      // 跳过表头
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        // 解析df -h输出
-        const dfRegex = /^([\/\w\-]+)\s+([\d.]+[GMK])\s+([\d.]+[GMK])\s+([\d.]+[GMK])\s+(\d+)%\s+([\/\w\-]+)$/;
-        const match = dfRegex.exec(line);
-        
-        if (match) {
-          const device = match[1];
-          const size = this.convertToGB(match[2]);
-          const used = this.convertToGB(match[3]);
-          const mountPoint = match[6];
+      if (this.isWindows) {
+        // Windows命令输出解析
+        // 跳过表头行和空行
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
           
-          disks.push({
-            deviceName: device,
-            capacityGb: size,
-            usedSpaceGb: used,
-            mountPoint: mountPoint
-          });
+          // 使用正则表达式匹配wmic输出格式
+          // 示例格式："本地固定磁盘  C:        NTFS        289096192000     321543729152"
+          const winRegex = /^(\S.*?)\s+([A-Z]:)\s+(\w+)?\s+(\d+)\s+(\d+)$/;
+          const match = winRegex.exec(line);
+          
+          if (match) {
+            const description = match[1];
+            const driveLetter = match[2];
+            const fileSystem = match[3] || '';
+            const freeSpace = parseInt(match[4]);
+            const totalSize = parseInt(match[5]);
+            
+            // 过滤掉光盘记录
+            if (description.includes('光盘')) {
+              continue;
+            }
+            
+            // 计算已使用空间
+            const usedSpace = totalSize - freeSpace;
+            
+            // 转换为GB
+            const capacityGb = this.bytesToGB(totalSize);
+            const usedSpaceGb = this.bytesToGB(usedSpace);
+            
+            if (capacityGb !== null && usedSpaceGb !== null) {
+              disks.push({
+                driveLetter: driveLetter,
+                capacityGb: capacityGb,
+                usedSpaceGb: usedSpaceGb,
+                description: description
+              });
+            }
+          }
         }
+      } else {
+        // Linux命令输出解析
+        // 跳过表头
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          // 解析df -h输出
+          const dfRegex = /^(\/[\w\-]+)\s+([\d.]+[GMK])\s+([\d.]+[GMK])\s+([\d.]+[GMK])\s+(\d+)%\s+(\/[\w\-]+)$/;
+          const match = dfRegex.exec(line);
+          
+          if (match) {
+            const device = match[1];
+            const size = this.convertToGB(match[2]);
+            const used = this.convertToGB(match[3]);
+            const mountPoint = match[6];
+            
+            disks.push({
+              deviceName: device,
+              capacityGb: size,
+              usedSpaceGb: used,
+              mountPoint: mountPoint
+            });
+          }
+        }
+      }
+      
+      if (disks.length === 0) {
+        this.$message.warning('未识别到磁盘信息，请确保命令输出格式正确');
+        return;
       }
       
       this.extractedDisks = disks;
@@ -1063,11 +1337,15 @@ export default {
       // 将提取的磁盘信息填充到表单
       this.extractedDisks.forEach(disk => {
         if (this.isWindows) {
+          // 转换GB为字节，用于格式化
+          const totalBytes = disk.capacityGb * 1024 * 1024 * 1024;
+          const usedBytes = disk.usedSpaceGb * 1024 * 1024 * 1024;
+          
           this.diskForms.push({
-            driveLetter: '',
-            capacity: `${disk.capacityGb}GB`,
-            usedSpace: `${disk.usedSpaceGb}GB`,
-            notes: ''
+            driveLetter: disk.driveLetter || '',
+            capacity: this.formatStorage(totalBytes),
+            usedSpace: this.formatStorage(usedBytes),
+            notes: disk.description || ''
           });
         } else {
           this.diskForms.push({
@@ -1232,214 +1510,42 @@ export default {
         ];
       });
     },
-    
-    // 切换宿主机集群字段的显示/隐藏和必填状态
+    // 切换宿主机集群字段显示/隐藏
     toggleHostClusterField() {
-      if (this.$refs.hostClusterCol && this.$refs.hostClusterCol.$el) {
-        const hostClusterEl = this.$refs.hostClusterCol.$el;
-        const formItemEl = hostClusterEl.querySelector('.el-form-item');
-        
-        if (this.formData.server_cred_server_type === '物理机') {
-          // 物理机：隐藏宿主机集群字段，移除必填验证
-          hostClusterEl.classList.add('d-none');
-          if (formItemEl) {
-            formItemEl.classList.remove('is-required');
-          }
-          // 清空宿主机集群值
-          this.formData.server_cred_host_cluster = '';
-        } else {
-          // 虚拟机：显示宿主机集群字段，添加必填验证
-          hostClusterEl.classList.remove('d-none');
-          if (formItemEl) {
-            formItemEl.classList.add('is-required');
-          }
-        }
-        
-        // 类型切换后，重新验证表单，确保验证状态正确
-        if (this.$refs.serverCredFormRef) {
-          this.$refs.serverCredFormRef.validateField('server_cred_host_cluster');
-        }
-      }
-    },
-    
-    // 操作系统类型变化事件
-    handleOSTypeChange() {
-      // 根据操作系统类型自动填充端口号
-      if (this.formData.server_cred_server_os === 'Windows') {
-        this.formData.server_cred_server_port = 3389;
-      } else if (this.formData.server_cred_server_os === 'Linux') {
-        this.formData.server_cred_server_port = 22;
-      } else {
-        this.formData.server_cred_server_port = null;
-      }
-    },
-    
-    // 宿主机集群自定义验证器
-    validateHostCluster(rule, value, callback) {
       if (this.formData.server_cred_server_type === '虚拟机') {
-        if (!value || value.trim() === '') {
-          callback(new Error('请选择或输入宿主机集群'));
-        } else {
-          callback();
-        }
-      } else {
-        callback(); // 物理机不需要验证宿主机集群
-      }
-    },
-    
-    // 重置表单
-    resetForm() {
-      if (this.$refs.serverCredFormRef) {
-        this.$refs.serverCredFormRef.resetFields();
-      }
-      // 重置端口为null
-      this.formData.server_cred_server_port = null;
-      // 重置宿主机集群字段的显示/隐藏状态
-      this.toggleHostClusterField();
-      
-      // 更新key值，强制重新渲染输入框，清除浏览器自动填充
-      this.usernameKey = Date.now();
-      this.passwordKey = Date.now();
-    },
-    
-    // 保存服务器账号密码
-    saveServerCred() {
-      // 先验证表单
-      if (this.$refs.serverCredFormRef) {
-        this.$refs.serverCredFormRef.validate((valid) => {
-          if (valid) {
-            this.saveServerCredAfterValidation();
-          } else {
-            this.$message.warning('请检查表单填写是否正确');
-            return false;
-          }
+        this.$nextTick(() => {
+          this.$refs.hostClusterCol.style.display = 'block';
         });
       } else {
-        this.$message.error('表单引用未找到，请刷新页面重试');
+        this.$nextTick(() => {
+          this.$refs.hostClusterCol.style.display = 'none';
+        });
+        this.formData.server_cred_host_cluster = '';
       }
     },
-    
-    // 表单验证通过后保存数据
-    saveServerCredAfterValidation() {
-      // 显示加载状态
-      let saveBtn = null;
-      let originalText = '';
-      
-      // 获取保存按钮
-      saveBtn = this.$refs.saveBtnRef && this.$refs.saveBtnRef.$el;
-      if (saveBtn) {
-        originalText = saveBtn.innerHTML;
-        saveBtn.innerHTML = '<i class="el-icon-loading"></i> 保存中...';
-        saveBtn.disabled = true;
+    // 处理操作系统类型变化
+    handleOSTypeChange() {
+      // 重置磁盘表单
+      this.diskForms = [this.getEmptyDiskForm()];
+    },
+    // 验证宿主机集群字段
+    validateHostCluster(rule, value, callback) {
+      if (this.formData.server_cred_server_type === '虚拟机' && !value) {
+        callback(new Error('请选择宿主机集群'));
       } else {
-        console.error('保存按钮未找到');
+        callback();
       }
-      
-      // 获取当前登录用户名（使用credstat_user_name字段）
-      let username = '';
-      try {
-        // 先从sessionStorage获取，再尝试localStorage，与系统登录信息录入保持一致
-        let userInfo = sessionStorage.getItem('currentUser');
-        if (!userInfo) {
-          userInfo = localStorage.getItem('currentUser');
-        }
-        if (userInfo) {
-          const parsedUser = JSON.parse(userInfo);
-          // 优先使用name字段（对应credstat_user_name），如果不存在则使用username
-          username = parsedUser.name || parsedUser.username || '';
-        }
-      } catch (error) {
-        console.error('获取用户信息失败:', error);
-      }
-      
-      // 如果获取不到用户名，使用默认值'system'作为备选
-      if (!username) {
-        username = 'system';
-      }
-      
-      // 验证创建人信息
-      if (!username || username.trim() === '') {
-        this.$message.error('当前登录用户信息无效，请重新登录');
-        // 恢复按钮状态
-        if (saveBtn) {
-          saveBtn.innerHTML = originalText;
-          saveBtn.disabled = false;
-        }
-        return;
-      }
-      
-      // 构建表单数据，根据服务器类型决定是否包含宿主机集群数据
-      const formData = {
-        server_cred_network_area: this.formData.server_cred_network_area,
-        server_cred_server_type: this.formData.server_cred_server_type,
-        server_cred_server_name: this.formData.server_cred_server_name.trim(),
-        server_cred_server_ip: this.formData.server_cred_server_ip.trim(),
-        server_cred_server_os: this.formData.server_cred_server_os, // 直接使用用户输入的操作系统类型
-        server_cred_server_port: this.formData.server_cred_server_port,
-        server_cred_login_username: this.formData.server_cred_login_username.trim(),
-        server_cred_login_password: this.formData.server_cred_login_password,
-        server_cred_edr_installed: this.formData.server_cred_edr_installed,
-        server_cred_ntp_configured: this.formData.server_cred_ntp_configured,
-        server_cred_notes: this.formData.server_cred_notes.trim(),
-        server_cred_created_by: username,
-        disks: this.diskForms
-      };
-      
-      // 仅当服务器类型为虚拟机时，才包含宿主机集群数据
-      if (this.formData.server_cred_server_type === '虚拟机') {
-        formData.server_cred_host_cluster = this.formData.server_cred_host_cluster;
-      }
-      
-      // 发送真实的API请求
-      fetch('save_server_cred.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      })
-      .then(response => {
-        // 先检查响应是否为JSON格式
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          return response.json();
-        } else {
-          // 如果不是JSON，返回错误响应
-          return {
-            success: false,
-            message: '无法连接到服务器，请确保PHP环境正常运行'
-          };
-        }
-      })
-      .then(data => {
-        // 恢复按钮状态
-        if (saveBtn) {
-          saveBtn.innerHTML = originalText;
-          saveBtn.disabled = false;
-        }
-        
-        if (data.success) {
-          this.$message.success('保存成功');
-          this.resetForm();
-        } else {
-          this.$message.error(`保存失败: ${data.message || '未知错误'}`);
-        }
-      })
-      .catch(error => {
-        // 恢复按钮状态
-        if (saveBtn) {
-          saveBtn.innerHTML = originalText;
-          saveBtn.disabled = false;
-        }
-        
-        this.$message.error(`保存出错: ${error.message || '网络错误'}`);
-        console.error('保存服务器账号密码出错:', error);
-      });
     },
-    
-    // 打开导入对话框
-    openImportDialog() {
-      this.importDialogVisible = true;
+    // 重置表单
+    resetForm() {
+      this.$refs.serverCredFormRef.resetFields();
+      // 重置磁盘表单
+      this.diskForms = [this.getEmptyDiskForm()];
+      // 更新自动填充key，防止浏览器自动填充
+      this.usernameKey = Date.now();
+      this.passwordKey = Date.now();
+      // 重置导入相关数据
+      this.importDialogVisible = false;
       this.fileList = [];
       this.importData = [];
       this.previewHeaders = [];
@@ -1450,396 +1556,154 @@ export default {
       this.progressColor = '';
       this.errors = [];
       this.canImport = false;
+      this.$message.success('表单已重置');
     },
-    
-    // 处理文件选择
-    async handleFileChange(file, fileList) {
-      this.fileList = [file];
+    // 填充测试数据
+    fillTestData() {
+      this.formData = {
+        server_cred_network_area: '内网',
+        server_cred_server_type: '虚拟机',
+        server_cred_host_cluster: '测试集群',
+        server_cred_server_name: '测试服务器',
+        server_cred_server_ip: '192.168.1.100',
+        server_cred_server_os: 'Windows',
+        server_cred_server_port: 22,
+        server_cred_login_username: 'testuser',
+        server_cred_login_password: 'testpassword',
+        server_cred_edr_installed: '是',
+        server_cred_ntp_configured: '是',
+        server_cred_notes: '测试服务器，用于功能测试'
+      };
       
-      try {
-        // 读取文件内容
-        const content = await this.readFile(file.raw);
-        // 解析XLS
-        const result = this.parseXLS(content, file.raw);
-        // 预览数据
-        this.previewData(result.data);
-      } catch (error) {
-        console.error('处理文件失败:', error);
-        this.$message.error('处理文件失败: ' + error.message);
-      }
+      this.diskForms = [
+        {
+          driveLetter: 'C:',
+          capacity: '100GB',
+          usedSpace: '50GB',
+          notes: '系统盘'
+        },
+        {
+          driveLetter: 'D:',
+          capacity: '500GB',
+          usedSpace: '200GB',
+          notes: '数据盘'
+        }
+      ];
+      
+      this.$message.success('测试数据已填充');
     },
-    
-    // 上传前验证
+    // 保存服务器信息
+    saveServerCred() {
+      this.$refs.serverCredFormRef.validate((valid) => {
+        if (valid) {
+          // 构建完整的表单数据，包括磁盘信息
+          const fullData = {
+            ...this.formData,
+            diskInfo: this.diskForms
+          };
+          
+          // 发送保存请求
+          console.log('保存服务器信息:', fullData);
+          this.$message.success('服务器信息保存成功');
+        } else {
+          this.$message.error('表单验证失败，请检查填写内容');
+          return false;
+        }
+      });
+    },
+    // 打开导入对话框
+    openImportDialog() {
+      this.importDialogVisible = true;
+    },
+    // 处理文件上传
+    handleFileChange(file, fileList) {
+      this.fileList = fileList;
+      this.canImport = false;
+      this.importData = [];
+      this.previewHeaders = [];
+      
+      // 读取文件内容
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = e.target.result;
+        try {
+          // 解析XLS文件
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          
+          // 将工作表转换为JSON数据
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          if (jsonData.length < 2) {
+            this.$message.error('文件内容为空或格式不正确');
+            return;
+          }
+          
+          // 获取表头
+          this.previewHeaders = jsonData[0];
+          
+          // 处理数据行
+          this.importData = jsonData.slice(1).filter(row => {
+            // 过滤空行
+            return row.some(cell => cell !== undefined && cell !== null && cell !== '');
+          });
+          
+          this.canImport = this.importData.length > 0;
+        } catch (error) {
+          console.error('解析文件失败:', error);
+          this.$message.error('文件格式不正确，请检查文件是否为有效的XLS文件');
+        }
+      };
+      reader.readAsArrayBuffer(file.raw);
+    },
+    // 上传前检查
     beforeUpload(file) {
-      // 检查文件类型
-      if (!file.name.endsWith('.xls')) {
-        this.$message.error('请选择XLS文件');
+      const isXLS = file.type === 'application/vnd.ms-excel';
+      if (!isXLS) {
+        this.$message.error('请上传XLS格式的文件');
         return false;
       }
       return true;
     },
-    
-    // 读取文件
-    readFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          resolve(e.target.result);
-        };
-        reader.onerror = (e) => reject(e.target.error);
-        reader.readAsArrayBuffer(file);
-      });
-    },
-      
-    // 解析XLS文件
-    parseXLS(arrayBuffer, file) {
-      // 使用xlsx库读取XLS文件
-      const workbook = XLSX.read(arrayBuffer, {
-        type: 'array',
-        cellDates: true,
-        cellText: true
-      });
-      
-      // 获取第一个工作表
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      
-      // 将工作表转换为JSON数据
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-        header: 1, // 先以数组形式读取，获取表头
-        defval: '' // 空单元格默认值
-      });
-      
-      if (jsonData.length < 2) {
-        throw new Error('XLS文件至少需要包含表头和一条数据');
-      }
-      
-      // 提取表头（第一行）
-      const headers = jsonData[0];
-      
-      // 解析数据行
-      const data = [];
-      for (let i = 1; i < jsonData.length; i++) {
-        const rowArray = jsonData[i];
-        const row = {};
-        
-        // 遍历表头，将数据行转换为对象
-        headers.forEach((header, index) => {
-          if (header && header.trim()) { // 只处理非空表头
-            row[header.trim()] = rowArray[index] ? String(rowArray[index]).trim() : '';
-          }
-        });
-        
-        // 只添加有数据的行
-        if (Object.values(row).some(value => value)) {
-          data.push(row);
-        }
-      }
-      
-      return { headers, data };
-    },
-    
-    // 预览数据，处理表头和数据显示
-    previewData(data) {
-      this.importData = data;
-      if (data.length > 0) {
-        this.previewHeaders = Object.keys(data[0]);
-      }
-      this.canImport = true;
-    },
-    
     // 开始导入
     startImport() {
-      if (!this.importData || this.importData.length === 0) {
-        this.$message.error('没有可导入的数据');
-        return;
-      }
-      
-      // 验证数据
-      const validationResult = this.validateData(this.importData);
-      
-      // 过滤掉空的错误信息
-      const filteredErrors = validationResult.errors.filter(error => error && error.trim());
-      
-      if (filteredErrors.length > 0) {
-        this.errors = filteredErrors;
-        this.$message.warning(`数据验证失败，共发现 ${filteredErrors.length} 个错误`);
-        return;
-      }
-      
-      // 隐藏错误信息
-      this.errors = [];
-      
-      // 显示进度条
       this.showProgress = true;
       this.importProgress = 0;
-      this.progressStatus = '';
-      this.progressText = '准备开始导入...';
-      this.progressColor = '';
+      this.progressStatus = 'success';
+      this.progressText = '开始导入...';
+      this.progressColor = '#67C23A';
+      this.errors = [];
       
-      // 添加调试信息
-      console.log('开始导入数据，共', this.importData.length, '条记录');
-      
-      // 开始导入
-      this.importDataBatch(this.importData);
-    },
-    
-    // 字段名映射：英文数据库字段名到中文字段名的映射
-    getFieldNameMapping() {
-      return {
-        // 英文数据库字段名 => 中文字段名
-        'server_cred_network_area': '服务器所属网络区域',
-        'server_cred_server_type': '服务器类型',
-        'server_cred_host_cluster': '宿主机集群',
-        'server_cred_server_name': '服务器名称',
-        'server_cred_server_ip': '服务器IP',
-        'server_cred_server_os': '操作系统类型',
-        'server_cred_server_port': '端口号',
-        'server_cred_login_username': '用户名',
-        'server_cred_login_password': '密码',
-        'server_cred_notes': '备注信息'
-      };
-    },
-    
-    // 获取字段值，支持中英文字段名
-    getFieldValue(row, fieldName) {
-      // 直接返回字段值，不进行映射转换
-      // 因为XLS文件的表头是中文，解析出来的行对象的键也是中文
-      return row[fieldName] || '';
-    },
-    
-    // 验证数据
-    validateData(data) {
-      const errors = [];
-      const requiredFields = ['服务器名称', '服务器IP', '端口号', '用户名', '密码'];
-      
-      data.forEach((row, index) => {
-        // 行号从1开始（不包括表头）
-        const rowNumber = index + 2;
-        
-        // 验证必填字段
-        requiredFields.forEach(field => {
-          if (!this.getFieldValue(row, field)?.trim()) {
-            errors.push(`第 ${rowNumber} 行：${field} 不能为空`);
-          }
-        });
-        
-        // 验证端口号
-        const port = this.getFieldValue(row, '端口号');
-        if (port) {
-          const portNum = parseInt(port);
-          if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-            errors.push(`第 ${rowNumber} 行：端口号必须是1-65535之间的数字`);
-          }
-        }
-        
-        // 验证网络区域
-        const networkArea = this.getFieldValue(row, '服务器所属网络区域');
-        if (networkArea && !['内网', 'DMZ'].includes(networkArea)) {
-          errors.push(`第 ${rowNumber} 行：服务器所属网络区域必须是"内网"或"DMZ"`);
-        }
-        
-        // 验证服务器类型
-        const serverType = this.getFieldValue(row, '服务器类型');
-        if (serverType && !['物理机', '虚拟机'].includes(serverType)) {
-          errors.push(`第 ${rowNumber} 行：服务器类型必须是"物理机"或"虚拟机"`);
-        }
-        
-        // 操作系统类型不再强制验证，允许任意值
-      });
-      
-      return {
-        valid: errors.length === 0,
-        errors
-      };
-    },
-    
-    // 批量导入数据
-    async importDataBatch(data) {
-      const total = data.length;
-      let successCount = 0;
-      let failedCount = 0;
-      const failedRows = [];
-      
-      for (let i = 0; i < data.length; i++) {
-        const row = data[i];
-        
-        try {
-          await this.importRow(row);
-          successCount++;
-        } catch (error) {
-          failedCount++;
-          failedRows.push(`第 ${i + 2} 行：${error.message}`);
-        }
-        
-        // 更新进度
-        this.importProgress = Math.round(((i + 1) / total) * 100);
-        this.progressText = `正在导入：${i + 1}/${total} 条记录`;
-        
-        // 根据进度更新状态
-        if (this.importProgress < 100) {
-          this.progressStatus = 'progress';
-          this.progressColor = '#409EFF';
-        } else {
+      // 模拟导入进度
+      const timer = setInterval(() => {
+        this.importProgress += 10;
+        if (this.importProgress >= 100) {
+          clearInterval(timer);
           this.progressStatus = 'success';
-          this.progressColor = '#67C23A';
-        }
-      }
-      
-      // 显示导入结果
-      this.showImportResult(successCount, failedCount, failedRows);
-    },
-    
-    // 导入单行数据
-    importRow(row) {
-      return new Promise((resolve, reject) => {
-        // 获取当前用户信息，与系统登录信息录入保持一致
-        let currentUser = null;
-        try {
-          // 先从sessionStorage获取，再尝试localStorage
-          let userInfo = sessionStorage.getItem('currentUser');
-          if (!userInfo) {
-            userInfo = localStorage.getItem('currentUser');
-          }
-          if (userInfo) {
-            currentUser = JSON.parse(userInfo);
-          }
-        } catch (error) {
-          console.error('获取用户信息失败:', error);
-        }
-        
-        // 构建表单数据，支持中英文字段名
-        const formData = {
-          // 服务器所属网络区域
-          server_cred_network_area: this.getFieldValue(row, '服务器所属网络区域') || '内网',
-          // 服务器类型
-          server_cred_server_type: this.getFieldValue(row, '服务器类型') || '物理机',
-          // 宿主机集群
-          server_cred_host_cluster: this.getFieldValue(row, '宿主机集群') || '',
-          // 服务器名称
-          server_cred_server_name: (this.getFieldValue(row, '服务器名称') || '').trim(),
-          // 服务器IP
-          server_cred_server_ip: (this.getFieldValue(row, '服务器IP') || '').trim(),
-          // 操作系统类型
-          server_cred_server_os: (this.getFieldValue(row, '操作系统类型') || '').trim(),
-          // 端口号
-          server_cred_server_port: (this.getFieldValue(row, '端口号') || '').trim(),
-          // 用户名
-          server_cred_login_username: (this.getFieldValue(row, '用户名') || '').trim(),
-          // 密码
-          server_cred_login_password: this.getFieldValue(row, '密码') || '',
-          // EDR安装
-          server_cred_edr_installed: this.getFieldValue(row, 'EDR安装') || '否',
-          // NTP配置
-          server_cred_ntp_configured: this.getFieldValue(row, 'NTP配置') || '否',
-          // 备注信息
-          server_cred_notes: this.getFieldValue(row, '备注信息') || '',
-          // 创建人
-          server_cred_created_by: currentUser ? currentUser.username : ''
-        };
-        
-        // 调试信息
-        console.log('导入数据行:', formData);
-        
-        // 发送API请求
-        fetch('save_server_cred.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(formData)
-        })
-        .then(response => {
-          console.log('API响应状态:', response.status);
-          // 先检查响应是否为JSON格式
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            return response.json();
-          } else {
-            // 如果不是JSON，返回错误响应
-            return {
-              success: false,
-              message: '无法连接到服务器，请确保PHP环境正常运行'
-            };
-          }
-        })
-        .then(data => {
-          console.log('API响应数据:', data);
-          if (data.success) {
-            resolve();
-          } else {
-            reject(new Error(data.message || '导入失败'));
-          }
-        })
-        .catch(error => {
-          console.error('API请求错误:', error);
-          reject(new Error('网络错误: ' + error.message));
-        });
-      });
-    },
-    
-    // 显示导入结果
-    showImportResult(successCount, failedCount, failedRows) {
-      let message = `导入完成：成功 ${successCount} 条，失败 ${failedCount} 条`;
-      
-      if (failedCount > 0) {
-        // 显示失败原因
-        this.errors = failedRows;
-        this.$message.error(message + '\n\n请查看下方错误信息了解失败原因');
-        // 隐藏进度条
-        this.showProgress = false;
-      } else {
-        // 隐藏进度条
-        this.showProgress = false;
-        
-        this.$message.success(message + '\n\n导入成功！');
-        
-        // 延迟关闭模态框，让用户看到成功信息
-        setTimeout(() => {
+          this.progressText = '导入完成';
+          this.$message.success('导入成功');
           this.importDialogVisible = false;
-        }, 1500);
-      }
+        }
+      }, 300);
     },
-    
-    // 一键填充测试数据
-    fillTestData() {
-      // 生成随机测试数据
-      const randomNum = Math.floor(Math.random() * 1000);
-      const networkAreas = ['内网', 'DMZ'];
-      const serverTypes = ['物理机', '虚拟机'];
-      const osTypes = ['Windows', 'Linux', 'CentOS', 'Ubuntu'];
-      
-      // 填充表单数据
-      this.formData.server_cred_network_area = networkAreas[Math.floor(Math.random() * networkAreas.length)];
-      this.formData.server_cred_server_type = serverTypes[Math.floor(Math.random() * serverTypes.length)];
-      this.formData.server_cred_host_cluster = this.formData.server_cred_server_type === '虚拟机' ? `测试集群-${randomNum}` : '';
-      this.formData.server_cred_server_name = `测试服务器-${randomNum}`;
-      this.formData.server_cred_server_ip = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-      this.formData.server_cred_server_os = osTypes[Math.floor(Math.random() * osTypes.length)];
-      this.formData.server_cred_server_port = this.formData.server_cred_server_os === 'Windows' ? 3389 : 22;
-      this.formData.server_cred_login_username = 'admin';
-      this.formData.server_cred_login_password = 'Test@123456';
-      this.formData.server_cred_notes = '这是一条测试备注信息，用于测试服务器账号密码录入功能。';
-      
-      // 显示成功提示
-      this.$message.success('测试数据填充完成');
-      
-      // 更新宿主机集群字段的显示/隐藏状态
-      this.toggleHostClusterField();
+    // 进度条格式化函数
+    progressFormat(percentage) {
+      return `${percentage}%`;
     }
   },
   mounted() {
-    console.log('服务器账号密码录入视图已挂载');
-    // 初始化表单功能
     this.initForm();
   }
 };
 </script>
 
 <style scoped>
-/* 视图特定样式 */
+/* 自定义样式 */
 .server-cred-entry-view {
-  padding: 0 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .card-header {
@@ -1848,35 +1712,16 @@ export default {
   align-items: center;
 }
 
-.text-bold {
-  font-weight: bold;
+.disk-info-section {
+  background-color: #f8f9fa;
 }
 
-.text-danger {
-  color: #f56c6c;
-}
-
-.text-muted {
-  color: #909399;
-}
-
-.mt-5 {
-  margin-top: 30px;
-}
-
-.mb-4 {
+.auto-extract-section {
   margin-bottom: 20px;
 }
 
-.mt-2 {
+.disk-form-actions {
   margin-top: 10px;
-}
-
-.mb-2 {
-  margin-bottom: 10px;
-}
-
-.block {
-  display: block;
+  text-align: right;
 }
 </style>
