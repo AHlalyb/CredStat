@@ -459,10 +459,31 @@
       width="80%"
       :close-on-click-modal="false"
     >
-      <div class="windows-disk-extract">
+      <!-- 切换按钮 -->
+      <div class="disk-extract-tabs mb-4">
+        <el-button 
+          type="primary" 
+          :plain="extractType !== 'windows'" 
+          @click="extractType = 'windows'" 
+          class="mr-2"
+          size="large"
+        >
+          windows磁盘提取
+        </el-button>
+        <el-button 
+          type="primary" 
+          :plain="extractType !== 'linux'" 
+          @click="extractType = 'linux'" 
+          size="large"
+        >
+          linux磁盘提取
+        </el-button>
+      </div>
+      
+      <!-- Windows磁盘提取页面 -->
+      <div v-if="extractType === 'windows'" class="windows-disk-extract">
         <!-- 命令复制区域 -->
         <div class="command-copy-section mb-4">
-
           <p class="text-sm text-gray-600 mb-2">请在Windows服务器上执行以下命令，然后将输出结果粘贴到下方文本框中：</p>
           <div class="flex items-center mb-2">
             <el-input
@@ -516,6 +537,65 @@
           </el-table>
         </div>
       </div>
+      
+      <!-- Linux磁盘提取页面 -->
+      <div v-else-if="extractType === 'linux'" class="linux-disk-extract">
+        <!-- Linux磁盘提取内容 -->
+        <div class="command-copy-section mb-4">
+          <p class="text-sm text-gray-600 mb-2">请在Linux服务器上执行以下命令，然后将输出结果粘贴到下方文本框中：</p>
+          <div class="flex items-center mb-2">
+            <el-input
+              v-model="linuxCommand"
+              readonly
+              class="mr-2"
+            ></el-input>
+            <el-button type="primary" @click="copyLinuxCommand">复制命令</el-button>
+          </div>
+        </div>
+        
+        <!-- 文本输入区域 -->
+        <div class="command-output-section mb-4" style="min-height: 200px; margin-top: 20px;">
+          <h4 style="margin-bottom: 10px; font-weight: bold;">命令输出结果</h4>
+          <p style="margin-bottom: 10px; font-size: 14px; color: #606266;">请将Linux服务器上执行命令的完整输出结果粘贴到下方文本区域</p>
+          <textarea
+            v-model="linuxCommandOutput"
+            placeholder="在此粘贴命令输出结果..."
+            rows="10"
+            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            @paste="handleLinuxPaste"
+          ></textarea>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div v-if="linuxCommandOutput" style="font-size: 12px; color: #67C23A;">
+              ✓ 已检测到粘贴内容，点击下方按钮解析
+            </div>
+            <button 
+              v-if="linuxCommandOutput"
+              @click="linuxCommandOutput = ''"
+              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+            >
+              清空
+            </button>
+          </div>
+        </div>
+        
+        <!-- 解析按钮 -->
+        <div class="parse-button-section mb-4">
+          <el-button type="primary" @click="parseLinuxDiskInfo">解析并填充磁盘信息</el-button>
+        </div>
+        
+        <!-- 解析结果预览 -->
+        <div v-if="parsedLinuxDisks.length > 0" class="parse-result-section mb-4">
+          <h6 class="text-bold mb-2">解析结果预览</h6>
+          <el-table :data="parsedLinuxDisks" size="small" border>
+            <el-table-column label="设备名称" prop="deviceName"></el-table-column>
+            <el-table-column label="文件系统类型" prop="fileSystemType"></el-table-column>
+            <el-table-column label="容量" prop="capacity"></el-table-column>
+            <el-table-column label="已使用空间" prop="usedSpace"></el-table-column>
+            <el-table-column label="挂载点" prop="mountPoint"></el-table-column>
+            <el-table-column label="磁盘信息备注" prop="notes"></el-table-column>
+          </el-table>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -559,12 +639,16 @@ export default {
       diskForms: [this.getEmptyDiskForm()],
       // 自动提取磁盘信息对话框
       extractDialogVisible: false,
-      extractType: 'screenshot', // 或 'command'
+      extractType: 'windows', // windows或linux
       commandOutput: '',
       extractedDisks: [],
       parsedDisks: [], // 解析后的Windows磁盘信息
       // Windows命令相关
       windowsCommand: 'wmic logicaldisk get DeviceID, VolumeName, Size, FreeSpace, FileSystem, Description',
+      // Linux命令相关
+      linuxCommand: 'df -h',
+      linuxCommandOutput: '',
+      parsedLinuxDisks: [], // 解析后的Linux磁盘信息
       // 截图提取相关变量
       isExtracting: false,
       screenshotData: '',
