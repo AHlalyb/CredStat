@@ -459,6 +459,21 @@
       width="80%"
       :close-on-click-modal="false"
     >
+      <!-- 操作系统类型选择器 -->
+      <div class="os-type-selector mb-4">
+        <el-form-item label="操作系统类型">
+          <el-select
+            v-model="dialogOsType"
+            placeholder="请选择操作系统类型"
+            style="width: 100%"
+            @change="handleDialogOsTypeChange"
+          >
+            <el-option label="Windows" value="Windows"></el-option>
+            <el-option label="Linux" value="Linux"></el-option>
+          </el-select>
+        </el-form-item>
+      </div>
+      
       <!-- 切换按钮 -->
       <div class="disk-extract-tabs mb-4">
         <el-button 
@@ -640,6 +655,7 @@ export default {
       // 自动提取磁盘信息对话框
       extractDialogVisible: false,
       extractType: 'windows', // windows或linux
+      dialogOsType: '', // 对话框中选择的操作系统类型
       commandOutput: '',
       extractedDisks: [],
       parsedDisks: [], // 解析后的Windows磁盘信息
@@ -844,6 +860,13 @@ export default {
     },
     // 显示自动提取磁盘信息对话框
     showExtractDialog() {
+      // 根据当前操作系统类型设置dialogOsType和extractType
+      this.dialogOsType = this.formData.server_cred_server_os || 'Windows';
+      if (this.dialogOsType.toLowerCase().includes('windows')) {
+        this.extractType = 'windows';
+      } else {
+        this.extractType = 'linux';
+      }
       this.extractDialogVisible = true;
     },
     
@@ -1953,6 +1976,14 @@ export default {
     handleOSTypeChange() {
       // 重置磁盘表单
       this.diskForms = [this.getEmptyDiskForm()];
+    },
+    // 处理对话框中操作系统类型变化
+    handleDialogOsTypeChange() {
+      if (this.dialogOsType.toLowerCase().includes('windows')) {
+        this.extractType = 'windows';
+      } else {
+        this.extractType = 'linux';
+      }
     },
     // 验证宿主机集群字段
     validateHostCluster(rule, value, callback) {
