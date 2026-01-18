@@ -33,6 +33,9 @@ switch ($data['action']) {
     case 'save_server_cred':
         saveServerCred($data, $dbConfig);
         break;
+    case 'get_disk_info':
+        getDiskInfo($data, $dbConfig);
+        break;
     default:
         $response['message'] = '无效的action参数';
         echo json_encode($response);
@@ -235,6 +238,107 @@ function saveServerCred($data, $dbConfig) {
             }
         }
         
+        $response['message'] = $e->getMessage();
+    }
+    
+    // 返回响应
+    echo json_encode($response);
+}
+
+/**
+ * 获取服务器磁盘信息
+ * @param array $data 请求数据
+ * @param array $dbConfig 数据库配置
+ */
+function getDiskInfo($data, $dbConfig) {
+    // 初始化响应
+    $response = [
+        'success' => false,
+        'message' => '获取磁盘信息失败',
+        'data' => []
+    ];
+    
+    try {
+        // 检查服务器ID
+        if (!isset($data['server_cred_id'])) {
+            $response['message'] = '缺少服务器ID参数';
+            echo json_encode($response);
+            return;
+        }
+        
+        $serverId = $data['server_cred_id'];
+        
+        // 连接数据库
+        $conn = new mysqli(
+            $dbConfig['host'],
+            $dbConfig['username'],
+            $dbConfig['password'],
+            $dbConfig['dbname'],
+            $dbConfig['port']
+        );
+        
+        // 检查连接
+        if ($conn->connect_error) {
+            $response['message'] = '数据库连接失败: ' . $conn->connect_error;
+            echo json_encode($response);
+            return;
+        }
+        
+        // 查询服务器基本信息，获取操作系统类型
+        $osSql = "SELECT server_cred_server_os FROM server_cred WHERE id = ?";
+        $osStmt = $conn->prepare($osSql);
+        if (!$osStmt) {
+            throw new Exception('准备操作系统查询语句失败: ' . $conn->error);
+        }
+        
+        $osStmt->bind_param('i', $serverId);
+        $osStmt->execute();
+        $osResult = $osStmt->get_result();
+        
+        $osType = 'linux'; // 默认值
+        if ($osRow = $osResult->fetch_assoc()) {
+            $osType = strtolower($osRow['server_cred_server_os']);
+            $osType = strpos($osType, 'windows') !== false ? 'windows' : 'linux';
+        }
+        $osStmt->close();
+        
+        // 查询磁盘信息
+        $diskSql = "SELECT 
+            server_cred_volu_windows_drive_letter as drive_letter,
+            server_cred_volu_linux_device_name as device_name,
+            server_cred_volu_linux_mount_point as mount_point,
+            server_cred_volu_capacity as capacity,
+            server_cred_volu_used_space as used_space,
+            server_cred_volu_file_system_type as file_system_type,
+            server_cred_volu_notes as notes
+        FROM server_cred_volu_info 
+        WHERE server_cred_id = ?";
+        
+        $diskStmt = $conn->prepare($diskSql);
+        if (!$diskStmt) {
+            throw new Exception('准备磁盘查询语句失败: ' . $conn->error);
+        }
+        
+        $diskStmt->bind_param('i', $serverId);
+        $diskStmt->execute();
+        $diskResult = $diskStmt->get_result();
+        
+        $diskData = [];
+        while ($row = $diskResult->fetch_assoc()) {
+            $diskData[] = $row;
+        }
+        
+        $diskStmt->close();
+        $conn->close();
+        
+        // 设置成功响应
+        $response = [
+            'success' => true,
+            'message' => '获取磁盘信息成功',
+            'data' => $diskData
+        ];
+        
+    } catch (Exception $e) {
         $response['message'] = $e->getMessage();
     }
     

@@ -637,6 +637,7 @@ export default {
     return {
       // 表单数据
       formData: {
+        server_cred_id: null,
         server_cred_network_area: '内网',
         server_cred_server_type: '虚拟机',
         server_cred_host_cluster: '',
@@ -2222,10 +2223,90 @@ export default {
     // 进度条格式化函数
     progressFormat(percentage) {
       return `${percentage}%`;
+    },
+    
+    // 查询磁盘信息
+    async fetchDiskInfo(serverId) {
+      try {
+        // 发送请求获取磁盘信息
+        const response = await fetch('/server_cred_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'get_disk_info',
+            server_cred_id: serverId
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // 填充磁盘信息
+          this.fillDiskInfoFromData(data.data);
+        } else {
+          console.error('获取磁盘信息失败:', data.message);
+          this.$message.error('获取磁盘信息失败');
+        }
+      } catch (error) {
+        console.error('获取磁盘信息出错:', error);
+        this.$message.error('获取磁盘信息出错，请稍后重试');
+      }
+    },
+    
+    // 从数据填充磁盘信息
+    fillDiskInfoFromData(diskData) {
+      if (!diskData || !Array.isArray(diskData)) {
+        this.diskForms = [this.getEmptyDiskForm()];
+        return;
+      }
+      
+      this.diskForms = [];
+      
+      diskData.forEach(item => {
+        if (this.isWindows) {
+          this.diskForms.push({
+            driveLetter: item.drive_letter || '',
+            capacity: item.capacity || '',
+            usedSpace: item.used_space || '',
+            notes: item.notes || ''
+          });
+        } else {
+          this.diskForms.push({
+            deviceName: item.device_name || '',
+            fileSystemType: item.file_system_type || '',
+            capacity: item.capacity || '',
+            usedSpace: item.used_space || '',
+            mountPoint: item.mount_point || '',
+            notes: item.notes || ''
+          });
+        }
+      });
+      
+      // 如果没有磁盘信息，添加一个空表单
+      if (this.diskForms.length === 0) {
+        this.diskForms = [this.getEmptyDiskForm()];
+      }
+    },
+    
+    // 加载服务器信息（用于编辑场景）
+    loadServerInfo(serverId) {
+      this.formData.server_cred_id = serverId;
+      // 这里可以添加加载服务器基本信息的逻辑
+      // 然后调用fetchDiskInfo获取磁盘信息
+      this.fetchDiskInfo(serverId);
     }
   },
   mounted() {
     this.initForm();
+    
+    // 检查URL参数中是否有服务器ID，如果有则加载服务器信息
+    const urlParams = new URLSearchParams(window.location.search);
+    const serverId = urlParams.get('server_id');
+    if (serverId) {
+      this.loadServerInfo(serverId);
+    }
   }
 };
 </script>

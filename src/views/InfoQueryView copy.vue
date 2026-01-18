@@ -3097,71 +3097,6 @@ export default {
       // 操作系统类型变化时，重置磁盘表单
       this.diskForms = [this.getEmptyDiskForm()];
     },
-    
-    // 查询磁盘信息
-    async fetchDiskInfo(serverId) {
-      try {
-        // 发送请求获取磁盘信息
-        const response = await fetch('/server_cred_api.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'get_disk_info',
-            server_cred_id: serverId
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          // 填充磁盘信息
-          this.fillDiskInfoFromData(data.data);
-        } else {
-          console.error('获取磁盘信息失败:', data.message);
-          this.$message.error('获取磁盘信息失败');
-        }
-      } catch (error) {
-        console.error('获取磁盘信息出错:', error);
-        this.$message.error('获取磁盘信息出错，请稍后重试');
-      }
-    },
-    
-    // 从数据填充磁盘信息
-    fillDiskInfoFromData(diskData) {
-      if (!diskData || !Array.isArray(diskData)) {
-        this.diskForms = [this.getEmptyDiskForm()];
-        return;
-      }
-      
-      this.diskForms = [];
-      
-      diskData.forEach(item => {
-        if (this.isWindows) {
-          this.diskForms.push({
-            driveLetter: item.drive_letter || '',
-            capacity: item.capacity || '',
-            usedSpace: item.used_space || '',
-            notes: item.notes || ''
-          });
-        } else {
-          this.diskForms.push({
-            deviceName: item.device_name || '',
-            fileSystemType: item.file_system_type || '',
-            capacity: item.capacity || '',
-            usedSpace: item.used_space || '',
-            mountPoint: item.mount_point || '',
-            notes: item.notes || ''
-          });
-        }
-      });
-      
-      // 如果没有磁盘信息，添加一个空表单
-      if (this.diskForms.length === 0) {
-        this.diskForms = [this.getEmptyDiskForm()];
-      }
-    },
     // 检查是否有任何操作权限
     hasAnyPermission() {
       // Permission values are already normalized to numbers during initialization
@@ -3417,16 +3352,13 @@ export default {
           if (this.searchForm.queryType === 'server') {
             processedData = data.data.map(item => {
               // 如果有server_cred_server_ip字段，将其映射到ip字段
-              // 同时保留所有原始字段，包括server_cred_disks
-              return {
-                ...item,
-                ip: item.server_cred_server_ip || item.ip || '',
-                name: item.server_cred_server_name || item.name || '',
-                port: item.server_cred_server_port || item.port || '',
-                os: item.server_cred_server_os || item.os || '',
-                username: item.server_cred_login_username || item.username || '',
-                password: item.server_cred_login_password || item.password || ''
-              };
+              if (item.server_cred_server_ip) {
+                return {
+                  ...item,
+                  ip: item.server_cred_server_ip
+                };
+              }
+              return item;
             });
           }
           // 针对网络设备登录信息类型，处理相关字段
@@ -3853,99 +3785,31 @@ export default {
           this.diskForms = [];
           
           // 尝试从record中获取磁盘信息
-          console.log('=== 磁盘信息填充调试 ===');
-          console.log('record对象:', record);
-          console.log('record.server_cred_disks:', record.server_cred_disks);
-          console.log('record.server_cred_disks类型:', typeof record.server_cred_disks);
-          
-          // 尝试多种可能的字段名
-          let diskData = null;
-          const possibleDiskFields = [
-            'server_cred_disks', 'disks', 'disk_forms', 'diskForms', 
-            'server_cred_disk', 'disk', 'server_disks', 'server_disk',
-            'disk_info', 'diskInfo', 'disks_info', 'disksInfo'
-          ];
-          
-          // 尝试从record的直接字段中获取
-          for (const field of possibleDiskFields) {
-            if (record[field] !== undefined && record[field] !== null && record[field] !== '') {
-              diskData = record[field];
-              console.log(`找到磁盘数据字段: ${field}`, diskData);
-              break;
-            }
-          }
-          
-          // 尝试从record的嵌套结构中获取
-          if (!diskData) {
-            // 尝试从record.data中获取
-            if (record.data && typeof record.data === 'object') {
-              for (const field of possibleDiskFields) {
-                if (record.data[field] !== undefined && record.data[field] !== null && record.data[field] !== '') {
-                  diskData = record.data[field];
-                  console.log(`从record.data找到磁盘数据字段: ${field}`, diskData);
-                  break;
-                }
-              }
-            }
-          }
-          
-          console.log('最终使用的磁盘数据:', diskData);
-          
-          if (diskData) {
+          if (record.server_cred_disks) {
             try {
-              const disks = typeof diskData === 'string' ? JSON.parse(diskData) : diskData;
-              console.log('解析后的磁盘数据:', disks);
-              console.log('解析后的数据类型:', typeof disks);
-              console.log('是否为数组:', Array.isArray(disks));
-              
+              const disks = typeof record.server_cred_disks === 'string' ? JSON.parse(record.server_cred_disks) : record.server_cred_disks;
               if (Array.isArray(disks)) {
-                console.log('磁盘数据数组长度:', disks.length);
-                disks.forEach((disk, index) => {
-                  console.log(`磁盘${index}:`, disk);
+                disks.forEach(disk => {
                   this.diskForms.push({
-                    driveLetter: disk.driveLetter || disk.drive_letter || disk.driveletter || disk.DriveLetter || disk.DRIVELETTER || '',
-                    capacity: disk.capacity || disk.Capacity || disk.size || disk.Size || disk.total || disk.Total || '',
-                    usedSpace: disk.usedSpace || disk.used_space || disk.usedspace || disk.UsedSpace || disk.used || disk.Used || disk.usedSize || '',
-                    deviceName: disk.deviceName || disk.device_name || disk.devicename || disk.DeviceName || disk.device || disk.Device || '',
-                    fileSystemType: disk.fileSystemType || disk.file_system_type || disk.fsType || disk.FileSystemType || disk.fstype || disk.FSType || disk.type || disk.Type || '',
-                    mountPoint: disk.mountPoint || disk.mount_point || disk.mountpoint || disk.MountPoint || disk.mount || disk.Mount || disk.path || disk.Path || '',
-                    notes: disk.notes || disk.Notes || disk.comment || disk.Comment || disk.description || disk.Description || ''
+                    driveLetter: disk.driveLetter || disk.drive_letter || '',
+                    capacity: disk.capacity || '',
+                    usedSpace: disk.usedSpace || disk.used_space || '',
+                    deviceName: disk.deviceName || disk.device_name || '',
+                    fileSystemType: disk.fileSystemType || disk.file_system_type || '',
+                    mountPoint: disk.mountPoint || disk.mount_point || '',
+                    notes: disk.notes || ''
                   });
-                });
-              } else if (typeof disks === 'object' && disks !== null) {
-                // 处理单个磁盘对象的情况
-                console.log('处理单个磁盘对象');
-                this.diskForms.push({
-                  driveLetter: disks.driveLetter || disks.drive_letter || disks.driveletter || disks.DriveLetter || disks.DRIVELETTER || '',
-                  capacity: disks.capacity || disks.Capacity || disks.size || disks.Size || disks.total || disks.Total || '',
-                  usedSpace: disks.usedSpace || disks.used_space || disks.usedspace || disks.UsedSpace || disks.used || disks.Used || disks.usedSize || '',
-                  deviceName: disks.deviceName || disks.device_name || disks.devicename || disks.DeviceName || disks.device || disks.Device || '',
-                  fileSystemType: disks.fileSystemType || disks.file_system_type || disks.fsType || disks.FileSystemType || disks.fstype || disks.FSType || disks.type || disks.Type || '',
-                  mountPoint: disks.mountPoint || disks.mount_point || disks.mountpoint || disks.MountPoint || disks.mount || disks.Mount || disks.path || disks.Path || '',
-                  notes: disks.notes || disks.Notes || disks.comment || disks.Comment || disks.description || disks.Description || ''
                 });
               }
             } catch (error) {
               console.error('解析磁盘信息失败:', error);
-              console.error('错误堆栈:', error.stack);
             }
           }
           
-          console.log('最终diskForms:', this.diskForms);
-          
           // 如果没有磁盘信息，添加一个空的磁盘表单
           if (this.diskForms.length === 0) {
-            console.log('没有磁盘信息，添加空表单');
             this.diskForms = [this.getEmptyDiskForm()];
           }
-          
-          // 从数据库获取磁盘信息
-          const serverId = this.editFormData.server_cred_id;
-          if (serverId) {
-            console.log('从数据库获取磁盘信息，serverId:', serverId);
-            this.fetchDiskInfo(serverId);
-          }
-          console.log('=== 磁盘信息填充调试结束 ===');
           break;
         case 'network':
           // 网络设备登录信息
