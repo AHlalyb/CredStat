@@ -368,9 +368,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'server_cred':
                     // 更新服务器账号密码
+                    $serverId = null;
                     if (isset($data['id']) && !empty($data['id'])) {
                         $serverId = $data['id'];
-                        
+                    } elseif (isset($data['server_cred_id']) && !empty($data['server_cred_id'])) {
+                        $serverId = $data['server_cred_id'];
+                    }
+                    
+                    if ($serverId) {
                         // 更新服务器账号密码信息
                         $updateSql = "UPDATE server_cred SET 
                             server_cred_server_name = :name,
@@ -387,21 +392,89 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             WHERE id = :id";
                         
                         $stmt = $pdo->prepare($updateSql);
-                        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
-                        $stmt->bindValue(':ip', $data['ip'], PDO::PARAM_STR);
-                        $stmt->bindValue(':port', $data['port'], PDO::PARAM_INT);
-                        $stmt->bindValue(':os', $data['os'], PDO::PARAM_STR);
-                        $stmt->bindValue(':loginUsername', $data['loginUsername'], PDO::PARAM_STR);
+                        // 处理服务器基本信息字段，支持前端的完整字段名
+                        $name = isset($data['server_cred_server_name']) ? $data['server_cred_server_name'] : (isset($data['name']) ? $data['name'] : '');
+                        $ip = isset($data['server_cred_server_ip']) ? $data['server_cred_server_ip'] : (isset($data['ip']) ? $data['ip'] : '');
+                        $port = isset($data['server_cred_server_port']) ? $data['server_cred_server_port'] : (isset($data['port']) ? $data['port'] : 22);
+                        $os = isset($data['server_cred_server_os']) ? $data['server_cred_server_os'] : (isset($data['os']) ? $data['os'] : '');
+                        $loginUsername = isset($data['server_cred_login_username']) ? $data['server_cred_login_username'] : (isset($data['loginUsername']) ? $data['loginUsername'] : '');
+                        $loginPassword = isset($data['server_cred_login_password']) ? $data['server_cred_login_password'] : (isset($data['loginPassword']) ? $data['loginPassword'] : '');
+                        $networkArea = isset($data['server_cred_network_area']) ? $data['server_cred_network_area'] : (isset($data['networkArea']) ? $data['networkArea'] : '');
+                        $serverType = isset($data['server_cred_server_type']) ? $data['server_cred_server_type'] : (isset($data['serverType']) ? $data['serverType'] : '');
+                        $hostCluster = isset($data['server_cred_host_cluster']) ? $data['server_cred_host_cluster'] : (isset($data['hostCluster']) ? $data['hostCluster'] : '');
+                        $notes = isset($data['server_cred_notes']) ? $data['server_cred_notes'] : (isset($data['notes']) ? $data['notes'] : '');
+                        
+                        $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+                        $stmt->bindValue(':ip', $ip, PDO::PARAM_STR);
+                        $stmt->bindValue(':port', $port, PDO::PARAM_INT);
+                        $stmt->bindValue(':os', $os, PDO::PARAM_STR);
+                        $stmt->bindValue(':loginUsername', $loginUsername, PDO::PARAM_STR);
                         // 加密密码
-                        $encryptedPassword = SecurityUtils::encrypt($data['loginPassword']);
+                        $encryptedPassword = SecurityUtils::encrypt($loginPassword);
                         $stmt->bindValue(':loginPassword', $encryptedPassword, PDO::PARAM_STR);
-                        $stmt->bindValue(':networkArea', $data['networkArea'], PDO::PARAM_STR);
-                        $stmt->bindValue(':serverType', $data['serverType'], PDO::PARAM_STR);
-                        $stmt->bindValue(':hostCluster', $data['hostCluster'], PDO::PARAM_STR);
-                        $stmt->bindValue(':notes', $data['notes'], PDO::PARAM_STR);
+                        $stmt->bindValue(':networkArea', $networkArea, PDO::PARAM_STR);
+                        $stmt->bindValue(':serverType', $serverType, PDO::PARAM_STR);
+                        $stmt->bindValue(':hostCluster', $hostCluster, PDO::PARAM_STR);
+                        $stmt->bindValue(':notes', $notes, PDO::PARAM_STR);
                         $stmt->bindValue(':id', $serverId, PDO::PARAM_INT);
                         $stmt->execute();
                         error_log('服务器账号密码更新成功');
+                        
+                        // 处理磁盘信息
+                        if (isset($data['disk_forms']) && is_array($data['disk_forms'])) {
+                            // 1. 删除原有磁盘信息
+                            $deleteDiskSql = "DELETE FROM server_cred_volu_info WHERE server_cred_id = :serverId";
+                            $deleteStmt = $pdo->prepare($deleteDiskSql);
+                            $deleteStmt->bindValue(':serverId', $serverId, PDO::PARAM_INT);
+                            $deleteStmt->execute();
+                            error_log('原有磁盘信息删除成功，影响行数: ' . $deleteStmt->rowCount());
+                            
+                            // 2. 插入新的磁盘信息
+                            $osType = isset($data['os']) ? strtolower($data['os']) : 'linux';
+                            $osType = strpos($osType, 'windows') !== false ? 'windows' : 'linux';
+                            
+                            $insertDiskSql = "INSERT INTO server_cred_volu_info (
+                                server_cred_id,
+                                server_cred_volu_os_type,
+                                server_cred_volu_windows_drive_letter,
+                                server_cred_volu_linux_device_name,
+                                server_cred_volu_linux_mount_point,
+                                server_cred_volu_capacity,
+                                server_cred_volu_used_space,
+                                server_cred_volu_file_system_type,
+                                server_cred_volu_notes,
+                                server_cred_volu_created_by
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                            
+                            $insertStmt = $pdo->prepare($insertDiskSql);
+                            
+                            foreach ($data['disk_forms'] as $disk) {
+                                $driveLetter = $osType === 'windows' ? ($disk['driveLetter'] ?? '') : null;
+                                $deviceName = $osType === 'linux' ? ($disk['deviceName'] ?? '') : null;
+                                $mountPoint = $osType === 'linux' ? ($disk['mountPoint'] ?? '') : null;
+                                
+                                $capacity = $disk['capacity'] ?? '';
+                                $usedSpace = $disk['usedSpace'] ?? '';
+                                $fileSystemType = $disk['fileSystemType'] ?? '';
+                                $diskNotes = $disk['notes'] ?? '';
+                                
+                                $createdBy = 'system';
+                                
+                                $insertStmt->bindValue(1, $serverId, PDO::PARAM_INT);
+                                $insertStmt->bindValue(2, $osType, PDO::PARAM_STR);
+                                $insertStmt->bindValue(3, $driveLetter, PDO::PARAM_STR);
+                                $insertStmt->bindValue(4, $deviceName, PDO::PARAM_STR);
+                                $insertStmt->bindValue(5, $mountPoint, PDO::PARAM_STR);
+                                $insertStmt->bindValue(6, $capacity, PDO::PARAM_STR);
+                                $insertStmt->bindValue(7, $usedSpace, PDO::PARAM_STR);
+                                $insertStmt->bindValue(8, $fileSystemType, PDO::PARAM_STR);
+                                $insertStmt->bindValue(9, $diskNotes, PDO::PARAM_STR);
+                                $insertStmt->bindValue(10, $createdBy, PDO::PARAM_STR);
+                                
+                                $insertStmt->execute();
+                            }
+                            error_log('磁盘信息更新成功，插入条数: ' . count($data['disk_forms']));
+                        }
                     }
                     break;
                 default:

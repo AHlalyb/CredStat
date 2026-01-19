@@ -2591,6 +2591,10 @@ export default {
         type: 'warning'
       }).then(() => {
         this.diskForms.splice(index, 1);
+        // 确保端口号字段类型正确
+        if (this.editFormData.server_cred_server_port) {
+          this.editFormData.server_cred_server_port = Number(this.editFormData.server_cred_server_port);
+        }
         this.$message({
           type: 'success',
           message: '删除成功'
@@ -3841,7 +3845,7 @@ export default {
             server_cred_server_name: record.name || record.server_cred_server_name || '',
             server_cred_server_ip: record.ip || record.server_cred_server_ip || '',
             server_cred_server_os: record.os || record.server_cred_server_os || '',
-            server_cred_server_port: record.port || record.server_cred_server_port || null,
+            server_cred_server_port: record.port || record.server_cred_server_port ? Number(record.port || record.server_cred_server_port) : null,
             server_cred_login_username: record.username || record.server_cred_login_username || '',
             server_cred_login_password: record.password || record.server_cred_login_password || '',
             server_cred_edr_installed: record.server_cred_edr_installed || '是',
