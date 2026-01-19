@@ -515,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'server_cred':
                     // 删除服务器账号密码
-                    $deleteSql = "DELETE FROM server_cred WHERE server_cred_id = :id";
+                    $deleteSql = "DELETE FROM server_cred WHERE id = :id";
                     break;
                 case 'net_dev_cred':
                     // 删除网络设备登录信息
