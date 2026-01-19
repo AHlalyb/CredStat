@@ -1247,7 +1247,7 @@
               </el-descriptions-item>
               
               <!-- 第三行 -->
-              <el-descriptions-item label="服务器IP">
+              <el-descriptions-item label="服务器IP地址">
                 <span>{{ currentRecord.server_cred_server_ip || '无' }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="操作系统类型">
@@ -1255,10 +1255,10 @@
               </el-descriptions-item>
               
               <!-- 第四行 -->
-              <el-descriptions-item label="端口号">
+              <el-descriptions-item label="服务器端口号">
                 <span>{{ currentRecord.server_cred_server_port || '无' }}</span>
               </el-descriptions-item>
-              <el-descriptions-item label="登录用户名">
+              <el-descriptions-item label="用户名">
                 <span>{{ currentRecord.server_cred_login_username || '无' }}</span>
               </el-descriptions-item>
               
@@ -1266,23 +1266,65 @@
               <el-descriptions-item label="密码">
                 <span>{{ currentRecord.server_cred_login_password || '无' }}</span>
               </el-descriptions-item>
+              <el-descriptions-item label="EDR安装">
+                <span>{{ currentRecord.server_cred_edr_installed || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第六行 -->
+              <el-descriptions-item label="NTP配置">
+                <span>{{ currentRecord.server_cred_ntp_configured || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="是否有效">
+                <span>{{ Number(currentRecord.is_active) === 1 ? '有效' : (Number(currentRecord.is_active) === 2 ? '无效' : '无') }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第七行 -->
               <el-descriptions-item label="备注信息">
                 <span>{{ currentRecord.server_cred_notes || '无' }}</span>
               </el-descriptions-item>
               
-              <!-- 第六行 -->
-              <el-descriptions-item label="创建时间">
-                <span>{{ this.formatDateTime(currentRecord.created_at) || '无' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="修改时间">
-                <span>{{ this.formatDateTime(currentRecord.updated_at) || '无' }}</span>
-              </el-descriptions-item>
-              
-              <!-- 第七行 -->
+              <!-- 第八行 -->
               <el-descriptions-item label="创建人">
                 <span>{{ currentRecord.server_cred_created_by || '无' }}</span>
               </el-descriptions-item>
+              <el-descriptions-item label="创建时间">
+                <span>{{ this.formatDateTime(currentRecord.created_at) || '无' }}</span>
+              </el-descriptions-item>
+              
+              <!-- 第九行 -->
+              <el-descriptions-item label="更新时间">
+                <span>{{ this.formatDateTime(currentRecord.updated_at) || '无' }}</span>
+              </el-descriptions-item>
             </el-descriptions>
+            
+            <!-- 磁盘信息可展开区域 -->
+            <div class="disk-info-section mt-4">
+              <el-collapse>
+                <el-collapse-item title="磁盘信息">
+                  <div v-if="currentRecord.disks && currentRecord.disks.length > 0">
+                    <!-- Windows磁盘信息 -->
+                    <el-table v-if="currentRecord.server_cred_server_os && currentRecord.server_cred_server_os.toLowerCase().includes('windows')" :data="currentRecord.disks" border style="width: 100%">
+                      <el-table-column prop="driveLetter" label="盘符号" min-width="80" align="center"></el-table-column>
+                      <el-table-column prop="capacity" label="容量" min-width="100" align="center"></el-table-column>
+                      <el-table-column prop="usedSpace" label="已使用空间" min-width="120" align="center"></el-table-column>
+                      <el-table-column prop="notes" label="磁盘信息备注" min-width="200" align="left"></el-table-column>
+                    </el-table>
+                    <!-- Linux磁盘信息 -->
+                    <el-table v-else :data="currentRecord.disks" border style="width: 100%">
+                      <el-table-column prop="deviceName" label="设备名称" min-width="120" align="center"></el-table-column>
+                      <el-table-column prop="fileSystemType" label="文件系统类型" min-width="120" align="center"></el-table-column>
+                      <el-table-column prop="capacity" label="容量" min-width="100" align="center"></el-table-column>
+                      <el-table-column prop="usedSpace" label="已使用空间" min-width="120" align="center"></el-table-column>
+                      <el-table-column prop="mountPoint" label="挂载点" min-width="150" align="center"></el-table-column>
+                      <el-table-column prop="notes" label="磁盘信息备注" min-width="200" align="left"></el-table-column>
+                    </el-table>
+                  </div>
+                  <div v-else class="no-disk-data">
+                    <el-empty description="未找到磁盘信息"></el-empty>
+                  </div>
+                </el-collapse-item>
+              </el-collapse>
+            </div>
           </div>
           <!-- 网络设备登录信息详情 -->
           <div v-else-if="currentRecord.category === 'network'" class="network-detail">

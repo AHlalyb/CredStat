@@ -1632,6 +1632,39 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                 }
             }
             
+            // 查询服务器磁盘信息
+            if ($table === 'server_cred') {
+                $serverId = $result['id'];
+                $diskSql = "SELECT 
+                    server_cred_volu_windows_drive_letter as driveLetter,
+                    server_cred_volu_linux_device_name as deviceName,
+                    server_cred_volu_linux_mount_point as mountPoint,
+                    server_cred_volu_capacity as capacity,
+                    server_cred_volu_used_space as usedSpace,
+                    server_cred_volu_file_system_type as fileSystemType,
+                    server_cred_volu_notes as notes
+                FROM server_cred_volu_info 
+                WHERE server_cred_id = :serverId";
+                
+                $diskStmt = $pdo->prepare($diskSql);
+                $diskStmt->bindValue(':serverId', $serverId, PDO::PARAM_INT);
+                $diskStmt->execute();
+                $disks = $diskStmt->fetchAll();
+                
+                // 清理磁盘信息数据
+                foreach ($disks as &$disk) {
+                    foreach ($disk as $diskKey => &$diskValue) {
+                        if (is_null($diskValue)) {
+                            $diskValue = '';
+                        } elseif (is_string($diskValue)) {
+                            $diskValue = trim($diskValue);
+                        }
+                    }
+                }
+                
+                $result['disks'] = $disks;
+            }
+            
             // 然后执行清理数据逻辑
             // 确保所有字符串值都是有效的UTF-8
             foreach ($result as $key => &$value) {
