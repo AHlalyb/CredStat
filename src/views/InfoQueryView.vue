@@ -1710,6 +1710,13 @@
           </el-checkbox-group>
         </div>
         
+        <!-- 高级选项 -->
+        <div class="mb-4" v-if="searchForm.queryType === 'server'">
+          <h4 class="text-bold m-0 mb-2">高级信息选项</h4>
+          <el-checkbox v-model="exportDiskInfo">磁盘信息</el-checkbox>
+          <p class="text-gray-500 text-sm mt-1">选中后将导出服务器磁盘信息，根据操作系统类型区分显示</p>
+        </div>
+        
         <!-- 文件类型选择 -->
         <div class="mb-4">
           <h4 class="text-bold m-0 mb-2">导出文件类型为：</h4>
@@ -2275,6 +2282,7 @@ export default {
         { value: 'html', label: 'HTML格式', icon: '/icons/html.png' }
       ],
       selectedFileType: 'excel',
+      exportDiskInfo: true,
       
       // 验证带单位的存储容量
       validateStorageUnit(rule, value, callback) {
@@ -3241,6 +3249,27 @@ export default {
             { value: 'login_info_is_active', label: '是否有效' }
           ];
           break;
+        case 'server':
+          // 服务器账号密码
+          this.exportColumns = [
+            { value: 'server_cred_network_area', label: '服务器所属网络区域' },
+            { value: 'server_cred_server_type', label: '服务器类型' },
+            { value: 'server_cred_host_cluster', label: '宿主机集群' },
+            { value: 'server_cred_server_name', label: '服务器名称' },
+            { value: 'server_cred_server_ip', label: '服务器IP地址' },
+            { value: 'server_cred_server_port', label: '服务器端口号' },
+            { value: 'server_cred_server_os', label: '操作系统类型' },
+            { value: 'server_cred_login_username', label: '用户名' },
+            { value: 'server_cred_login_password', label: '密码' },
+            { value: 'server_cred_edr_installed', label: 'EDR安装' },
+            { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_notes', label: '备注信息' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'server_cred_created_by', label: '创建人' }
+          ];
+          break;
         // 可以根据需要添加其他查询类别的列配置
         default:
           this.exportColumns = [];
@@ -3320,7 +3349,8 @@ export default {
           export: true,
           exportFormat: format === 'html' ? 'pdf' : 'excel',
           username: username,
-          selectedColumns: selectedColumns
+          selectedColumns: selectedColumns,
+          exportDiskInfo: this.exportDiskInfo
         })
       })
       .then(response => {

@@ -515,7 +515,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 case 'server_cred':
                     // 删除服务器账号密码
-                    $deleteSql = "DELETE FROM server_cred WHERE server_cred_id = :id";
+                    $deleteSql = "DELETE FROM server_cred WHERE id = :id";
                     break;
                 case 'net_dev_cred':
                     // 删除网络设备登录信息
@@ -670,10 +670,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($export) {
                 // 获取用户选择的列
                 $selectedColumns = isset($requestData['selectedColumns']) && is_array($requestData['selectedColumns']) ? $requestData['selectedColumns'] : [];
-                // 获取是否导出磁盘信息
-                $exportDiskInfo = isset($requestData['exportDiskInfo']) ? boolval($requestData['exportDiskInfo']) : false;
                 // 执行导出
-                exportData($cleanedResults, $exportFormat, $selectedColumns, $exportDiskInfo);
+                exportData($cleanedResults, $exportFormat, $selectedColumns);
                 exit;
             } else {
                 // 返回JSON响应
@@ -743,7 +741,6 @@ if ($jsonResponse === false) {
  */
 function getFieldLabel($field) {
     $fieldMap = [
-        // 信息系统登录信息字段映射
         'login_info_system_name' => '系统名称',
         'login_info_ip_url' => 'IP或URL地址',
         'login_info_login_type' => '登录方式',
@@ -753,25 +750,7 @@ function getFieldLabel($field) {
         'login_info_created_at' => '创建时间',
         'login_info_updated_at' => '更新时间',
         'login_info_created_by' => '创建人',
-        'login_info_is_active' => '是否有效',
-        
-        // 服务器账号密码字段映射
-        'server_cred_network_area' => '服务器所属网络区域',
-        'server_cred_server_type' => '服务器类型',
-        'server_cred_host_cluster' => '宿主机集群',
-        'server_cred_server_name' => '服务器名称',
-        'server_cred_server_ip' => '服务器IP地址',
-        'server_cred_server_port' => '服务器端口号',
-        'server_cred_server_os' => '操作系统类型',
-        'server_cred_login_username' => '用户名',
-        'server_cred_login_password' => '密码',
-        'server_cred_edr_installed' => 'EDR安装',
-        'server_cred_ntp_configured' => 'NTP配置',
-        'server_cred_notes' => '备注信息',
-        'created_at' => '创建时间',
-        'updated_at' => '更新时间',
-        'is_active' => '是否有效',
-        'server_cred_created_by' => '创建人'
+        'login_info_is_active' => '是否有效'
     ];
     
     return isset($fieldMap[$field]) ? $fieldMap[$field] : $field;
@@ -782,9 +761,8 @@ function getFieldLabel($field) {
  * @param array $data 要导出的数据
  * @param string $format 导出格式 (pdf 或 excel)
  * @param array $selectedColumns 用户选择的导出列
- * @param bool $exportDiskInfo 是否导出磁盘信息
  */
-function exportData($data, $format, $selectedColumns = [], $exportDiskInfo = false) {
+function exportData($data, $format, $selectedColumns = []) {
     if (empty($data)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => '没有可导出的数据']);
@@ -840,60 +818,16 @@ function exportData($data, $format, $selectedColumns = [], $exportDiskInfo = fal
             // 添加物理机信息到集群数据中
             $cluster['physical_machines'] = $physicalMachines;
         }
-    } elseif ($dataType === 'server' && $exportDiskInfo) {
-        // 对于服务器账号密码数据，如果需要导出磁盘信息，加载磁盘信息
-        $dbConfig = require __DIR__ . '/app/config/database.php';
-        $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['dbname']};charset={$dbConfig['charset']}";
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ];
-        $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
-        
-        // 为每个服务器加载磁盘信息
-        foreach ($data as &$server) {
-            $serverId = $server['id'];
-            // 查询磁盘信息
-            $diskSql = "SELECT 
-                server_cred_volu_windows_drive_letter as driveLetter,
-                server_cred_volu_linux_device_name as deviceName,
-                server_cred_volu_linux_mount_point as mountPoint,
-                server_cred_volu_capacity as capacity,
-                server_cred_volu_used_space as usedSpace,
-                server_cred_volu_file_system_type as fileSystemType,
-                server_cred_volu_notes as notes,
-                server_cred_volu_os_type as osType
-            FROM server_cred_volu_info 
-            WHERE server_cred_id = :serverId";
-            
-            $diskStmt = $pdo->prepare($diskSql);
-            $diskStmt->bindValue(':serverId', $serverId, PDO::PARAM_INT);
-            $diskStmt->execute();
-            $disks = $diskStmt->fetchAll();
-            
-            // 清理磁盘信息数据
-            foreach ($disks as &$disk) {
-                foreach ($disk as $diskKey => &$diskValue) {
-                    if (is_null($diskValue)) {
-                        $diskValue = '';
-                    } elseif (is_string($diskValue)) {
-                        $diskValue = trim($diskValue);
-                    }
-                }
-            }
-            
-            $server['disks'] = $disks;
-        }
     }
     
     // 根据格式导出
     switch ($format) {
         case 'pdf':
-            exportToPDF($data, $dataType, $selectedColumns, $exportDiskInfo);
+            exportToPDF($data, $dataType, $selectedColumns);
             break;
         case 'excel':
         default:
-            exportToExcel($data, $dataType, $selectedColumns, $exportDiskInfo);
+            exportToExcel($data, $dataType, $selectedColumns);
             break;
     }
 }
@@ -903,22 +837,10 @@ function exportData($data, $format, $selectedColumns = [], $exportDiskInfo = fal
  * @param array $data 要导出的数据
  * @param string $dataType 数据类型
  * @param array $selectedColumns 用户选择的导出列
- * @param bool $exportDiskInfo 是否导出磁盘信息
  */
-function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exportDiskInfo = false) {
-    // 生成文件名，根据数据类型添加标识
-    $typePrefix = '';
-    if ($dataType === 'server') {
-        $typePrefix = '服务器账号密码_';
-    } elseif ($dataType === 'system') {
-        $typePrefix = '信息系统登录信息_';
-    } elseif ($dataType === 'network') {
-        $typePrefix = '网络设备登录信息_';
-    } elseif ($dataType === 'cluster') {
-        $typePrefix = '集群信息_';
-    }
-    
-    $filename = $typePrefix . '查询结果_' . date('YmdHis') . '.csv';
+function exportToExcel($data, $dataType = 'default', $selectedColumns = []) {
+    // 生成文件名，使用YYYYMMDDHHMMSS格式
+    $filename = '查询结果_' . date('YmdHis') . '.csv';
     
     // 设置响应头，确保中文文件名正确显示
     // 先清除可能存在的旧响应头
@@ -1016,57 +938,14 @@ function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exp
                     $value = isset($row[$column]) ? $row[$column] : '';
                     
                     // 处理是否有效字段
-                    if ($column === 'login_info_is_active' || $column === 'is_active') {
-                        $value = $value === '1' || $value === 1 ? '有效' : ($value === '2' || $value === 2 ? '无效' : $value);
+                    if ($column === 'login_info_is_active') {
+                        $value = $value === '1' || $value === 1 ? '有效' : '无效';
                     }
                     
                     $rowData[] = $value;
                 }
                 
                 fputcsv($output, $rowData);
-                
-                // 导出磁盘信息
-                if ($dataType === 'server' && $exportDiskInfo && isset($row['disks']) && is_array($row['disks']) && count($row['disks']) > 0) {
-                    // 写入磁盘信息表头
-                    fputcsv($output, ['', '', '', '', '', '', '', '', '磁盘信息']);
-                    
-                    // 写入磁盘信息列头
-                    fputcsv($output, ['', '', '', '', '', '', '', '', '操作系统', '盘符号/设备名称', '文件系统类型', '容量', '已使用空间', '挂载点', '备注']);
-                    
-                    // 写入磁盘信息数据
-                    foreach ($row['disks'] as $disk) {
-                        $osType = isset($disk['osType']) ? $disk['osType'] : (isset($row['server_cred_server_os']) ? $row['server_cred_server_os'] : '');
-                        $driveLetter = isset($disk['driveLetter']) ? $disk['driveLetter'] : '';
-                        $deviceName = isset($disk['deviceName']) ? $disk['deviceName'] : '';
-                        $fileSystemType = isset($disk['fileSystemType']) ? $disk['fileSystemType'] : '';
-                        $capacity = isset($disk['capacity']) ? $disk['capacity'] : '';
-                        $usedSpace = isset($disk['usedSpace']) ? $disk['usedSpace'] : '';
-                        $mountPoint = isset($disk['mountPoint']) ? $disk['mountPoint'] : '';
-                        $notes = isset($disk['notes']) ? $disk['notes'] : '';
-                        
-                        $diskRow = ['', '', '', '', '', '', '', '', $osType];
-                        if (strtolower($osType) === 'windows') {
-                            $diskRow[] = $driveLetter;
-                            $diskRow[] = '';
-                            $diskRow[] = $capacity;
-                            $diskRow[] = $usedSpace;
-                            $diskRow[] = '';
-                            $diskRow[] = $notes;
-                        } else {
-                            $diskRow[] = $deviceName;
-                            $diskRow[] = $fileSystemType;
-                            $diskRow[] = $capacity;
-                            $diskRow[] = $usedSpace;
-                            $diskRow[] = $mountPoint;
-                            $diskRow[] = $notes;
-                        }
-                        
-                        fputcsv($output, $diskRow);
-                    }
-                    
-                    // 写入空行分隔
-                    fputcsv($output, []);
-                }
             }
         } else {
             // 导出其他类型数据，使用默认字段列表
@@ -1099,49 +978,6 @@ function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exp
                 $rowData[] = isset($row['created_at']) ? $row['created_at'] : '';
                 $rowData[] = isset($row['category']) ? $row['category'] : '';
                 fputcsv($output, $rowData);
-                
-                // 导出磁盘信息
-                if ($dataType === 'server' && $exportDiskInfo && isset($row['disks']) && is_array($row['disks']) && count($row['disks']) > 0) {
-                    // 写入磁盘信息表头
-                    fputcsv($output, ['', '', '', '', '', '', '', '', '磁盘信息']);
-                    
-                    // 写入磁盘信息列头
-                    fputcsv($output, ['', '', '', '', '', '', '', '', '操作系统', '盘符号/设备名称', '文件系统类型', '容量', '已使用空间', '挂载点', '备注']);
-                    
-                    // 写入磁盘信息数据
-                    foreach ($row['disks'] as $disk) {
-                        $osType = isset($disk['osType']) ? $disk['osType'] : (isset($row['server_cred_server_os']) ? $row['server_cred_server_os'] : '');
-                        $driveLetter = isset($disk['driveLetter']) ? $disk['driveLetter'] : '';
-                        $deviceName = isset($disk['deviceName']) ? $disk['deviceName'] : '';
-                        $fileSystemType = isset($disk['fileSystemType']) ? $disk['fileSystemType'] : '';
-                        $capacity = isset($disk['capacity']) ? $disk['capacity'] : '';
-                        $usedSpace = isset($disk['usedSpace']) ? $disk['usedSpace'] : '';
-                        $mountPoint = isset($disk['mountPoint']) ? $disk['mountPoint'] : '';
-                        $notes = isset($disk['notes']) ? $disk['notes'] : '';
-                        
-                        $diskRow = ['', '', '', '', '', '', '', '', $osType];
-                        if (strtolower($osType) === 'windows') {
-                            $diskRow[] = $driveLetter;
-                            $diskRow[] = '';
-                            $diskRow[] = $capacity;
-                            $diskRow[] = $usedSpace;
-                            $diskRow[] = '';
-                            $diskRow[] = $notes;
-                        } else {
-                            $diskRow[] = $deviceName;
-                            $diskRow[] = $fileSystemType;
-                            $diskRow[] = $capacity;
-                            $diskRow[] = $usedSpace;
-                            $diskRow[] = $mountPoint;
-                            $diskRow[] = $notes;
-                        }
-                        
-                        fputcsv($output, $diskRow);
-                    }
-                    
-                    // 写入空行分隔
-                    fputcsv($output, []);
-                }
             }
         }
     }
@@ -1156,22 +992,10 @@ function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exp
  * @param array $data 要导出的数据
  * @param string $dataType 数据类型
  * @param array $selectedColumns 用户选择的导出列
- * @param bool $exportDiskInfo 是否导出磁盘信息
  */
-function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $exportDiskInfo = false) {
-    // 生成文件名，根据数据类型添加标识
-    $typePrefix = '';
-    if ($dataType === 'server') {
-        $typePrefix = '服务器账号密码_';
-    } elseif ($dataType === 'system') {
-        $typePrefix = '信息系统登录信息_';
-    } elseif ($dataType === 'network') {
-        $typePrefix = '网络设备登录信息_';
-    } elseif ($dataType === 'cluster') {
-        $typePrefix = '集群信息_';
-    }
-    
-    $filename = $typePrefix . '查询结果_' . date('YmdHis') . '.html';
+function exportToPDF($data, $dataType = 'default', $selectedColumns = []) {
+    // 生成文件名，使用YYYYMMDDHHMMSS格式，使用.html扩展名
+    $filename = '查询结果_' . date('YmdHis') . '.html';
     
     // 生成HTML内容
     ob_start();
@@ -1353,8 +1177,8 @@ function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $expor
                     $value = isset($row[$column]) ? $row[$column] : '';
                     
                     // 处理是否有效字段
-                    if ($column === 'login_info_is_active' || $column === 'is_active') {
-                        $value = $value === '1' || $value === 1 ? '有效' : ($value === '2' || $value === 2 ? '无效' : $value);
+                    if ($column === 'login_info_is_active') {
+                        $value = $value === '1' || $value === 1 ? '有效' : '无效';
                     }
                     
                     echo '<td>' . $value . '</td>';
@@ -1373,63 +1197,6 @@ function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $expor
             }
             
             echo '</tr>';
-            
-            // 导出磁盘信息
-            if ($dataType === 'server' && $exportDiskInfo && isset($row['disks']) && is_array($row['disks']) && count($row['disks']) > 0) {
-                echo '<tr>';
-                echo '<td colspan="' . (count($selectedColumns) > 0 ? count($selectedColumns) : 9) . '">';
-                echo '<div class="disk-info-section" style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9;">';
-                echo '<h4 style="margin-top: 0; margin-bottom: 10px; color: #333;">磁盘信息</h4>';
-                echo '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
-                echo '<thead>';
-                echo '<tr style="background-color: #f2f2f2;">';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">操作系统</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">盘符号/设备名称</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">文件系统类型</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">容量</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">已使用空间</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">挂载点</th>';
-                echo '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">备注</th>';
-                echo '</tr>';
-                echo '</thead>';
-                echo '<tbody>';
-                
-                foreach ($row['disks'] as $disk) {
-                    $osType = isset($disk['osType']) ? $disk['osType'] : (isset($row['server_cred_server_os']) ? $row['server_cred_server_os'] : '');
-                    $driveLetter = isset($disk['driveLetter']) ? $disk['driveLetter'] : '';
-                    $deviceName = isset($disk['deviceName']) ? $disk['deviceName'] : '';
-                    $fileSystemType = isset($disk['fileSystemType']) ? $disk['fileSystemType'] : '';
-                    $capacity = isset($disk['capacity']) ? $disk['capacity'] : '';
-                    $usedSpace = isset($disk['usedSpace']) ? $disk['usedSpace'] : '';
-                    $mountPoint = isset($disk['mountPoint']) ? $disk['mountPoint'] : '';
-                    $notes = isset($disk['notes']) ? $disk['notes'] : '';
-                    
-                    echo '<tr>';
-                    echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $osType . '</td>';
-                    if (strtolower($osType) === 'windows') {
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $driveLetter . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;"></td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $capacity . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $usedSpace . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;"></td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $notes . '</td>';
-                    } else {
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $deviceName . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $fileSystemType . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $capacity . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $usedSpace . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $mountPoint . '</td>';
-                        echo '<td style="border: 1px solid #ddd; padding: 8px;">' . $notes . '</td>';
-                    }
-                    echo '</tr>';
-                }
-                
-                echo '</tbody>';
-                echo '</table>';
-                echo '</div>';
-                echo '</td>';
-                echo '</tr>';
-            }
         }
         
         echo '</tbody>';
