@@ -117,7 +117,34 @@
             stripe
             :header-cell-style="{background: '#f5f7fa', color: '#606266', fontWeight: 'bold'}"
           >
-            <el-table-column type="index" label="序号" width="55" align="center"></el-table-column>
+            <el-table-column label="序号" width="70" align="center">
+              <template #default="scope">
+                <div class="index-cell">
+                  {{ scope.$index + 1 }}
+                  <!-- 状态图标 -->
+                  <div v-if="searchForm.queryType === 'system' || searchForm.queryType === 'server'" class="status-icons">
+                    <!-- 信息系统登录信息状态图标 -->
+                    <template v-if="searchForm.queryType === 'system'">
+                      <el-tooltip v-if="!isSystemRecordComplete(scope.row)" content="录入信息不完整" placement="top">
+                        <span class="status-icon incomplete"></span>
+                      </el-tooltip>
+                      <el-tooltip v-if="!isSystemRecordValid(scope.row)" content="数据标注为无效" placement="top">
+                        <span class="status-icon invalid"></span>
+                      </el-tooltip>
+                    </template>
+                    <!-- 服务器账号密码状态图标 -->
+                    <template v-else-if="searchForm.queryType === 'server'">
+                      <el-tooltip v-if="!isServerRecordComplete(scope.row)" content="录入信息不完整" placement="top">
+                        <span class="status-icon incomplete"></span>
+                      </el-tooltip>
+                      <el-tooltip v-if="!isServerRecordValid(scope.row)" content="数据标注为无效" placement="top">
+                        <span class="status-icon invalid"></span>
+                      </el-tooltip>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
             
             <!-- 动态列 -->
             <el-table-column
@@ -4626,6 +4653,72 @@ export default {
       const seconds = String(date.getSeconds()).padStart(2, '0');
       
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    },
+    
+    // 检查信息系统登录信息记录是否完整
+    isSystemRecordComplete(record) {
+      // 需要检查的字段
+      const requiredFields = [
+        'login_info_system_name', // 系统名称
+        'login_info_ip_url',      // IP/URL
+        'login_info_login_type',  // 登录方式
+        'login_info_username',    // 账号
+        'login_info_password',    // 密码
+        'login_info_is_active'    // 是否有效
+      ];
+      
+      // 检查每个字段是否为空值或缺失
+      for (const field of requiredFields) {
+        const value = record[field];
+        if (value === null || value === undefined || value === '' || value === '无') {
+          return false;
+        }
+      }
+      
+      return true;
+    },
+    
+    // 检查信息系统登录信息记录是否有效
+    isSystemRecordValid(record) {
+      // 检查login_info_is_active字段是否为有效状态
+      const isActive = record.login_info_is_active;
+      return isActive !== '0' && isActive !== 0;
+    },
+    
+    // 检查服务器账号密码记录是否完整
+    isServerRecordComplete(record) {
+      // 需要检查的字段
+      const requiredFields = [
+        'server_cred_network_area',   // 服务器所属网络区域
+        'server_cred_server_type',     // 服务器类型
+//        'server_cred_host_cluster',    // 宿主机集群
+        'server_cred_server_name',     // 服务器名称
+        'server_cred_server_ip',       // 服务器IP
+        'server_cred_server_port',     // 服务器端口
+        'server_cred_server_os',       // 操作系统类型
+        'server_cred_login_username',  // 登录用户名
+        'server_cred_login_password',  // 登录密码
+        'server_cred_edr_installed',   // EDR安装
+        'server_cred_ntp_configured',  // NTP配置
+        'is_active'                    // 是否有效
+      ];
+      
+      // 检查每个字段是否为空值或缺失
+      for (const field of requiredFields) {
+        const value = record[field];
+        if (value === null || value === undefined || value === '' || value === '无') {
+          return false;
+        }
+      }
+      
+      return true;
+    },
+    
+    // 检查服务器账号密码记录是否有效
+    isServerRecordValid(record) {
+      // 检查is_active字段是否为有效状态
+      const isActive = record.is_active;
+      return isActive !== '0' && isActive !== 0;
     }
   },
   mounted() {
@@ -4860,6 +4953,50 @@ export default {
   
   .el-pagination__layout {
     justify-content: center;
+  }
+}
+
+/* 状态图标样式 */
+.index-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.status-icons {
+  display: flex;
+  flex-direction: column;
+  margin-left: 4px;
+  gap: 2px;
+}
+
+.status-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.status-icon.incomplete {
+  background-color: #FFFF00;
+  box-shadow: 0 0 2px rgba(255, 255, 0, 0.8);
+}
+
+.status-icon.invalid {
+  background-color: #FF0000;
+  box-shadow: 0 0 2px rgba(255, 0, 0, 0.8);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .status-icon {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .status-icons {
+    margin-left: 3px;
   }
 }
 </style>
