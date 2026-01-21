@@ -211,10 +211,12 @@
           <!-- 分页控件 -->
           <div v-if="total > 0" class="mt-4 text-center">
             <el-pagination
+              @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
               :current-page="currentPage"
+              :page-sizes="[10, 20, 50, 100]"
               :page-size="pageSize"
-              layout="total, prev, pager, next, jumper"
+              layout="total, sizes, prev, pager, next, jumper"
               :total="total"
             ></el-pagination>
           </div>
@@ -3658,6 +3660,13 @@ export default {
       this.performSearch(page);
     },
     
+    // 处理每页显示条数变化
+    handleSizeChange(size) {
+      this.pageSize = size;
+      this.currentPage = 1; // 重置到第一页
+      this.performSearch(1);
+    },
+    
     // 显示集群关联的物理机
     showClusterPhysicalMachines(clusterId, clusterName) {
       this.currentClusterId = clusterId;
@@ -4813,6 +4822,44 @@ export default {
   .physical-machines-table .el-table th {
     padding: 4px 0;
     min-height: 32px;
+  }
+}
+
+/* 分页组件响应式样式 */
+@media (max-width: 768px) {
+  .el-pagination {
+    font-size: 12px;
+  }
+  
+  .el-pagination__sizes {
+    margin-right: 5px;
+  }
+  
+  .el-pagination__sizes .el-select {
+    width: 80px;
+  }
+  
+  .el-pagination__jump {
+    margin-left: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 小屏幕设备上的分页组件调整 */
+  .el-pagination {
+    padding: 0 5px;
+  }
+  
+  .el-pagination__sizes {
+    display: none;
+  }
+  
+  .el-pagination__jump {
+    display: none;
+  }
+  
+  .el-pagination__layout {
+    justify-content: center;
   }
 }
 </style>
