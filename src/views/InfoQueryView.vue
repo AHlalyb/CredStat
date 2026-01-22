@@ -4711,6 +4711,15 @@ export default {
         }
       }
       
+      // 检查磁盘信息是否存在
+      const diskData = record.server_cred_disks || record.disks || record.disk_forms || record.diskForms || 
+                      record.server_cred_disk || record.disk || record.server_disks || record.server_disk ||
+                      record.disk_info || record.diskInfo || record.disks_info || record.disksInfo;
+      
+      if (!diskData || (Array.isArray(diskData) && diskData.length === 0)) {
+        return false;
+      }
+      
       return true;
     },
     
