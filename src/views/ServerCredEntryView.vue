@@ -2165,7 +2165,7 @@ export default {
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
           
-          // 将工作表转换为JSON数据
+          // 将工作表转换为JSON数据，使用第一行作为表头
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
           
           if (jsonData.length < 2) {
@@ -2176,16 +2176,27 @@ export default {
           // 获取表头
           this.previewHeaders = jsonData[0];
           
-          // 处理数据行
+          // 处理数据行，转换为对象数组以便表格正确显示
           this.importData = jsonData.slice(1).filter(row => {
             // 过滤空行
             return row.some(cell => cell !== undefined && cell !== null && cell !== '');
+          }).map(row => {
+            // 将数组行转换为对象，键为表头
+            const rowObj = {};
+            this.previewHeaders.forEach((header, index) => {
+              rowObj[header] = row[index] || '';
+            });
+            return rowObj;
           });
           
           this.canImport = this.importData.length > 0;
+          
+          // 调试信息
+          console.log('解析后的表头:', this.previewHeaders);
+          console.log('解析后的数据:', this.importData);
         } catch (error) {
           console.error('解析文件失败:', error);
-          this.$message.error('文件格式不正确，请检查文件是否为有效的XLS文件');
+          this.$message.error(`文件格式不正确，请检查文件是否为有效的XLS文件: ${error.message}`);
         }
       };
       reader.readAsArrayBuffer(file.raw);
@@ -2208,17 +2219,100 @@ export default {
       this.progressColor = '#67C23A';
       this.errors = [];
       
-      // 模拟导入进度
-      const timer = setInterval(() => {
-        this.importProgress += 10;
-        if (this.importProgress >= 100) {
-          clearInterval(timer);
-          this.progressStatus = 'success';
-          this.progressText = '导入完成';
-          this.$message.success('导入成功');
-          this.importDialogVisible = false;
+      // 显示加载状态
+      const loading = this.$loading({
+        lock: true,
+        text: '导入中...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      });
+      
+      // 构建导入数据
+      const importData = {
+        action: 'import_server_cred',
+        data: this.importData,
+        headers: this.previewHeaders
+      };
+      
+      console.log('发送导入请求:', importData);
+      
+      // 发送导入请求
+      fetch('server_cred_api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(importData)
+      })
+      .then(response => {
+        console.log('响应状态:', response.status);
+        console.log('响应头:', response.headers);
+        
+        // 检查响应状态码
+        if (!response.ok) {
+          throw new Error(`HTTP错误! 状态码: ${response.status}`);
         }
-      }, 300);
+        
+        // 先读取响应为文本，然后尝试解析为JSON
+        return response.text().then(text => {
+          try {
+            return JSON.parse(text);
+          } catch (error) {
+            // 如果解析失败，抛出错误
+            throw new Error(`响应不是有效的JSON格式: ${text}`);
+          }
+        });
+      })
+      .then(data => {
+        loading.close();
+        console.log('响应数据:', data);
+        
+        // 更新进度
+        this.importProgress = 100;
+        this.progressStatus = 'success';
+        
+        // 检查响应状态
+        if (data.status === 'success') {
+          this.progressText = '导入完成';
+          this.$message.success(`导入成功，共导入 ${data.imported || this.importData.length} 条记录`);
+          setTimeout(() => {
+            this.importDialogVisible = false;
+          }, 1000);
+        } else {
+          // 显示实际错误信息
+          this.progressText = '导入失败';
+          this.progressStatus = 'exception';
+          this.progressColor = '#F56C6C';
+          
+          // 添加错误信息
+          this.errors.push(data.message || '未知错误');
+          this.$message.error(`导入失败: ${data.message || '未知错误'}`);
+        }
+      })
+      .catch(error => {
+        loading.close();
+        console.error('导入失败:', error);
+        
+        // 更新进度为失败状态
+        this.importProgress = 100;
+        this.progressStatus = 'exception';
+        this.progressText = '导入失败';
+        this.progressColor = '#F56C6C';
+        
+        // 添加错误信息
+        this.errors.push(error.message);
+        
+        // 根据错误类型显示更具体的错误信息
+        if (error.message.includes('HTTP错误')) {
+          this.$message.error(`导入失败，服务器错误: ${error.message}`);
+        } else if (error.message.includes('响应不是有效的JSON格式')) {
+          this.$message.error(`导入失败，服务器返回格式错误: ${error.message}`);
+        } else if (error.message.includes('NetworkError')) {
+          this.$message.error('导入失败，网络连接错误，请检查网络连接');
+        } else {
+          this.$message.error(`导入失败: ${error.message}`);
+        }
+      });
     },
     // 进度条格式化函数
     progressFormat(percentage) {
