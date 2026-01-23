@@ -88,6 +88,62 @@
               ></el-input>
             </el-form-item>
           </el-col>
+        </el-row>
+        
+        <!-- 动态添加的账户密码表单组 -->
+        <div v-for="(account, index) in formData.additionalAccounts" :key="index" class="additional-account-section mb-4 p-3 border rounded bg-gray-50">
+          <h5 class="text-bold mb-3">附加账户 {{ index + 1 }}</h5>
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item :label="'账号' + (index + 1)" :prop="'additionalAccounts.' + index + '.username'" required>
+                <el-input
+                  v-model="account.username"
+                  placeholder="请输入账号"
+                  autocomplete="new-username"
+                  :name="'random-username-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                  readonly
+                  @focus="$event.target.removeAttribute('readonly')"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item :label="'密码' + (index + 1)" :prop="'additionalAccounts.' + index + '.password'" required>
+                <el-input
+                  v-model="account.password"
+                  type="password"
+                  placeholder="请输入密码"
+                  show-password
+                  autocomplete="new-password"
+                  :name="'random-password-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                  readonly
+                  @focus="$event.target.removeAttribute('readonly')"
+                ></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+        
+        <!-- 添加账户按钮 -->
+        <el-row :gutter="[20, 20]">
+          <el-col :xs="24" :sm="24" :md="16" :lg="16">
+            <el-form-item>
+              <el-button 
+                type="primary" 
+                @click="addAccount" 
+                :disabled="formData.additionalAccounts.length >= 4"
+                :icon="Plus"
+              >
+                添加账户
+              </el-button>
+              <span v-if="formData.additionalAccounts.length >= 4" class="text-sm text-gray-500 ml-2">
+                已达到最大4个附加账户限制
+              </span>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="[20, 20]">
           
           <el-col :xs="24" :sm="12" :md="8" :lg="8">
             <el-form-item label="是否有效" prop="isActive">
@@ -233,7 +289,7 @@
 // 导入XLS文件解析库
 import * as XLSX from 'xlsx';
 // 导入Element Plus图标
-import { DocumentAdd, RefreshRight, Check, Upload, EditPen } from '@element-plus/icons-vue';
+import { DocumentAdd, RefreshRight, Check, Upload, EditPen, Plus } from '@element-plus/icons-vue';
 
 export default {
   name: 'SystemLoginEntryView',
@@ -242,7 +298,8 @@ export default {
     RefreshRight,
     Check,
     Upload,
-    EditPen
+    EditPen,
+    Plus
   },
   data() {
     return {
@@ -257,7 +314,9 @@ export default {
         username: '',
         password: '',
         isActive: '1',
-        remark: ''
+        remark: '',
+        // 动态添加的账户密码
+        additionalAccounts: []
       },
       // 用于防止自动填充的key，每次重置表单时更新
       usernameKey: Date.now(),
@@ -268,7 +327,18 @@ export default {
         ipUrl: [{ required: true, message: '请输入IP地址或URL', trigger: 'blur' }],
         loginType: [{ required: true, message: '请选择登录方式', trigger: 'change' }],
         username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
-        password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+        additionalAccounts: {
+          type: 'array',
+          validator: (rule, value, callback) => {
+            if (value.length > 4) {
+              callback(new Error('最多只能添加4个附加账户'));
+            } else {
+              callback();
+            }
+          },
+          trigger: 'change'
+        }
       },
       // 导入相关数据
       importDialogVisible: false,
@@ -290,11 +360,28 @@ export default {
       // Element Plus的表单事件已经通过v-model和@click等指令绑定，不再需要手动实现
     },
     
+    // 动态添加账户密码表单组
+    addAccount() {
+      if (this.formData.additionalAccounts.length >= 4) {
+        this.$message.warning('最多只能添加4个附加账户');
+        return;
+      }
+      
+      // 添加新的账户密码表单组
+      this.formData.additionalAccounts.push({
+        username: '',
+        password: ''
+      });
+    },
+    
     // 重置表单
     resetForm() {
       if (this.$refs.loginEntryForm) {
         this.$refs.loginEntryForm.resetFields();
       }
+      
+      // 清空动态添加的账户列表
+      this.formData.additionalAccounts = [];
       
       // 更新key值，强制重新渲染输入框，清除浏览器自动填充
       this.usernameKey = Date.now();
@@ -342,7 +429,16 @@ export default {
               password: this.formData.password,
               isActive: this.formData.isActive,
               remark: this.formData.remark.trim(),
-              createdBy: currentUser ? (currentUser.name || currentUser.username) : ''
+              createdBy: currentUser ? (currentUser.name || currentUser.username) : '',
+              // 动态添加的账户密码
+              username1: this.formData.additionalAccounts[0]?.username?.trim() || '',
+              password1: this.formData.additionalAccounts[0]?.password || '',
+              username2: this.formData.additionalAccounts[1]?.username?.trim() || '',
+              password2: this.formData.additionalAccounts[1]?.password || '',
+              username3: this.formData.additionalAccounts[2]?.username?.trim() || '',
+              password3: this.formData.additionalAccounts[2]?.password || '',
+              username4: this.formData.additionalAccounts[3]?.username?.trim() || '',
+              password4: this.formData.additionalAccounts[3]?.password || ''
             };
             
             // 发送请求

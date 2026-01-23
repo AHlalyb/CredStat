@@ -250,11 +250,20 @@ function saveLoginInfo($data) {
         // 加密密码，使用SecurityUtils类的可逆加密
         $encryptedPassword = SecurityUtils::encrypt($data['password']);
         
-        // 准备SQL语句，匹配完整的表结构
+        // 加密动态添加的密码
+        $encryptedPassword1 = isset($data['password1']) && !empty($data['password1']) ? SecurityUtils::encrypt($data['password1']) : '';
+        $encryptedPassword2 = isset($data['password2']) && !empty($data['password2']) ? SecurityUtils::encrypt($data['password2']) : '';
+        $encryptedPassword3 = isset($data['password3']) && !empty($data['password3']) ? SecurityUtils::encrypt($data['password3']) : '';
+        $encryptedPassword4 = isset($data['password4']) && !empty($data['password4']) ? SecurityUtils::encrypt($data['password4']) : '';
+        
+        // 准备SQL语句，支持动态添加的账户密码
         $sql = "INSERT INTO $systemLoginTable (login_info_system_name, login_info_ip_url, login_info_login_type, 
-                login_info_username, login_info_password, login_info_remark, login_info_created_at, 
+                login_info_username, login_info_password, login_info_username1, login_info_password1,
+                login_info_username2, login_info_password2, login_info_username3, login_info_password3,
+                login_info_username4, login_info_password4, login_info_remark, login_info_created_at, 
                 login_info_updated_at, login_info_created_by, login_info_is_active) 
-                VALUES (:systemName, :ipUrl, :loginType, :username, :password, :remark, NOW(), NOW(), :createdBy, :isActive)";
+                VALUES (:systemName, :ipUrl, :loginType, :username, :password, :username1, :password1,
+                :username2, :password2, :username3, :password3, :username4, :password4, :remark, NOW(), NOW(), :createdBy, :isActive)";
         
         // 准备并执行语句
         $stmt = $pdo->prepare($sql);
@@ -264,6 +273,14 @@ function saveLoginInfo($data) {
             ':loginType' => $data['loginType'],
             ':username' => $data['username'],
             ':password' => $encryptedPassword,
+            ':username1' => isset($data['username1']) ? $data['username1'] : '',
+            ':password1' => $encryptedPassword1,
+            ':username2' => isset($data['username2']) ? $data['username2'] : '',
+            ':password2' => $encryptedPassword2,
+            ':username3' => isset($data['username3']) ? $data['username3'] : '',
+            ':password3' => $encryptedPassword3,
+            ':username4' => isset($data['username4']) ? $data['username4'] : '',
+            ':password4' => $encryptedPassword4,
             ':remark' => isset($data['remark']) ? $data['remark'] : '',
             ':createdBy' => isset($data['createdBy']) ? $data['createdBy'] : 'system',
             ':isActive' => isset($data['isActive']) ? (int)$data['isActive'] : 1
