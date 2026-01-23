@@ -58,8 +58,7 @@
             <input type="text" name="username" autocomplete="off" />
             <input type="password" name="password" autocomplete="off" />
           </div>
-          
-          <el-col :xs="24" :sm="12" :md="8" :lg="8">
+          <el-col :xs="24" :sm="8" :md="7" :lg="7">
             <el-form-item label="账号" prop="username" required>
               <el-input
                 v-model="formData.username"
@@ -73,7 +72,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :md="8" :lg="8">
+          <el-col :xs="24" :sm="8" :md="7" :lg="7">
             <el-form-item label="密码" prop="password" required>
               <el-input
                 v-model="formData.password"
@@ -88,38 +87,76 @@
               ></el-input>
             </el-form-item>
           </el-col>
+          
+          <el-col :xs="24" :sm="8" :md="4" :lg="4">
+            <el-form-item label="是否有效" prop="isActive">
+              <el-select
+                v-model="formData.isActive"
+                placeholder="请选择是否有效"
+                style="width: 100%"
+              >
+                <el-option label="有效" value="1"></el-option>
+                <el-option label="无效" value="0"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
         
-        <!-- 动态添加的账户密码表单组 -->
-        <div v-for="(account, index) in formData.additionalAccounts" :key="index" class="additional-account-section mb-4 p-3 border rounded bg-gray-50">
-          <h5 class="text-bold mb-3">附加账户 {{ index + 1 }}</h5>
+        <!-- 动态添加的账户密码表单组 - 水平排列 -->
+        <div v-if="formData.additionalAccounts.length > 0" class="additional-accounts-container mb-4 p-3 border rounded bg-gray-50">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-bold mb-0">附加账户</h5>
+          </div>
           <el-row :gutter="[20, 20]">
-            <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <el-form-item :label="'账号' + (index + 1)" :prop="'additionalAccounts.' + index + '.username'" required>
-                <el-input
-                  v-model="account.username"
-                  placeholder="请输入账号"
-                  autocomplete="new-username"
-                  :name="'random-username-' + Math.random().toString(36).substring(2, 15) + '-' + index"
-                  readonly
-                  @focus="$event.target.removeAttribute('readonly')"
-                ></el-input>
-              </el-form-item>
-            </el-col>
-            
-            <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <el-form-item :label="'密码' + (index + 1)" :prop="'additionalAccounts.' + index + '.password'" required>
-                <el-input
-                  v-model="account.password"
-                  type="password"
-                  placeholder="请输入密码"
-                  show-password
-                  autocomplete="new-password"
-                  :name="'random-password-' + Math.random().toString(36).substring(2, 15) + '-' + index"
-                  readonly
-                  @focus="$event.target.removeAttribute('readonly')"
-                ></el-input>
-              </el-form-item>
+            <el-col 
+              v-for="(account, index) in formData.additionalAccounts" 
+              :key="index"
+              :xs="24"
+              :sm="12"
+              :md="12"
+              :lg="6"
+              class="additional-account-col"
+            >
+              <el-transition name="fade-slide" mode="out-in">
+                <div class="account-group">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-sm text-gray-600 mb-0">账户 {{ index + 1 }}</h6>
+                    <el-button 
+                      type="danger" 
+                      size="small" 
+                      @click="confirmDeleteAccount(index)"
+                      :icon="Delete"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                  <el-form-item :label="'账号' + (index + 1)" :prop="'additionalAccounts.' + index + '.username'" required class="mb-2">
+                    <el-input
+                      v-model="account.username"
+                      placeholder="请输入账号"
+                      autocomplete="new-username"
+                      :name="'random-username-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                      readonly
+                      @focus="$event.target.removeAttribute('readonly')"
+                      size="small"
+                    ></el-input>
+                  </el-form-item>
+                  
+                  <el-form-item :label="'密码' + (index + 1)" :prop="'additionalAccounts.' + index + '.password'" required>
+                    <el-input
+                      v-model="account.password"
+                      type="password"
+                      placeholder="请输入密码"
+                      show-password
+                      autocomplete="new-password"
+                      :name="'random-password-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                      readonly
+                      @focus="$event.target.removeAttribute('readonly')"
+                      size="small"
+                    ></el-input>
+                  </el-form-item>
+                </div>
+              </el-transition>
             </el-col>
           </el-row>
         </div>
@@ -136,27 +173,16 @@
               >
                 添加账户
               </el-button>
-              <span v-if="formData.additionalAccounts.length >= 4" class="text-sm text-gray-500 ml-2">
-                已达到最大4个附加账户限制
+              <span class="text-sm text-gray-500 ml-2">
+                已添加 {{ formData.additionalAccounts.length }} / 4 个附加账户
+                <span v-if="formData.additionalAccounts.length < 4" class="text-green-600">(还可添加 {{ 4 - this.formData.additionalAccounts.length }} 个)</span>
+                <span v-else class="text-red-600">(已达上限)</span>
               </span>
             </el-form-item>
           </el-col>
         </el-row>
         
         <el-row :gutter="[20, 20]">
-          
-          <el-col :xs="24" :sm="12" :md="8" :lg="8">
-            <el-form-item label="是否有效" prop="isActive">
-              <el-select
-                v-model="formData.isActive"
-                placeholder="请选择是否有效"
-                style="width: 100%"
-              >
-                <el-option label="有效" value="1"></el-option>
-                <el-option label="无效" value="0"></el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
           
           <el-col :xs="24" :sm="24" :md="24" :lg="24">
             <el-form-item label="备注" prop="remark">
@@ -289,7 +315,7 @@
 // 导入XLS文件解析库
 import * as XLSX from 'xlsx';
 // 导入Element Plus图标
-import { DocumentAdd, RefreshRight, Check, Upload, EditPen, Plus } from '@element-plus/icons-vue';
+import { DocumentAdd, RefreshRight, Check, Upload, EditPen, Plus, Delete } from '@element-plus/icons-vue';
 
 export default {
   name: 'SystemLoginEntryView',
@@ -299,7 +325,8 @@ export default {
     Check,
     Upload,
     EditPen,
-    Plus
+    Plus,
+    Delete
   },
   data() {
     return {
@@ -362,6 +389,7 @@ export default {
     
     // 动态添加账户密码表单组
     addAccount() {
+      // 限制最多只能添加4个附加账户
       if (this.formData.additionalAccounts.length >= 4) {
         this.$message.warning('最多只能添加4个附加账户');
         return;
@@ -372,6 +400,28 @@ export default {
         username: '',
         password: ''
       });
+    },
+    
+    // 确认删除账户
+    confirmDeleteAccount(index) {
+      this.$confirm('确定要删除此账户吗？此操作不可撤销', '删除确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.deleteAccount(index);
+      }).catch(() => {
+        // 取消删除，不做任何操作
+      });
+    },
+    
+    // 删除账户
+    deleteAccount(index) {
+      // 移除附加账户数量下限限制，允许删除所有附加账户
+      
+      // 使用splice方法删除指定索引的账户
+      this.formData.additionalAccounts.splice(index, 1);
+      this.$message.success('账户删除成功');
     },
     
     // 重置表单
@@ -835,3 +885,78 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+/* 附加账户容器样式优化 */
+.additional-accounts-container {
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 10px;
+}
+
+/* 附加账户主标题样式 */
+.additional-accounts-container h5 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+/* 附加账户组样式 */
+.account-group {
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 账户标题样式 */
+.account-group h6 {
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #303133;
+}
+
+/* 附加账户列样式 */
+.additional-account-col {
+  margin-bottom: 15px;
+}
+
+/* 删除动画效果 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
+/* 表单项间距优化 */
+.account-group .el-form-item {
+  margin-bottom: 12px;
+}
+
+/* 表单标签样式 */
+.account-group .el-form-item__label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #606266;
+}
+
+/* 按钮间距优化 */
+.el-button + .el-button {
+  margin-left: 10px;
+}
+
+/* 主账号密码区域样式 */
+.main-account-section {
+  margin-bottom: 20px;
+}
+</style>

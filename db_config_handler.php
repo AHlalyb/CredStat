@@ -228,6 +228,18 @@ function saveLoginInfo($data) {
         exit;
     }
     
+    // 验证附加账户数量限制，最多只能添加4个附加账户
+    $additionalAccountCount = 0;
+    if (isset($data['username1']) && !empty($data['username1'])) $additionalAccountCount++;
+    if (isset($data['username2']) && !empty($data['username2'])) $additionalAccountCount++;
+    if (isset($data['username3']) && !empty($data['username3'])) $additionalAccountCount++;
+    if (isset($data['username4']) && !empty($data['username4'])) $additionalAccountCount++;
+    
+    if ($additionalAccountCount > 4) {
+        echo json_encode(['success' => false, 'message' => '最多只能添加4个附加账户']);
+        exit;
+    }
+    
     // 加载数据库配置
     $configFilePath = 'app/config/database.php';
     $config = loadConfig($configFilePath);
@@ -329,7 +341,12 @@ function searchLoginInfo($data) {
         // 构建搜索SQL
         $sql = "SELECT login_info_id as id, login_info_system_name as systemName, login_info_ip_url as ipUrl, 
                 login_info_login_type as loginType, login_info_username as username, 
-                login_info_password as password, login_info_remark as remark 
+                login_info_password as password, login_info_remark as remark, 
+                login_info_username1 as username1, login_info_password1 as password1, 
+                login_info_username2 as username2, login_info_password2 as password2, 
+                login_info_username3 as username3, login_info_password3 as password3, 
+                login_info_username4 as username4, login_info_password4 as password4, 
+                login_info_is_active as isActive
                 FROM $systemLoginTable 
                 WHERE login_info_is_active = 1";
         

@@ -1518,6 +1518,14 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                         login_info_login_type as loginType, 
                         login_info_username as username, 
                         login_info_password as password, 
+                        login_info_username1 as username1, 
+                        login_info_password1 as password1, 
+                        login_info_username2 as username2, 
+                        login_info_password2 as password2, 
+                        login_info_username3 as username3, 
+                        login_info_password3 as password3, 
+                        login_info_username4 as username4, 
+                        login_info_password4 as password4, 
                         login_info_remark as remark, 
                         login_info_created_at as created_at,
                         login_info_updated_at as updated_at,
@@ -1814,6 +1822,26 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                 }
             }
             
+            // 解密附加账户密码（password1-password4）
+            if ($table === 'login_info' && $hasDecryptPermission) {
+                // 解密password1
+                if (isset($result['password1']) && !empty($result['password1'])) {
+                    $result['password1'] = SecurityUtils::decrypt($result['password1']);
+                }
+                // 解密password2
+                if (isset($result['password2']) && !empty($result['password2'])) {
+                    $result['password2'] = SecurityUtils::decrypt($result['password2']);
+                }
+                // 解密password3
+                if (isset($result['password3']) && !empty($result['password3'])) {
+                    $result['password3'] = SecurityUtils::decrypt($result['password3']);
+                }
+                // 解密password4
+                if (isset($result['password4']) && !empty($result['password4'])) {
+                    $result['password4'] = SecurityUtils::decrypt($result['password4']);
+                }
+            }
+            
             // 解密集群密码字段
             if (isset($result['cluster_password']) && $hasDecryptPermission) {
                 // 记录解密操作前的密码状态
@@ -1840,6 +1868,30 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
             if (isset($result['login_info_password']) && $hasDecryptPermission) {
                 $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password']);
                 $result['login_info_password'] = $decryptedRawPassword;
+            }
+            
+            // 解密原始附加账户密码字段（用于悬浮窗显示）
+            if ($hasDecryptPermission) {
+                // 解密login_info_password1
+                if (isset($result['login_info_password1']) && !empty($result['login_info_password1'])) {
+                    $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password1']);
+                    $result['login_info_password1'] = $decryptedRawPassword;
+                }
+                // 解密login_info_password2
+                if (isset($result['login_info_password2']) && !empty($result['login_info_password2'])) {
+                    $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password2']);
+                    $result['login_info_password2'] = $decryptedRawPassword;
+                }
+                // 解密login_info_password3
+                if (isset($result['login_info_password3']) && !empty($result['login_info_password3'])) {
+                    $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password3']);
+                    $result['login_info_password3'] = $decryptedRawPassword;
+                }
+                // 解密login_info_password4
+                if (isset($result['login_info_password4']) && !empty($result['login_info_password4'])) {
+                    $decryptedRawPassword = SecurityUtils::decrypt($result['login_info_password4']);
+                    $result['login_info_password4'] = $decryptedRawPassword;
+                }
             }
             
             // 解密原始密码字段（用于悬浮窗显示）

@@ -1250,6 +1250,69 @@
                 <span>{{ Number(currentRecord.isActive) === 1 ? '有效' : '无效' }}</span>
               </el-descriptions-item>
             </el-descriptions>
+            
+            <!-- 附加账户信息 -->
+            <div v-if="hasAdditionalAccounts" class="additional-accounts-section mt-4">
+              <h4 class="mb-3 text-bold">附加账户信息</h4>
+              <el-descriptions
+                border
+                :column="2"
+                :size="'medium'"
+                class="detail-descriptions"
+              >
+                <!-- 附加账户1 -->
+                <el-descriptions-item label="附加账号1" v-if="currentRecord.username1">
+                  <span>{{ currentRecord.username1 || '无' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="附加密码1" v-if="currentRecord.username1">
+                  <el-input
+                    v-model="additionalPasswords[0]"
+                    type="password"
+                    show-password
+                    readonly
+                  ></el-input>
+                </el-descriptions-item>
+                
+                <!-- 附加账户2 -->
+                <el-descriptions-item label="附加账号2" v-if="currentRecord.username2">
+                  <span>{{ currentRecord.username2 || '无' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="附加密码2" v-if="currentRecord.username2">
+                  <el-input
+                    v-model="additionalPasswords[1]"
+                    type="password"
+                    show-password
+                    readonly
+                  ></el-input>
+                </el-descriptions-item>
+                
+                <!-- 附加账户3 -->
+                <el-descriptions-item label="附加账号3" v-if="currentRecord.username3">
+                  <span>{{ currentRecord.username3 || '无' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="附加密码3" v-if="currentRecord.username3">
+                  <el-input
+                    v-model="additionalPasswords[2]"
+                    type="password"
+                    show-password
+                    readonly
+                  ></el-input>
+                </el-descriptions-item>
+                
+                <!-- 附加账户4 -->
+                <el-descriptions-item label="附加账号4" v-if="currentRecord.username4">
+                  <span>{{ currentRecord.username4 || '无' }}</span>
+                </el-descriptions-item>
+                <el-descriptions-item label="附加密码4" v-if="currentRecord.username4">
+                  <el-input
+                    v-model="additionalPasswords[3]"
+                    type="password"
+                    show-password
+                    readonly
+                  ></el-input>
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
           </div>
           <!-- 服务器账号密码详情 -->
           <div v-else-if="currentRecord.category === 'server'" class="server-detail">
@@ -2035,6 +2098,8 @@ export default {
       extractDialogVisible: false,
       // 当前操作的记录
       currentRecord: null,
+      // 附加账户密码数组，用于密码显示控制
+      additionalPasswords: ['', '', '', ''],
       // 编辑对话框相关
         editDialogTitle: '修改记录',
         editFormData: {
@@ -2457,12 +2522,39 @@ export default {
   computed: {
     isWindows() {
       return this.editFormData.server_cred_server_os && this.editFormData.server_cred_server_os.toLowerCase().includes('windows');
+    },
+    hasAdditionalAccounts() {
+      // 检查是否存在附加账户
+      if (!this.currentRecord || this.currentRecord.category !== 'system') {
+        return false;
+      }
+      return this.currentRecord.username1 || 
+             this.currentRecord.username2 || 
+             this.currentRecord.username3 || 
+             this.currentRecord.username4;
     }
   },
   watch: {
     'editFormData.server_cred_server_os'() {
       // 操作系统类型变化时，重置磁盘表单
       this.diskForms = [this.getEmptyDiskForm()];
+    },
+    currentRecord: {
+      handler(newRecord) {
+        // 当currentRecord变化时，更新附加密码数组
+        if (newRecord && newRecord.category === 'system') {
+          this.additionalPasswords = [
+            newRecord.password1 || '',
+            newRecord.password2 || '',
+            newRecord.password3 || '',
+            newRecord.password4 || ''
+          ];
+        } else {
+          // 重置附加密码数组
+          this.additionalPasswords = ['', '', '', ''];
+        }
+      },
+      immediate: true
     }
   },
   created() {
