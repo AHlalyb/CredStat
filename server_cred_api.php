@@ -177,6 +177,30 @@ function saveServerCred($data, $dbConfig) {
                 $fileSystemType = $disk['fileSystemType'] ?? '';
                 $diskNotes = $disk['notes'] ?? '';
                 
+                // 添加详细的调试日志
+                $debugLog = [
+                    'timestamp' => date('Y-m-d H:i:s'),
+                    'operation' => '磁盘信息写入',
+                    'data_source' => 'saveServerCred',
+                    'table' => 'server_cred_volu_info',
+                    'sql' => $diskSql,
+                    'parameters' => [
+                        'server_cred_id' => $serverId,
+                        'server_cred_volu_os_type' => $osType,
+                        'server_cred_volu_windows_drive_letter' => $driveLetter,
+                        'server_cred_volu_linux_device_name' => $deviceName,
+                        'server_cred_volu_linux_mount_point' => $mountPoint,
+                        'server_cred_volu_capacity' => $capacity,
+                        'server_cred_volu_used_space' => $usedSpace,
+                        'server_cred_volu_file_system_type' => $fileSystemType,
+                        'server_cred_volu_notes' => $diskNotes,
+                        'server_cred_volu_created_by' => 'system'
+                    ],
+                    'raw_disk_data' => $disk
+                ];
+                // 输出调试日志到控制台
+                error_log(json_encode($debugLog, JSON_UNESCAPED_UNICODE));
+                
                 // 绑定参数
                 $diskCreatedBy = 'system';
                 $diskBindResult = $diskStmt->bind_param(
@@ -224,20 +248,12 @@ function saveServerCred($data, $dbConfig) {
     } catch (Exception $e) {
         // 回滚事务
         if (isset($conn)) {
-            // 检查是否支持in_transaction属性（PHP 5.6不支持）
-            if (property_exists($conn, 'in_transaction')) {
-                if ($conn->in_transaction) {
-                    $conn->rollback();
-                    $conn->close();
-                }
-            } else {
-                // PHP 5.6兼容处理，尝试回滚，忽略错误
-                try {
-                    $conn->rollback();
-                    $conn->close();
-                } catch (Exception $rollbackException) {
-                    // 忽略回滚错误
-                }
+            // PHP 5.6兼容处理，直接尝试回滚，忽略错误
+            try {
+                $conn->rollback();
+                $conn->close();
+            } catch (Exception $rollbackException) {
+                // 忽略回滚错误
             }
         }
         
@@ -506,20 +522,12 @@ function importServerCred($data, $dbConfig) {
     } catch (Exception $e) {
         // 回滚事务
         if (isset($conn)) {
-            // 检查是否支持in_transaction属性（PHP 5.6不支持）
-            if (property_exists($conn, 'in_transaction')) {
-                if ($conn->in_transaction) {
-                    $conn->rollback();
-                    $conn->close();
-                }
-            } else {
-                // PHP 5.6兼容处理，尝试回滚，忽略错误
-                try {
-                    $conn->rollback();
-                    $conn->close();
-                } catch (Exception $rollbackException) {
-                    // 忽略回滚错误
-                }
+            // PHP 5.6兼容处理，直接尝试回滚，忽略错误
+            try {
+                $conn->rollback();
+                $conn->close();
+            } catch (Exception $rollbackException) {
+                // 忽略回滚错误
             }
         }
         

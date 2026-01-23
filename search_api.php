@@ -430,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             error_log('原有磁盘信息删除成功，影响行数: ' . $deleteStmt->rowCount());
                             
                             // 2. 插入新的磁盘信息
-                            $osType = isset($data['os']) ? strtolower($data['os']) : 'linux';
+                            $osType = isset($os) ? strtolower($os) : 'linux';
                             $osType = strpos($osType, 'windows') !== false ? 'windows' : 'linux';
                             
                             $insertDiskSql = "INSERT INTO server_cred_volu_info (
@@ -459,6 +459,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $diskNotes = $disk['notes'] ?? '';
                                 
                                 $createdBy = 'system';
+                                
+                                // 添加详细的调试日志
+                                $debugLog = [
+                                    'timestamp' => date('Y-m-d H:i:s'),
+                                    'operation' => '磁盘信息更新写入',
+                                    'data_source' => 'search_api_update',
+                                    'table' => 'server_cred_volu_info',
+                                    'sql' => $insertDiskSql,
+                                    'parameters' => [
+                                        'server_cred_id' => $serverId,
+                                        'server_cred_volu_os_type' => $osType,
+                                        'server_cred_volu_windows_drive_letter' => $driveLetter,
+                                        'server_cred_volu_linux_device_name' => $deviceName,
+                                        'server_cred_volu_linux_mount_point' => $mountPoint,
+                                        'server_cred_volu_capacity' => $capacity,
+                                        'server_cred_volu_used_space' => $usedSpace,
+                                        'server_cred_volu_file_system_type' => $fileSystemType,
+                                        'server_cred_volu_notes' => $diskNotes,
+                                        'server_cred_volu_created_by' => $createdBy
+                                    ],
+                                    'raw_disk_data' => $disk
+                                ];
+                                // 输出调试日志到控制台
+                                error_log(json_encode($debugLog, JSON_UNESCAPED_UNICODE));
                                 
                                 $insertStmt->bindValue(1, $serverId, PDO::PARAM_INT);
                                 $insertStmt->bindValue(2, $osType, PDO::PARAM_STR);

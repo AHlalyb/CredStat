@@ -2892,16 +2892,27 @@ export default {
     },
     // 填充磁盘表单
     fillDiskForms(disks) {
+      // 创建现有磁盘备注信息映射表
+      const existingNotesMap = {};
+      this.diskForms.forEach(existingDisk => {
+        if (existingDisk.driveLetter && existingDisk.notes) {
+          existingNotesMap[existingDisk.driveLetter] = existingDisk.notes;
+        }
+      });
+      
       // 清空当前磁盘表单
       this.diskForms = [];
       
-      // 填充解析后的磁盘信息
+      // 填充解析后的磁盘信息，保留原有备注
       disks.forEach(disk => {
+        const driveLetter = disk.driveLetter || '';
+        const existingNotes = existingNotesMap[driveLetter];
+        
         this.diskForms.push({
-          driveLetter: disk.driveLetter || '',
+          driveLetter: driveLetter,
           capacity: disk.capacity || '',
           usedSpace: disk.usedSpace || '',
-          notes: disk.notes || ''
+          notes: existingNotes || (disk.notes || '')
         });
       });
     },
@@ -3142,18 +3153,29 @@ export default {
     },
     // 填充Linux磁盘表单
     fillLinuxDiskForms(disks) {
+      // 创建现有磁盘备注信息映射表
+      const existingNotesMap = {};
+      this.diskForms.forEach(existingDisk => {
+        if (existingDisk.deviceName && existingDisk.notes) {
+          existingNotesMap[existingDisk.deviceName] = existingDisk.notes;
+        }
+      });
+      
       // 清空当前磁盘表单
       this.diskForms = [];
       
-      // 填充解析后的磁盘信息
+      // 填充解析后的磁盘信息，保留原有备注
       disks.forEach(disk => {
+        const deviceName = disk.deviceName || '';
+        const existingNotes = existingNotesMap[deviceName];
+        
         this.diskForms.push({
-          deviceName: disk.deviceName || '',
+          deviceName: deviceName,
           fileSystemType: disk.fileSystemType || '',
           capacity: disk.capacity || '',
           usedSpace: disk.usedSpace || '',
           mountPoint: disk.mountPoint || '',
-          notes: disk.notes || ''
+          notes: existingNotes || (disk.notes || '')
         });
       });
     },
