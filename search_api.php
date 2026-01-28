@@ -337,6 +337,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             login_info_login_type = :loginType,
                             login_info_username = :account,
                             login_info_password = :password,
+                            login_info_username1 = :username1,
+                            login_info_password1 = :password1,
+                            login_info_username2 = :username2,
+                            login_info_password2 = :password2,
+                            login_info_username3 = :username3,
+                            login_info_password3 = :password3,
+                            login_info_username4 = :username4,
+                            login_info_password4 = :password4,
                             login_info_remark = :remark,
                             login_info_is_active = :isActive,
                             login_info_updated_at = NOW()
@@ -349,6 +357,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $loginType = isset($data['loginType']) ? $data['loginType'] : (isset($data['type']) ? $data['type'] : '');
                         $account = isset($data['account']) ? $data['account'] : (isset($data['username']) ? $data['username'] : '');
                         $password = isset($data['password']) ? $data['password'] : '';
+                        $username1 = isset($data['username1']) ? $data['username1'] : '';
+                        $password1 = isset($data['password1']) ? $data['password1'] : '';
+                        $username2 = isset($data['username2']) ? $data['username2'] : '';
+                        $password2 = isset($data['password2']) ? $data['password2'] : '';
+                        $username3 = isset($data['username3']) ? $data['username3'] : '';
+                        $password3 = isset($data['password3']) ? $data['password3'] : '';
+                        $username4 = isset($data['username4']) ? $data['username4'] : '';
+                        $password4 = isset($data['password4']) ? $data['password4'] : '';
                         $remark = isset($data['remark']) ? $data['remark'] : '';
                         $isActive = isset($data['isActive']) ? $data['isActive'] : '1';
                         
@@ -359,11 +375,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // 加密密码
                         $encryptedPassword = SecurityUtils::encrypt($password);
                         $stmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
+                        // 加密附加账户密码
+                        $encryptedPassword1 = SecurityUtils::encrypt($password1);
+                        $encryptedPassword2 = SecurityUtils::encrypt($password2);
+                        $encryptedPassword3 = SecurityUtils::encrypt($password3);
+                        $encryptedPassword4 = SecurityUtils::encrypt($password4);
+                        $stmt->bindValue(':username1', $username1, PDO::PARAM_STR);
+                        $stmt->bindValue(':password1', $encryptedPassword1, PDO::PARAM_STR);
+                        $stmt->bindValue(':username2', $username2, PDO::PARAM_STR);
+                        $stmt->bindValue(':password2', $encryptedPassword2, PDO::PARAM_STR);
+                        $stmt->bindValue(':username3', $username3, PDO::PARAM_STR);
+                        $stmt->bindValue(':password3', $encryptedPassword3, PDO::PARAM_STR);
+                        $stmt->bindValue(':username4', $username4, PDO::PARAM_STR);
+                        $stmt->bindValue(':password4', $encryptedPassword4, PDO::PARAM_STR);
                         $stmt->bindValue(':remark', $remark, PDO::PARAM_STR);
                         $stmt->bindValue(':isActive', $isActive, PDO::PARAM_INT);
                         $stmt->bindValue(':id', $loginInfoId, PDO::PARAM_INT);
                         $stmt->execute();
                         error_log('系统登录信息更新成功');
+                    } else {
+                        throw new Exception('系统登录信息ID不能为空');
                     }
                     break;
                 case 'server_cred':
@@ -1028,8 +1059,54 @@ function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exp
             // 使用用户选择的列
             $exportColumns = $selectedColumns;
             
+            // 检查是否是信息系统登录信息类型且选择了账号和密码字段
+            $isSystemType = $dataType === 'system';
+            $hasUsername = in_array('username', $selectedColumns) || in_array('login_info_username', $selectedColumns);
+            $hasPassword = in_array('password', $selectedColumns) || in_array('login_info_password', $selectedColumns);
+            $needAdditionalAccounts = $isSystemType && $hasUsername && $hasPassword;
+            
+            // 如果需要导出附加账户信息，添加相应的列
+            $additionalAccountColumns = [];
+            if ($needAdditionalAccounts) {
+                for ($i = 1; $i <= 4; $i++) {
+                    $additionalAccountColumns[] = "username{$i}";
+                    $additionalAccountColumns[] = "password{$i}";
+                }
+                
+                // 找到备注信息列的位置，将附加账户信息插入到备注信息列的左侧
+                $remarkColumnIndex = -1;
+                foreach ($exportColumns as $index => $column) {
+                    if ($column === 'login_info_remark') {
+                        $remarkColumnIndex = $index;
+                        break;
+                    }
+                }
+                
+                if ($remarkColumnIndex >= 0) {
+                    // 在备注信息列前插入附加账户信息
+                    array_splice($exportColumns, $remarkColumnIndex, 0, $additionalAccountColumns);
+                } else {
+                    // 如果没有备注信息列，就添加到末尾
+                    $exportColumns = array_merge($exportColumns, $additionalAccountColumns);
+                }
+            }
+            
             // 写入中文列名
             $chineseColumns = array_map('getFieldLabel', $exportColumns);
+            // 为附加账户信息添加中文列名
+            if ($needAdditionalAccounts) {
+                $additionalChineseColumns = [];
+                for ($i = 1; $i <= 4; $i++) {
+                    $additionalChineseColumns[] = "账号{$i}";
+                    $additionalChineseColumns[] = "密码{$i}";
+                }
+                // 替换附加账户信息的列名
+                for ($i = 0; $i < count($additionalChineseColumns); $i++) {
+                    if (isset($chineseColumns[count($selectedColumns) + $i])) {
+                        $chineseColumns[count($selectedColumns) + $i] = $additionalChineseColumns[$i];
+                    }
+                }
+            }
             fputcsv($output, $chineseColumns);
             
             // 写入数据行
@@ -1338,9 +1415,60 @@ function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $expor
             // 使用用户选择的列
             $exportColumns = $selectedColumns;
             
+            // 检查是否是信息系统登录信息类型且选择了账号和密码字段
+            $isSystemType = $dataType === 'system';
+            $hasUsername = in_array('login_info_username', $selectedColumns);
+            $hasPassword = in_array('login_info_password', $selectedColumns);
+            $needAdditionalAccounts = $isSystemType && $hasUsername && $hasPassword;
+            
+            // 如果需要导出附加账户信息，添加相应的列
+            $additionalAccountColumns = [];
+            if ($needAdditionalAccounts) {
+                for ($i = 1; $i <= 4; $i++) {
+                    $additionalAccountColumns[] = "username{$i}";
+                    $additionalAccountColumns[] = "password{$i}";
+                }
+                
+                // 找到备注信息列的位置，将附加账户信息插入到备注信息列的左侧
+                $remarkColumnIndex = -1;
+                foreach ($exportColumns as $index => $column) {
+                    if ($column === 'login_info_remark') {
+                        $remarkColumnIndex = $index;
+                        break;
+                    }
+                }
+                
+                if ($remarkColumnIndex >= 0) {
+                    // 在备注信息列前插入附加账户信息
+                    array_splice($exportColumns, $remarkColumnIndex, 0, $additionalAccountColumns);
+                } else {
+                    // 如果没有备注信息列，就添加到末尾
+                    $exportColumns = array_merge($exportColumns, $additionalAccountColumns);
+                }
+            }
+            
             // 输出中文表头
             foreach ($exportColumns as $column) {
-                echo '<th>' . getFieldLabel($column) . '</th>';
+                // 为附加账户信息添加中文列名
+                if ($needAdditionalAccounts) {
+                    $found = false;
+                    for ($i = 1; $i <= 4; $i++) {
+                        if ($column === "username{$i}") {
+                            echo '<th>账号' . $i . '</th>';
+                            $found = true;
+                            break;
+                        } elseif ($column === "password{$i}") {
+                            echo '<th>密码' . $i . '</th>';
+                            $found = true;
+                            break;
+                        }
+                    }
+                    if (!$found) {
+                        echo '<th>' . getFieldLabel($column) . '</th>';
+                    }
+                } else {
+                    echo '<th>' . getFieldLabel($column) . '</th>';
+                }
             }
         } else {
             // 导出其他类型数据，使用默认字段列表
@@ -1373,7 +1501,42 @@ function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $expor
             
             if (!empty($selectedColumns)) {
                 // 使用用户选择的列
-                foreach ($selectedColumns as $column) {
+                // 检查是否是信息系统登录信息类型且选择了账号和密码字段
+                $isSystemType = $dataType === 'system';
+                $hasUsername = in_array('login_info_username', $selectedColumns);
+                $hasPassword = in_array('login_info_password', $selectedColumns);
+                $needAdditionalAccounts = $isSystemType && $hasUsername && $hasPassword;
+                
+                // 构建完整的导出列数组，包括附加账户信息
+                $fullExportColumns = $selectedColumns;
+                
+                if ($needAdditionalAccounts) {
+                    $additionalAccountColumns = [];
+                    for ($i = 1; $i <= 4; $i++) {
+                        $additionalAccountColumns[] = "username{$i}";
+                        $additionalAccountColumns[] = "password{$i}";
+                    }
+                    
+                    // 找到备注信息列的位置，将附加账户信息插入到备注信息列的左侧
+                    $remarkColumnIndex = -1;
+                    foreach ($fullExportColumns as $index => $column) {
+                        if ($column === 'login_info_remark') {
+                            $remarkColumnIndex = $index;
+                            break;
+                        }
+                    }
+                    
+                    if ($remarkColumnIndex >= 0) {
+                        // 在备注信息列前插入附加账户信息
+                        array_splice($fullExportColumns, $remarkColumnIndex, 0, $additionalAccountColumns);
+                    } else {
+                        // 如果没有备注信息列，就添加到末尾
+                        $fullExportColumns = array_merge($fullExportColumns, $additionalAccountColumns);
+                    }
+                }
+                
+                // 输出所有列数据
+                foreach ($fullExportColumns as $column) {
                     $value = isset($row[$column]) ? $row[$column] : '';
                     
                     // 处理是否有效字段

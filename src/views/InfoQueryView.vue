@@ -377,7 +377,89 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :xs="24" :sm="24" :md="24" :lg="24">
+
+          </el-row>
+          
+          <!-- 动态添加的账户密码表单组 -->
+          <div v-if="editFormData.additionalAccounts.length > 0" class="additional-accounts-container mb-4 p-3 border rounded bg-gray-50">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="text-bold mb-0">附加账户</h5>
+            </div>
+            <el-row :gutter="[20, 20]">
+              <el-col 
+                v-for="(account, index) in editFormData.additionalAccounts" 
+                :key="index"
+                :xs="24"
+                :sm="12"
+                :md="12"
+                :lg="6"
+                class="additional-account-col"
+              >
+                <el-transition name="fade-slide" mode="out-in">
+                  <div class="account-group">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h6 class="text-sm text-gray-600 mb-0">账户 {{ index + 1 }}</h6>
+                      <el-button 
+                        type="danger" 
+                        size="small" 
+                        @click="confirmDeleteAccount(index)"
+                      >
+                        删除
+                      </el-button>
+                    </div>
+                    <el-form-item :label="'账号' + (index + 1)" :prop="'additionalAccounts.' + index + '.username'" required class="mb-2">
+                      <el-input
+                        v-model="account.username"
+                        placeholder="请输入账号"
+                        autocomplete="new-username"
+                        :name="'random-username-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                        readonly
+                        @focus="$event.target.removeAttribute('readonly')"
+                        size="small"
+                      ></el-input>
+                    </el-form-item>
+                    
+                    <el-form-item :label="'密码' + (index + 1)" :prop="'additionalAccounts.' + index + '.password'" required>
+                      <el-input
+                        v-model="account.password"
+                        type="password"
+                        placeholder="请输入密码"
+                        show-password
+                        autocomplete="new-password"
+                        :name="'random-password-' + Math.random().toString(36).substring(2, 15) + '-' + index"
+                        readonly
+                        @focus="$event.target.removeAttribute('readonly')"
+                        size="small"
+                      ></el-input>
+                    </el-form-item>
+                  </div>
+                </el-transition>
+              </el-col>
+            </el-row>
+          </div>
+          
+          <!-- 添加账户按钮 -->
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="24" :md="16" :lg="16">
+              <el-form-item>
+                <el-button 
+                  type="primary" 
+                  @click="addAccount" 
+                  :disabled="editFormData.additionalAccounts.length >= 4"
+                >
+                  添加账户
+                </el-button>
+                <span class="text-sm text-gray-500 ml-2">
+                  已添加 {{ editFormData.additionalAccounts.length }} / 4 个附加账户
+                  <span v-if="editFormData.additionalAccounts.length < 4" class="text-green-600">(还可添加 {{ 4 - editFormData.additionalAccounts.length }} 个)</span>
+                  <span v-else class="text-red-600">(已达上限)</span>
+                </span>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+      <el-row :gutter="[20, 20]">
+			      <el-col :xs="24" :sm="24" :md="24" :lg="24">
               <el-form-item label="备注" prop="remark">
                 <el-input
                   v-model="editFormData.remark"
@@ -387,7 +469,7 @@
                 ></el-input>
               </el-form-item>
             </el-col>
-          </el-row>
+      </el-row>
         </div>
         
         <!-- 服务器账号密码表单 -->
@@ -2111,6 +2193,8 @@ export default {
           password: '',
           isActive: '1',
           remark: '',
+          // 动态添加的附加账户
+          additionalAccounts: [],
           // 服务器账号密码
           server_cred_network_area: '内网',
           server_cred_server_type: '虚拟机',
@@ -2202,6 +2286,15 @@ export default {
         ],
         remark: [
           { max: 255, message: '备注不能超过255个字符', trigger: 'blur' }
+        ],
+        // 附加账户验证规则
+        'additionalAccounts.*.username': [
+          { required: true, message: '请输入账号', trigger: 'blur' },
+          { max: 50, message: '账号不能超过50个字符', trigger: 'blur' }
+        ],
+        'additionalAccounts.*.password': [
+          { required: true, message: '请输入密码', trigger: 'blur' },
+          { max: 100, message: '密码不能超过100个字符', trigger: 'blur' }
         ],
         
         // 服务器账号密码验证规则
@@ -3968,6 +4061,53 @@ export default {
       }
     },
     
+    // 动态添加账户密码表单组
+    addAccount() {
+      // 检查是否有编辑权限
+      if (!this.hasPermission('edit')) {
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        return;
+      }
+      
+      // 限制最多只能添加4个附加账户
+      if (this.editFormData.additionalAccounts.length >= 4) {
+        this.$message.warning('最多只能添加4个附加账户');
+        return;
+      }
+      
+      // 添加新的账户密码表单组
+      this.editFormData.additionalAccounts.push({
+        username: '',
+        password: ''
+      });
+    },
+    
+    // 确认删除账户
+    confirmDeleteAccount(index) {
+      // 检查是否有编辑权限
+      if (!this.hasPermission('edit')) {
+        ElMessage.error('您没有修改权限，请联系管理员获取相应权限');
+        return;
+      }
+      
+      this.$confirm('确定要删除此账户吗？此操作不可撤销', '删除确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.deleteAccount(index);
+      }).catch(() => {
+        // 取消删除，不做任何操作
+      });
+    },
+    
+    // 删除账户
+    deleteAccount(index) {
+      // 移除附加账户
+      this.editFormData.additionalAccounts.splice(index, 1);
+      this.$message.success('账户删除成功');
+    },
+    
     // 重置编辑表单
     resetEditForm() {
       if (this.$refs.editFormRef) {
@@ -4046,7 +4186,18 @@ export default {
       switch (recordType) {
         case 'system':
           // 信息系统登录信息
+          // 构建附加账户数组
+          const additionalAccounts = [];
+          // 检查是否有附加账户信息
+          for (let i = 1; i <= 4; i++) {
+            const username = record[`username${i}`] || record[`login_info_username${i}`] || '';
+            const password = record[`password${i}`] || record[`login_info_password${i}`] || '';
+            if (username || password) {
+              additionalAccounts.push({ username, password });
+            }
+          }
           this.editFormData = {
+            id: record.id || record.login_info_id || '',
             login_info_id: record.id || record.login_info_id || '',
             systemName: record.name || record.login_info_system_name || '',
             ipUrl: record.ip_url || record.login_info_ip_url || '',
@@ -4054,7 +4205,8 @@ export default {
             username: record.username || record.login_info_username || '',
             password: record.password || record.login_info_password || '',
             isActive: record.isActive || record.login_info_is_active || '1',
-            remark: record.remark || record.login_info_remark || ''
+            remark: record.remark || record.login_info_remark || '',
+            additionalAccounts: additionalAccounts
           };
           break;
         case 'server':
@@ -4541,6 +4693,19 @@ export default {
             apiRequestData.disk_forms = this.diskForms;
           }
           
+          // 为信息系统登录信息类型处理附加账户
+          if (recordType === 'system') {
+            // 处理附加账户，转换为username1, password1等字段
+            const additionalAccounts = apiRequestData.additionalAccounts || [];
+            for (let i = 0; i < 4; i++) {
+              const account = additionalAccounts[i];
+              apiRequestData[`username${i + 1}`] = account?.username?.trim() || '';
+              apiRequestData[`password${i + 1}`] = account?.password || '';
+            }
+            // 删除additionalAccounts字段，因为后端不需要这个数组
+            delete apiRequestData.additionalAccounts;
+          }
+          
           const apiRequest = {
             action: 'update',
             type: finalType, // 使用映射后的类型
@@ -4900,6 +5065,69 @@ export default {
   text-align: center;
   padding: 40px 0;
   color: #909399;
+}
+
+/* 附加账户容器样式优化 */
+.additional-accounts-container {
+  background-color: #f5f7fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 10px;
+}
+
+/* 附加账户主标题样式 */
+.additional-accounts-container h5 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+/* 附加账户组样式 */
+.account-group {
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 账户标题样式 */
+.account-group h6 {
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #303133;
+}
+
+/* 附加账户列样式 */
+.additional-account-col {
+  margin-bottom: 15px;
+}
+
+/* 删除动画效果 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
+/* 表单项间距优化 */
+.account-group .el-form-item {
+  margin-bottom: 12px;
+}
+
+/* 表单标签样式 */
+.account-group .el-form-item__label {
+  font-weight: 500;
+  font-size: 13px;
+  color: #606266;
 }
 
 /* 操作按钮样式 */

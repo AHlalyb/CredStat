@@ -444,6 +444,42 @@
         </div>
       </div>
       
+      <!-- 失败记录 -->
+      <div class="mb-4" v-if="failedRecords.length > 0">
+        <h6 class="text-bold text-warning">失败记录</h6>
+        <el-divider></el-divider>
+        <div class="mb-2">
+          <el-button type="primary" size="small" @click="exportFailedRecords('csv')">
+            导出失败记录 (CSV)
+          </el-button>
+          <el-button type="primary" size="small" @click="exportFailedRecords('html')" style="margin-left: 10px;">
+            导出失败记录 (HTML)
+          </el-button>
+        </div>
+        <div class="failed-records-container" style="max-height: 400px; overflow-y: auto; border: 1px solid #e6a23c; border-radius: 4px; padding: 10px; background-color: #fdf6ec;">
+          <el-table :data="failedRecords" size="small" border style="width: 100%;">
+            <el-table-column prop="row_index" label="行号" width="80"></el-table-column>
+            <el-table-column prop="error_message" label="错误原因" min-width="200"></el-table-column>
+            <el-table-column label="数据内容" min-width="300">
+              <template #default="scope">
+                <el-popover
+                  placement="top"
+                  width="400"
+                  trigger="hover"
+                >
+                  <template #reference>
+                    <el-button type="text" size="small">查看详情</el-button>
+                  </template>
+                  <div v-for="(value, key) in scope.row.data" :key="key" style="margin-bottom: 5px;">
+                    <span style="font-weight: bold;">{{ key }}:</span> {{ value }}
+                  </div>
+                </el-popover>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+      
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="importDialogVisible = false">关闭</el-button>
@@ -802,6 +838,7 @@ export default {
       progressText: '',
       progressColor: '',
       errors: [],
+      failedRecords: [],
       canImport: false
     };
   },
@@ -2296,10 +2333,19 @@ export default {
         // 检查响应状态
         if (data.status === 'success') {
           this.progressText = '导入完成';
-          this.$message.success(`导入成功，共导入 ${data.imported || this.importData.length} 条记录`);
-          setTimeout(() => {
-            this.importDialogVisible = false;
-          }, 1000);
+          
+          // 处理失败记录
+          if (data.failed > 0) {
+            this.failedRecords = data.failed_records || [];
+            // 添加错误信息
+            this.errors.push(`成功导入 ${data.imported} 条记录，失败 ${data.failed} 条记录`);
+            this.$message.warning(`导入完成，成功导入 ${data.imported} 条记录，失败 ${data.failed} 条记录`);
+          } else {
+            this.$message.success(`导入成功，共导入 ${data.imported || this.importData.length} 条记录`);
+            setTimeout(() => {
+              this.importDialogVisible = false;
+            }, 1000);
+          }
         } else {
           // 显示实际错误信息
           this.progressText = '导入失败';
@@ -2339,6 +2385,173 @@ export default {
     // 进度条格式化函数
     progressFormat(percentage) {
       return `${percentage}%`;
+    },
+    
+    // 导出失败记录
+    exportFailedRecords(format) {
+      if (this.failedRecords.length === 0) {
+        this.$message.warning('没有失败记录可导出');
+        return;
+      }
+      
+      if (format === 'csv') {
+        this.exportFailedRecordsToCSV();
+      } else if (format === 'html') {
+        this.exportFailedRecordsToHTML();
+      }
+    },
+    
+    // 导出失败记录为CSV
+    exportFailedRecordsToCSV() {
+      // 准备CSV表头
+      const headers = ['行号', '错误原因'];
+      
+      // 收集所有可能的字段名
+      const allFields = new Set();
+      this.failedRecords.forEach(record => {
+        Object.keys(record.data).forEach(key => {
+          allFields.add(key);
+        });
+      });
+      
+      // 添加数据字段到表头
+      allFields.forEach(field => {
+        headers.push(field);
+      });
+      
+      // 准备CSV数据
+      const csvContent = [
+        headers.join(','),
+        ...this.failedRecords.map(record => {
+          const row = [
+            record.row_index,
+            `"${record.error_message.replace(/"/g, '""')}"`
+          ];
+          
+          allFields.forEach(field => {
+            const value = record.data[field] || '';
+            row.push(`"${value.replace(/"/g, '""')}"`);
+          });
+          
+          return row.join(',');
+        })
+      ].join('\n');
+      
+      // 创建Blob对象
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      // 创建下载链接
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `failed_records_${new Date().getTime()}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      this.$message.success('失败记录已导出为CSV文件');
+    },
+    
+    // 导出失败记录为HTML
+    exportFailedRecordsToHTML() {
+      // 准备HTML内容
+      let htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>失败记录导出</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    .error-message {
+      color: #d9534f;
+    }
+    .info {
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: #f8f9fa;
+      border-left: 4px solid #007bff;
+    }
+  </style>
+</head>
+<body>
+  <h1>导入失败记录</h1>
+  <div class="info">
+    <p>导出时间: ${new Date().toLocaleString()}</p>
+    <p>失败记录数量: ${this.failedRecords.length}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>行号</th>
+        <th>错误原因</th>
+        <th>数据内容</th>
+      </tr>
+    </thead>
+    <tbody>`;
+      
+      // 添加数据行
+      this.failedRecords.forEach(record => {
+        let dataContent = '';
+        Object.entries(record.data).forEach(([key, value]) => {
+          dataContent += `<strong>${key}:</strong> ${value}<br>`;
+        });
+        
+        htmlContent += `
+      <tr>
+        <td>${record.row_index}</td>
+        <td class="error-message">${record.error_message}</td>
+        <td>${dataContent}</td>
+      </tr>`;
+      });
+      
+      // 结束HTML内容
+      htmlContent += `
+    </tbody>
+  </table>
+</body>
+</html>`;
+      
+      // 创建Blob对象
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      // 创建下载链接
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `failed_records_${new Date().getTime()}.html`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      this.$message.success('失败记录已导出为HTML文件');
     },
     
     // 查询磁盘信息

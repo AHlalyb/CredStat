@@ -417,6 +417,8 @@ function importServerCred($data, $dbConfig) {
         }
         
         $successCount = 0;
+        $failedRecords = [];
+        $rowIndex = 1;
         
         // 遍历导入数据
         foreach ($importData as $row) {
@@ -498,10 +500,16 @@ function importServerCred($data, $dbConfig) {
                 $successCount++;
                 
             } catch (Exception $e) {
-                // 记录错误但继续处理其他记录
-                error_log('导入服务器信息失败: ' . $e->getMessage());
+                // 记录失败记录的详细信息
+                $failedRecords[] = [
+                    'row_index' => $rowIndex,
+                    'error_message' => $e->getMessage(),
+                    'data' => $row
+                ];
+                error_log('导入服务器信息失败 (行' . $rowIndex . '): ' . $e->getMessage());
                 continue;
             }
+            $rowIndex++;
         }
         
         // 提交事务
@@ -516,7 +524,9 @@ function importServerCred($data, $dbConfig) {
         $response = [
             'status' => 'success',
             'message' => "导入成功，共导入 {$successCount} 条记录",
-            'imported' => $successCount
+            'imported' => $successCount,
+            'failed' => count($failedRecords),
+            'failed_records' => $failedRecords
         ];
         
     } catch (Exception $e) {
