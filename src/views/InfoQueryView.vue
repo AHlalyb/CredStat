@@ -798,11 +798,15 @@
                   allow-create
                   default-first-option
                   style="width: 100%"
+                  :loading="loading.netDeviceTypes"
                 >
-                  <!-- 设备类型选项 -->
-                  <el-option label="交换机" value="交换机"></el-option>
-                  <el-option label="路由器" value="路由器"></el-option>
-                  <el-option label="防火墙" value="防火墙"></el-option>
+                  <!-- 动态设备类型选项 -->
+                  <el-option
+                    v-for="type in baseObjData.netDeviceTypes"
+                    :key="type"
+                    :label="type"
+                    :value="type"
+                  ></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
@@ -871,11 +875,15 @@
                   allow-create
                   default-first-option
                   style="width: 100%"
+                  :loading="loading.netDeviceBrands"
                 >
-                  <!-- 设备品牌选项 -->
-                  <el-option label="华为" value="华为"></el-option>
-                  <el-option label="H3C" value="H3C"></el-option>
-                  <el-option label="思科" value="思科"></el-option>
+                  <!-- 动态设备品牌选项 -->
+                  <el-option
+                    v-for="brand in baseObjData.netDeviceBrands"
+                    :key="brand"
+                    :label="brand"
+                    :value="brand"
+                  ></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
@@ -888,8 +896,15 @@
                   allow-create
                   default-first-option
                   style="width: 100%"
+                  :loading="loading.netDeviceModels"
                 >
-                  <!-- 设备型号选项 -->
+                  <!-- 动态设备型号选项 -->
+                  <el-option
+                    v-for="model in baseObjData.netDeviceModels"
+                    :key="model"
+                    :label="model"
+                    :value="model"
+                  ></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
@@ -2494,6 +2509,19 @@ export default {
         }
         
         callback();
+      },
+      
+      // 从base_obj表获取的数据
+      baseObjData: {
+        netDeviceTypes: [],
+        netDeviceBrands: [],
+        netDeviceModels: []
+      },
+      // 加载状态
+      loading: {
+        netDeviceTypes: false,
+        netDeviceBrands: false,
+        netDeviceModels: false
       },
       
       // Windows磁盘表单验证规则
@@ -5007,11 +5035,80 @@ export default {
       // 检查is_active字段是否为有效状态
       const isActive = record.is_active;
       return isActive !== '0' && isActive !== 0;
+    },
+    
+    // 获取base_obj表数据
+    async fetchBaseObjData() {
+      try {
+        // 获取网络设备类型
+        this.loading.netDeviceTypes = true;
+        const typeResponse = await fetch('/base_obj_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'getBaseObject', type: 'netDeviceType' })
+        });
+        
+        if (!typeResponse.ok) {
+          throw new Error(`HTTP错误! 状态码: ${typeResponse.status}`);
+        }
+        
+        const typeData = await typeResponse.json();
+        
+        // 获取设备品牌
+        this.loading.netDeviceBrands = true;
+        const brandResponse = await fetch('/base_obj_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'getBaseObject', type: 'netDeviceBrand' })
+        });
+        
+        if (!brandResponse.ok) {
+          throw new Error(`HTTP错误! 状态码: ${brandResponse.status}`);
+        }
+        
+        const brandData = await brandResponse.json();
+        
+        // 获取设备型号
+        this.loading.netDeviceModels = true;
+        const modelResponse = await fetch('/base_obj_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'getBaseObject', type: 'netDeviceModel' })
+        });
+        
+        if (!modelResponse.ok) {
+          throw new Error(`HTTP错误! 状态码: ${modelResponse.status}`);
+        }
+        
+        const modelData = await modelResponse.json();
+        
+        // 更新组件数据
+        this.baseObjData.netDeviceTypes = typeData.success ? typeData.data : [];
+        this.baseObjData.netDeviceBrands = brandData.success ? brandData.data : [];
+        this.baseObjData.netDeviceModels = modelData.success ? modelData.data : [];
+        
+      } catch (error) {
+        this.$message.error('获取基础对象数据失败: ' + error.message);
+      } finally {
+        // 关闭所有加载状态
+        this.loading.netDeviceTypes = false;
+        this.loading.netDeviceBrands = false;
+        this.loading.netDeviceModels = false;
+      }
     }
   },
   mounted() {
     // 页面挂载后初始化查询功能
     console.log('信息查询视图已挂载');
+    
+    // 获取base_obj表数据，用于网络设备编辑表单的动态下拉选项
+    this.fetchBaseObjData();
   }
 }
 </script>

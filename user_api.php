@@ -126,6 +126,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $response = uploadAvatar($pdo);
                 break;
                 
+            case 'changePassword':
+                // 修改密码
+                $userId = $requestData['userId'] ?? '';
+                $oldPassword = $requestData['oldPassword'] ?? '';
+                $newPassword = $requestData['newPassword'] ?? '';
+                $response = changePassword($pdo, $userId, $oldPassword, $newPassword);
+                break;
+                
             default:
                 $response['message'] = '无效的操作类型';
                 break;
@@ -677,6 +685,112 @@ function uploadAvatar($pdo) {
             'success' => true,
             'message' => '头像上传成功',
             'avatarUrl' => $relativePath
+        ];
+        
+    } catch (PDOException $e) {
+        return [
+            'success' => false,
+            'message' => '数据库操作错误: ' . $e->getMessage()
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => '操作错误: ' . $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * 修改用户密码
+ * @param PDO $pdo PDO连接对象
+ * @param int $userId 用户ID
+ * @param string $oldPassword 旧密码
+ * @param string $newPassword 新密码
+ * @return array 修改结果
+ */
+function changePassword($pdo, $userId, $oldPassword, $newPassword) {
+    try {
+        // 验证必填参数
+        if (empty($userId)) {
+            return [
+                'success' => false,
+                'message' => '用户ID不能为空'
+            ];
+        }
+        
+        if (empty($oldPassword)) {
+            return [
+                'success' => false,
+                'message' => '旧密码不能为空'
+            ];
+        }
+        
+        if (empty($newPassword)) {
+            return [
+                'success' => false,
+                'message' => '新密码不能为空'
+            ];
+        }
+        
+        if (strlen($newPassword) < 6) {
+            return [
+                'success' => false,
+                'message' => '新密码长度不能少于6个字符'
+            ];
+        }
+        
+        // 查询用户信息，获取当前密码
+        $sql = "SELECT credstat_user_password FROM credstat_user WHERE credstat_user_id = :userId";
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $user = $stmt->fetch();
+        
+        // 检查用户是否存在
+        if (!$user) {
+            return [
+                'success' => false,
+                'message' => '用户不存在'
+            ];
+        }
+        
+        // 验证旧密码
+        if (!SecurityUtils::verifyPassword($oldPassword, $user['credstat_user_password'])) {
+            return [
+                'success' => false,
+                'message' => '旧密码错误'
+            ];
+        }
+        
+        // 加密新密码
+        $encryptedPassword = SecurityUtils::hashPassword($newPassword);
+        
+        // 更新密码
+        $updateSql = "UPDATE credstat_user SET credstat_user_password = :password WHERE credstat_user_id = :userId";
+        $updateStmt = $pdo->prepare($updateSql);
+        $updateStmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
+        $updateStmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $updateStmt->execute();
+        
+        // 检查更新结果
+        if ($updateStmt->rowCount() === 0) {
+            return [
+                'success' => false,
+                'message' => '密码更新失败'
+            ];
+        }
+        
+        // 记录操作日志
+        $logDetails = json_encode([
+            'user_id' => $userId,
+            'action' => 'change_password',
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
+        logOperation($pdo, $userId, 'change_password', $logDetails);
+        
+        return [
+            'success' => true,
+            'message' => '密码修改成功'
         ];
         
     } catch (PDOException $e) {

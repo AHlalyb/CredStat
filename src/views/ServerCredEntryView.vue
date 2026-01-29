@@ -1624,26 +1624,64 @@ export default {
     },
     // 复制Windows命令到剪贴板
     copyWindowsCommand() {
-      navigator.clipboard.writeText(this.windowsCommand)
-        .then(() => {
-          this.$message.success('命令已成功复制到剪贴板');
-        })
-        .catch(err => {
-          console.error('复制命令失败:', err);
-          this.$message.error('复制命令失败，请手动复制');
-        });
+      this.copyToClipboard(this.windowsCommand);
     },
     
     // 复制Linux命令到剪贴板
     copyLinuxCommand() {
-      navigator.clipboard.writeText(this.linuxCommand)
-        .then(() => {
+      this.copyToClipboard(this.linuxCommand);
+    },
+    
+    // 通用复制到剪贴板方法，支持降级方案
+    copyToClipboard(text) {
+      // 首先尝试使用现代的Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            this.$message.success('命令已成功复制到剪贴板');
+          })
+          .catch(err => {
+            console.error('使用Clipboard API复制失败:', err);
+            // 降级到传统方法
+            this.fallbackCopyTextToClipboard(text);
+          });
+      } else {
+        // 直接使用传统方法
+        this.fallbackCopyTextToClipboard(text);
+      }
+    },
+    
+    // 传统复制方法（降级方案）
+    fallbackCopyTextToClipboard(text) {
+      // 创建一个临时的textarea元素
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      
+      // 设置样式使其不可见
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      
+      // 选择文本
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        // 执行复制命令
+        const successful = document.execCommand('copy');
+        if (successful) {
           this.$message.success('命令已成功复制到剪贴板');
-        })
-        .catch(err => {
-          console.error('复制命令失败:', err);
-          this.$message.error('复制命令失败，请手动复制');
-        });
+        } else {
+          throw new Error('复制命令执行失败');
+        }
+      } catch (err) {
+        console.error('使用传统方法复制失败:', err);
+        this.$message.error('复制命令失败，请手动复制');
+      } finally {
+        // 清理临时元素
+        document.body.removeChild(textArea);
+      }
     },
     
     // 从字节转换为GB

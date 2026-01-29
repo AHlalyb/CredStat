@@ -453,15 +453,37 @@ export default {
         return;
       }
       
+      if (this.passwordForm.newPassword.length < 6) {
+        this.$message.error('新密码长度不能少于6个字符');
+        return;
+      }
+      
       this.changingPassword = true;
       
       try {
-        // 模拟密码修改
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 发送密码修改请求到后端API
+        const response = await fetch('user_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'changePassword',
+            userId: this.currentUser.id,
+            oldPassword: this.passwordForm.oldPassword,
+            newPassword: this.passwordForm.newPassword
+          })
+        });
         
-        this.$message.success('密码修改成功');
-        this.passwordModalVisible = false;
-        this.resetPasswordForm();
+        const data = await response.json();
+        
+        if (data.success) {
+          this.$message.success('密码修改成功');
+          this.passwordModalVisible = false;
+          this.resetPasswordForm();
+        } else {
+          this.$message.error(`密码修改失败: ${data.message || '未知错误'}`);
+        }
       } catch (error) {
         this.$message.error('密码修改失败，请稍后重试');
         console.error('密码修改失败:', error);

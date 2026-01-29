@@ -270,9 +270,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     break;
                 case 'network':
+                case 'net_dev_cred':
                     // 更新网络设备登录信息
-                    if (isset($data['id']) && !empty($data['id'])) {
-                        $netDevId = $data['id'];
+                    // 兼容不同的ID字段名
+                    $netDevId = isset($data['id']) ? $data['id'] : (isset($data['net_dev_cred_id']) ? $data['net_dev_cred_id'] : '');
+                    if (!empty($netDevId)) {
                         
                         // 更新网络设备基本信息
                         $updateSql = "UPDATE net_dev_cred SET 
@@ -297,29 +299,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             WHERE id = :id";
                         
                         $stmt = $pdo->prepare($updateSql);
-                        $stmt->bindValue(':dev_type', $data['dev_type'], PDO::PARAM_STR);
-                        $stmt->bindValue(':net_type', $data['net_type'], PDO::PARAM_STR);
-                        $stmt->bindValue(':name', $data['name'], PDO::PARAM_STR);
-                        $stmt->bindValue(':system_name', $data['system_name'], PDO::PARAM_STR);
-                        $stmt->bindValue(':dev_brand', $data['dev_brand'], PDO::PARAM_STR);
-                        $stmt->bindValue(':dev_sign', $data['dev_sign'], PDO::PARAM_STR);
-                        $stmt->bindValue(':physical_area', $data['physical_area'], PDO::PARAM_STR);
-                        $stmt->bindValue(':building_floor', $data['building_floor'], PDO::PARAM_STR);
-                        $stmt->bindValue(':floor_location', $data['floor_location'], PDO::PARAM_STR);
-                        $stmt->bindValue(':management_ip', $data['management_ip'], PDO::PARAM_STR);
-                        $stmt->bindValue(':protocol', $data['protocol'], PDO::PARAM_STR);
-                        $stmt->bindValue(':port', $data['port'], PDO::PARAM_STR);
-                        $stmt->bindValue(':username', $data['username'], PDO::PARAM_STR);
+                        // 处理字段映射，支持前端可能使用的不同字段名
+                        $devType = isset($data['dev_type']) ? $data['dev_type'] : '';
+                        $netType = isset($data['net_type']) ? $data['net_type'] : '';
+                        $name = isset($data['name']) ? $data['name'] : '';
+                        $systemName = isset($data['system_name']) ? $data['system_name'] : '';
+                        $devBrand = isset($data['dev_brand']) ? $data['dev_brand'] : '';
+                        $devSign = isset($data['dev_sign']) ? $data['dev_sign'] : (isset($data['dev_model']) ? $data['dev_model'] : '');
+                        $physicalArea = isset($data['physical_area']) ? $data['physical_area'] : '';
+                        $buildingFloor = isset($data['building_floor']) ? $data['building_floor'] : '';
+                        $floorLocation = isset($data['floor_location']) ? $data['floor_location'] : '';
+                        $managementIp = isset($data['management_ip']) ? $data['management_ip'] : '';
+                        $protocol = isset($data['protocol']) ? $data['protocol'] : '';
+                        $port = isset($data['port']) ? $data['port'] : '';
+                        $username = isset($data['username']) ? $data['username'] : '';
+                        $password = isset($data['password']) ? $data['password'] : '';
+                        $enablePassword = isset($data['enable_password']) ? $data['enable_password'] : '';
+                        $snmpCommunity = isset($data['snmp_community']) ? $data['snmp_community'] : '';
+                        $remark = isset($data['remark']) ? $data['remark'] : '';
+                        
+                        $stmt->bindValue(':dev_type', $devType, PDO::PARAM_STR);
+                        $stmt->bindValue(':net_type', $netType, PDO::PARAM_STR);
+                        $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+                        $stmt->bindValue(':system_name', $systemName, PDO::PARAM_STR);
+                        $stmt->bindValue(':dev_brand', $devBrand, PDO::PARAM_STR);
+                        $stmt->bindValue(':dev_sign', $devSign, PDO::PARAM_STR);
+                        $stmt->bindValue(':physical_area', $physicalArea, PDO::PARAM_STR);
+                        $stmt->bindValue(':building_floor', $buildingFloor, PDO::PARAM_STR);
+                        $stmt->bindValue(':floor_location', $floorLocation, PDO::PARAM_STR);
+                        $stmt->bindValue(':management_ip', $managementIp, PDO::PARAM_STR);
+                        $stmt->bindValue(':protocol', $protocol, PDO::PARAM_STR);
+                        $stmt->bindValue(':port', $port, PDO::PARAM_STR);
+                        $stmt->bindValue(':username', $username, PDO::PARAM_STR);
                         // 加密密码
-                        $encryptedPassword = SecurityUtils::encrypt($data['password']);
+                        $encryptedPassword = SecurityUtils::encrypt($password);
                         $stmt->bindValue(':password', $encryptedPassword, PDO::PARAM_STR);
                         // 加密使能密码
-                        $encryptedEnablePassword = SecurityUtils::encrypt($data['enable_password']);
+                        $encryptedEnablePassword = SecurityUtils::encrypt($enablePassword);
                         $stmt->bindValue(':enable_password', $encryptedEnablePassword, PDO::PARAM_STR);
                         // 加密SNMP团体字
-                        $encryptedSnmp = SecurityUtils::encrypt($data['snmp_community']);
+                        $encryptedSnmp = SecurityUtils::encrypt($snmpCommunity);
                         $stmt->bindValue(':snmp_community', $encryptedSnmp, PDO::PARAM_STR);
-                        $stmt->bindValue(':remark', $data['remark'], PDO::PARAM_STR);
+                        $stmt->bindValue(':remark', $remark, PDO::PARAM_STR);
                         $stmt->bindValue(':id', $netDevId, PDO::PARAM_INT);
                         $stmt->execute();
                         error_log('网络设备信息更新成功');
