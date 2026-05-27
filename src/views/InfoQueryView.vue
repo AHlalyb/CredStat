@@ -1163,9 +1163,7 @@
                     >
                       <el-input
                         v-model="row.pmPassword"
-                        type="password"
                         placeholder="物理机密码"
-                        show-password
                         autocomplete="new-pm-password"
                         :name="'random-pm-password-' + $index + '-' + Math.random().toString(36).substring(2, 15)"
                         readonly
@@ -1220,9 +1218,7 @@
                     >
                       <el-input
                         v-model="row.pmBmcPassword"
-                        type="password"
                         placeholder="BMC密码"
-                        show-password
                         autocomplete="new-pm-bmc-password"
                         :name="'random-pm-bmc-password-' + $index + '-' + Math.random().toString(36).substring(2, 15)"
                         readonly
@@ -1669,11 +1665,10 @@
           border
           style="width: 100%"
           stripe
-          :header-cell-style="{background: '#f5f7fa', color: '#606266', fontWeight: 'bold'}"
+          :header-cell-style="{background: '#f5f7fa', color: '#606266', fontWeight: 'bold', textAlign: 'center'}"
+          :cell-style="{textAlign: 'center'}"
         >
           <el-table-column type="index" label="序号" width="80" align="center"></el-table-column>
-          
-          <el-table-column prop="cluster_pm_name" label="宿主机名称" min-width="120" align="center"></el-table-column>
           
           <el-table-column
             v-for="column in physicalMachineColumns"
@@ -1887,9 +1882,11 @@
               {{ isAllSelected ? '取消全选' : '全选' }}
             </el-button>
           </div>
+          
+          <!-- 使用 getExportColumnsForCurrentType() 方法获取导出列 -->
           <el-checkbox-group v-model="selectedColumns" class="column-select-group">
             <el-checkbox
-              v-for="column in exportColumns"
+              v-for="column in getExportColumnsForCurrentType()"
               :key="column.value"
               :label="column.value"
               class="column-checkbox"
@@ -1897,6 +1894,11 @@
               {{ column.label }}
             </el-checkbox>
           </el-checkbox-group>
+          
+          <!-- 空状态提示 -->
+          <div v-if="getExportColumnsForCurrentType().length === 0" class="text-center py-8">
+            <el-empty description="当前查询类别暂无可导出的列"></el-empty>
+          </div>
         </div>
         
         <!-- 高级选项 -->
@@ -2653,6 +2655,82 @@ export default {
              this.currentRecord.username2 || 
              this.currentRecord.username3 || 
              this.currentRecord.username4;
+    },
+    availableExportColumns() {
+      // 如果exportColumns为空，根据当前查询类型返回默认列
+      if (this.exportColumns && this.exportColumns.length > 0) {
+        return this.exportColumns;
+      }
+      
+      // 默认导出列配置
+      const defaultColumns = {
+        system: [
+          { value: 'login_info_system_name', label: '系统名称' },
+          { value: 'login_info_ip_url', label: 'IP或URL地址' },
+          { value: 'login_info_login_type', label: '登录方式' },
+          { value: 'login_info_username', label: '账号' },
+          { value: 'login_info_password', label: '密码' },
+          { value: 'login_info_remark', label: '备注信息' },
+          { value: 'login_info_created_at', label: '创建时间' },
+          { value: 'login_info_updated_at', label: '更新时间' },
+          { value: 'login_info_created_by', label: '创建人' },
+          { value: 'login_info_is_active', label: '是否有效' }
+        ],
+        server: [
+          { value: 'server_cred_network_area', label: '服务器所属网络区域' },
+          { value: 'server_cred_server_type', label: '服务器类型' },
+          { value: 'server_cred_host_cluster', label: '宿主机集群' },
+          { value: 'server_cred_server_name', label: '服务器名称' },
+          { value: 'server_cred_server_ip', label: '服务器IP地址' },
+          { value: 'server_cred_server_port', label: '服务器端口号' },
+          { value: 'server_cred_server_os', label: '操作系统类型' },
+          { value: 'server_cred_login_username', label: '用户名' },
+          { value: 'server_cred_login_password', label: '密码' },
+          { value: 'server_cred_edr_installed', label: 'EDR安装' },
+          { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+          { value: 'server_cred_notes', label: '备注信息' },
+          { value: 'created_at', label: '创建时间' },
+          { value: 'updated_at', label: '更新时间' },
+          { value: 'is_active', label: '是否有效' },
+          { value: 'server_cred_created_by', label: '创建人' }
+        ],
+        cluster: [
+          { value: 'cluster_id', label: '集群ID' },
+          { value: 'cluster_name', label: '集群名称' },
+          { value: 'cluster_address', label: '集群地址' },
+          { value: 'cluster_username', label: '集群用户名' },
+          { value: 'cluster_password', label: '集群密码' },
+          { value: 'pm_count', label: '集群宿主机数量' },
+          { value: 'cluster_created_at', label: '创建时间' },
+          { value: 'cluster_updated_at', label: '更新时间' },
+          { value: 'cluster_created_by', label: '创建人' }
+        ],
+        network: [
+          { value: 'net_dev_cred_dev_type', label: '网络设备类型' },
+          { value: 'net_dev_cred_net_type', label: '网络设备所属网络' },
+          { value: 'net_dev_cred_physical_area', label: '网络设备所属物理区域' },
+          { value: 'net_dev_cred_building_floor', label: '网络设备所属楼宇-楼层' },
+          { value: 'net_dev_cred_floor_location', label: '网络设备所在楼层位置' },
+          { value: 'net_dev_cred_chinese_name', label: '中文命名' },
+          { value: 'net_dev_cred_system_name', label: '系统命名' },
+          { value: 'net_dev_cred_dev_brand', label: '设备品牌' },
+          { value: 'net_dev_cred_dev_sign', label: '设备型号' },
+          { value: 'net_dev_cred_management_ip', label: '管理IP' },
+          { value: 'net_dev_cred_protocol', label: '管理协议' },
+          { value: 'net_dev_cred_port', label: '端口' },
+          { value: 'net_dev_cred_username', label: '用户名' },
+          { value: 'net_dev_cred_password', label: '密码' },
+          { value: 'net_dev_cred_enable_password', label: '使能密码' },
+          { value: 'net_dev_cred_snmp', label: 'SNMP团体字' },
+          { value: 'net_dev_cred_description', label: '备注' },
+          { value: 'created_at', label: '创建时间' },
+          { value: 'updated_at', label: '更新时间' },
+          { value: 'is_active', label: '是否有效' },
+          { value: 'created_by', label: '创建人' }
+        ]
+      };
+      
+      return defaultColumns[this.searchForm.queryType] || [];
     }
   },
   watch: {
@@ -3489,11 +3567,192 @@ export default {
     openExportDialog() {
       // 根据当前查询类别设置导出列
       this.setExportColumns();
+      
+      // 检查导出列是否为空
+      if (this.exportColumns.length === 0) {
+        // 如果没有配置导出列，尝试使用默认列
+        this.setDefaultExportColumns();
+      }
+      
+      // 使用 getExportColumnsForCurrentType() 方法确保获取到正确的导出列
+      const columns = this.getExportColumnsForCurrentType();
+      
       // 初始化选中列（默认全选）
-      this.selectedColumns = this.exportColumns.map(col => col.value);
-      this.isAllSelected = true;
+      if (columns.length > 0) {
+        this.selectedColumns = columns.map(col => col.value);
+        this.isAllSelected = true;
+      } else {
+        this.selectedColumns = [];
+        this.isAllSelected = false;
+        ElMessage.warning('当前查询类别暂无可导出的列');
+      }
+      
       // 打开弹窗
       this.exportSelectVisible = true;
+    },
+    
+    // 获取当前查询类型对应的导出列
+    getExportColumnsForCurrentType() {
+      const queryType = this.searchForm.queryType;
+      
+      // 如果已经设置了导出列，直接返回
+      if (this.exportColumns && this.exportColumns.length > 0) {
+        return this.exportColumns;
+      }
+      
+      // 根据查询类型返回对应的导出列配置
+      switch (queryType) {
+        case 'system':
+          return [
+            { value: 'login_info_system_name', label: '系统名称' },
+            { value: 'login_info_ip_url', label: 'IP或URL地址' },
+            { value: 'login_info_login_type', label: '登录方式' },
+            { value: 'login_info_username', label: '账号' },
+            { value: 'login_info_password', label: '密码' },
+            { value: 'login_info_remark', label: '备注信息' },
+            { value: 'login_info_created_at', label: '创建时间' },
+            { value: 'login_info_updated_at', label: '更新时间' },
+            { value: 'login_info_created_by', label: '创建人' },
+            { value: 'login_info_is_active', label: '是否有效' }
+          ];
+        case 'server':
+          return [
+            { value: 'server_cred_network_area', label: '服务器所属网络区域' },
+            { value: 'server_cred_server_type', label: '服务器类型' },
+            { value: 'server_cred_host_cluster', label: '宿主机集群' },
+            { value: 'server_cred_server_name', label: '服务器名称' },
+            { value: 'server_cred_server_ip', label: '服务器IP地址' },
+            { value: 'server_cred_server_port', label: '服务器端口号' },
+            { value: 'server_cred_server_os', label: '操作系统类型' },
+            { value: 'server_cred_login_username', label: '用户名' },
+            { value: 'server_cred_login_password', label: '密码' },
+            { value: 'server_cred_edr_installed', label: 'EDR安装' },
+            { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_notes', label: '备注信息' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'server_cred_created_by', label: '创建人' }
+          ];
+        case 'cluster':
+          return [
+            { value: 'cluster_id', label: '集群ID' },
+            { value: 'cluster_name', label: '集群名称' },
+            { value: 'cluster_address', label: '集群地址' },
+            { value: 'cluster_username', label: '集群用户名' },
+            { value: 'cluster_password', label: '集群密码' },
+            { value: 'pm_count', label: '集群宿主机数量' },
+            { value: 'cluster_created_at', label: '创建时间' },
+            { value: 'cluster_updated_at', label: '更新时间' },
+            { value: 'cluster_created_by', label: '创建人' }
+          ];
+        case 'network':
+          return [
+            { value: 'net_dev_cred_dev_type', label: '网络设备类型' },
+            { value: 'net_dev_cred_net_type', label: '网络设备所属网络' },
+            { value: 'net_dev_cred_physical_area', label: '网络设备所属物理区域' },
+            { value: 'net_dev_cred_building_floor', label: '网络设备所属楼宇-楼层' },
+            { value: 'net_dev_cred_floor_location', label: '网络设备所在楼层位置' },
+            { value: 'net_dev_cred_chinese_name', label: '中文命名' },
+            { value: 'net_dev_cred_system_name', label: '系统命名' },
+            { value: 'net_dev_cred_dev_brand', label: '设备品牌' },
+            { value: 'net_dev_cred_dev_sign', label: '设备型号' },
+            { value: 'net_dev_cred_management_ip', label: '管理IP' },
+            { value: 'net_dev_cred_protocol', label: '管理协议' },
+            { value: 'net_dev_cred_port', label: '端口' },
+            { value: 'net_dev_cred_username', label: '用户名' },
+            { value: 'net_dev_cred_password', label: '密码' },
+            { value: 'net_dev_cred_enable_password', label: '使能密码' },
+            { value: 'net_dev_cred_snmp', label: 'SNMP团体字' },
+            { value: 'net_dev_cred_description', label: '备注' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'created_by', label: '创建人' }
+          ];
+        default:
+          return [];
+      }
+    },
+    
+    // 设置默认导出列
+    setDefaultExportColumns() {
+      switch (this.searchForm.queryType) {
+        case 'system':
+          this.exportColumns = [
+            { value: 'login_info_system_name', label: '系统名称' },
+            { value: 'login_info_ip_url', label: 'IP或URL地址' },
+            { value: 'login_info_login_type', label: '登录方式' },
+            { value: 'login_info_username', label: '账号' },
+            { value: 'login_info_password', label: '密码' },
+            { value: 'login_info_remark', label: '备注信息' },
+            { value: 'login_info_created_at', label: '创建时间' },
+            { value: 'login_info_updated_at', label: '更新时间' },
+            { value: 'login_info_created_by', label: '创建人' },
+            { value: 'login_info_is_active', label: '是否有效' }
+          ];
+          break;
+        case 'server':
+          this.exportColumns = [
+            { value: 'server_cred_network_area', label: '服务器所属网络区域' },
+            { value: 'server_cred_server_type', label: '服务器类型' },
+            { value: 'server_cred_host_cluster', label: '宿主机集群' },
+            { value: 'server_cred_server_name', label: '服务器名称' },
+            { value: 'server_cred_server_ip', label: '服务器IP地址' },
+            { value: 'server_cred_server_port', label: '服务器端口号' },
+            { value: 'server_cred_server_os', label: '操作系统类型' },
+            { value: 'server_cred_login_username', label: '用户名' },
+            { value: 'server_cred_login_password', label: '密码' },
+            { value: 'server_cred_edr_installed', label: 'EDR安装' },
+            { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_notes', label: '备注信息' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'server_cred_created_by', label: '创建人' }
+          ];
+          break;
+        case 'cluster':
+          this.exportColumns = [
+            { value: 'cluster_id', label: '集群ID' },
+            { value: 'cluster_name', label: '集群名称' },
+            { value: 'cluster_address', label: '集群地址' },
+            { value: 'cluster_username', label: '集群用户名' },
+            { value: 'cluster_password', label: '集群密码' },
+            { value: 'pm_count', label: '集群宿主机数量' },
+            { value: 'cluster_created_at', label: '创建时间' },
+            { value: 'cluster_updated_at', label: '更新时间' },
+            { value: 'cluster_created_by', label: '创建人' }
+          ];
+          break;
+        case 'network':
+          this.exportColumns = [
+            { value: 'net_dev_cred_dev_type', label: '网络设备类型' },
+            { value: 'net_dev_cred_net_type', label: '网络设备所属网络' },
+            { value: 'net_dev_cred_physical_area', label: '网络设备所属物理区域' },
+            { value: 'net_dev_cred_building_floor', label: '网络设备所属楼宇-楼层' },
+            { value: 'net_dev_cred_floor_location', label: '网络设备所在楼层位置' },
+            { value: 'net_dev_cred_chinese_name', label: '中文命名' },
+            { value: 'net_dev_cred_system_name', label: '系统命名' },
+            { value: 'net_dev_cred_dev_brand', label: '设备品牌' },
+            { value: 'net_dev_cred_dev_sign', label: '设备型号' },
+            { value: 'net_dev_cred_management_ip', label: '管理IP' },
+            { value: 'net_dev_cred_protocol', label: '管理协议' },
+            { value: 'net_dev_cred_port', label: '端口' },
+            { value: 'net_dev_cred_username', label: '用户名' },
+            { value: 'net_dev_cred_password', label: '密码' },
+            { value: 'net_dev_cred_enable_password', label: '使能密码' },
+            { value: 'net_dev_cred_snmp', label: 'SNMP团体字' },
+            { value: 'net_dev_cred_description', label: '备注' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'created_by', label: '创建人' }
+          ];
+          break;
+        default:
+          this.exportColumns = [];
+      }
     },
     // 设置导出列
     setExportColumns() {
@@ -3534,7 +3793,46 @@ export default {
             { value: 'server_cred_created_by', label: '创建人' }
           ];
           break;
-        // 可以根据需要添加其他查询类别的列配置
+        case 'cluster':
+          // 宿主机集群信息
+          this.exportColumns = [
+            { value: 'cluster_id', label: '集群ID' },
+            { value: 'cluster_name', label: '集群名称' },
+            { value: 'cluster_address', label: '集群地址' },
+            { value: 'cluster_username', label: '集群用户名' },
+            { value: 'cluster_password', label: '集群密码' },
+            { value: 'pm_count', label: '集群宿主机数量' },
+            { value: 'cluster_created_at', label: '创建时间' },
+            { value: 'cluster_updated_at', label: '更新时间' },
+            { value: 'cluster_created_by', label: '创建人' }
+          ];
+          break;
+        case 'network':
+          // 网络设备登录信息
+          this.exportColumns = [
+            { value: 'net_dev_cred_dev_type', label: '网络设备类型' },
+            { value: 'net_dev_cred_net_type', label: '网络设备所属网络' },
+            { value: 'net_dev_cred_physical_area', label: '网络设备所属物理区域' },
+            { value: 'net_dev_cred_building_floor', label: '网络设备所属楼宇-楼层' },
+            { value: 'net_dev_cred_floor_location', label: '网络设备所在楼层位置' },
+            { value: 'net_dev_cred_chinese_name', label: '中文命名' },
+            { value: 'net_dev_cred_system_name', label: '系统命名' },
+            { value: 'net_dev_cred_dev_brand', label: '设备品牌' },
+            { value: 'net_dev_cred_dev_sign', label: '设备型号' },
+            { value: 'net_dev_cred_management_ip', label: '管理IP' },
+            { value: 'net_dev_cred_protocol', label: '管理协议' },
+            { value: 'net_dev_cred_port', label: '端口' },
+            { value: 'net_dev_cred_username', label: '用户名' },
+            { value: 'net_dev_cred_password', label: '密码' },
+            { value: 'net_dev_cred_enable_password', label: '使能密码' },
+            { value: 'net_dev_cred_snmp', label: 'SNMP团体字' },
+            { value: 'net_dev_cred_description', label: '备注' },
+            { value: 'created_at', label: '创建时间' },
+            { value: 'updated_at', label: '更新时间' },
+            { value: 'is_active', label: '是否有效' },
+            { value: 'created_by', label: '创建人' }
+          ];
+          break;
         default:
           this.exportColumns = [];
       }
@@ -3544,7 +3842,8 @@ export default {
       if (this.isAllSelected) {
         this.selectedColumns = [];
       } else {
-        this.selectedColumns = this.exportColumns.map(col => col.value);
+        // 使用方法获取当前类型的导出列
+        this.selectedColumns = this.getExportColumnsForCurrentType().map(col => col.value);
       }
       this.isAllSelected = !this.isAllSelected;
     },
@@ -3946,13 +4245,13 @@ export default {
     // 初始化物理机表格列
     initPhysicalMachineColumns() {
       this.physicalMachineColumns = [
-        { prop: 'cluster_pm_ip', label: '物理机IP', minWidth: 120 },
-        { prop: 'cluster_pm_username', label: '物理机用户名', minWidth: 150 },
-        { prop: 'cluster_pm_password', label: '物理机密码', minWidth: 150 },
+        { prop: 'cluster_pm_name', label: '物理机名称', minWidth: 120 },
+        { prop: 'cluster_pm_ip', label: '物理机IP', minWidth: 140 },
+        { prop: 'cluster_pm_username', label: '物理机用户名', minWidth: 130 },
+        { prop: 'cluster_pm_password', label: '物理机密码', minWidth: 140 },
         { prop: 'cluster_pm_bmc_ip', label: 'BMC IP', minWidth: 120 },
-        { prop: 'cluster_pm_bmc_username', label: 'BMC用户名', minWidth: 150 },
-        { prop: 'cluster_pm_bmc_password', label: 'BMC密码', minWidth: 150 },
-        { prop: 'cluster_pm_created_at', label: '创建时间', minWidth: 150 }
+        { prop: 'cluster_pm_bmc_username', label: 'BMC用户名', minWidth: 120 },
+        { prop: 'cluster_pm_bmc_password', label: 'BMC密码', minWidth: 140 }
       ];
     },
     

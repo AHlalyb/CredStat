@@ -116,11 +116,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // 拥有编辑权限的用户也可以执行查询操作
-        // 获取集群列表数据的操作无需权限验证
+        // 获取集群列表数据和物理机信息的操作无需权限验证
         if ($action === 'search' && $userPermissions['query'] !== 1 && $userPermissions['edit'] !== 1) {
-            // 检查是否是获取集群列表的操作
+            // 检查是否是获取集群列表或物理机信息的操作
             $queryType = isset($requestData['queryType']) ? trim($requestData['queryType']) : '';
-            if ($queryType !== 'cluster') {
+            if ($queryType !== 'cluster' && $queryType !== 'cluster_physical_machine') {
                 throw new Exception('您没有查询权限');
             }
         }
@@ -847,7 +847,37 @@ function getFieldLabel($field) {
         'created_at' => '创建时间',
         'updated_at' => '更新时间',
         'is_active' => '是否有效',
-        'server_cred_created_by' => '创建人'
+        'server_cred_created_by' => '创建人',
+        
+        // 宿主机集群信息字段映射
+        'cluster_id' => '集群ID',
+        'cluster_name' => '集群名称',
+        'cluster_address' => '集群地址',
+        'cluster_username' => '集群用户名',
+        'cluster_password' => '集群密码',
+        'pm_count' => '集群宿主机数量',
+        'cluster_created_at' => '创建时间',
+        'cluster_updated_at' => '更新时间',
+        'cluster_created_by' => '创建人',
+        
+        // 网络设备登录信息字段映射
+        'net_dev_cred_dev_type' => '网络设备类型',
+        'net_dev_cred_net_type' => '网络设备所属网络',
+        'net_dev_cred_physical_area' => '网络设备所属物理区域',
+        'net_dev_cred_building_floor' => '网络设备所属楼宇-楼层',
+        'net_dev_cred_floor_location' => '网络设备所在楼层位置',
+        'net_dev_cred_chinese_name' => '中文命名',
+        'net_dev_cred_system_name' => '系统命名',
+        'net_dev_cred_dev_brand' => '设备品牌',
+        'net_dev_cred_dev_sign' => '设备型号',
+        'net_dev_cred_management_ip' => '管理IP',
+        'net_dev_cred_protocol' => '管理协议',
+        'net_dev_cred_port' => '端口',
+        'net_dev_cred_username' => '用户名',
+        'net_dev_cred_password' => '密码',
+        'net_dev_cred_enable_password' => '使能密码',
+        'net_dev_cred_snmp' => 'SNMP团体字',
+        'net_dev_cred_description' => '备注'
     ];
     
     return isset($fieldMap[$field]) ? $fieldMap[$field] : $field;
@@ -1016,63 +1046,80 @@ function exportToExcel($data, $dataType = 'default', $selectedColumns = [], $exp
     
     // 根据数据类型和用户选择的列处理
     if ($dataType === 'cluster') {
-        // 导出集群信息和物理机信息
-        fputcsv($output, ['宿主机集群导出']);
-        fputcsv($output, []);
-        
-        // 遍历每个集群
-        foreach ($data as $clusterIndex => $cluster) {
-            // 导出集群基本信息
-            $clusterColumns = [
-                '集群名称', '集群ID', '集群地址', '集群用户名', '集群密码', '宿主机数量', '创建时间'
-            ];
-            fputcsv($output, $clusterColumns);
+        // 如果用户选择了列，使用用户选择的列进行导出
+        if (!empty($selectedColumns)) {
+            // 写入中文列名
+            $chineseColumns = array_map('getFieldLabel', $selectedColumns);
+            fputcsv($output, $chineseColumns);
             
-            $clusterData = [
-                isset($cluster['cluster_name']) ? $cluster['cluster_name'] : '',
-                isset($cluster['cluster_id']) ? $cluster['cluster_id'] : '',
-                isset($cluster['cluster_address']) ? $cluster['cluster_address'] : '',
-                isset($cluster['cluster_username']) ? $cluster['cluster_username'] : '',
-                isset($cluster['cluster_password']) ? $cluster['cluster_password'] : '',
-                isset($cluster['pm_count']) ? $cluster['pm_count'] : '',
-                isset($cluster['cluster_created_at']) ? $cluster['cluster_created_at'] : ''
-            ];
-            fputcsv($output, $clusterData);
-            
-            // 导出物理机信息
-            fputcsv($output, []);
-            fputcsv($output, ['物理机信息']);
-            
-            $physicalMachineColumns = [
-                '序号', '物理机IP', '物理机用户名', '物理机密码', 'BMC IP', 'BMC用户名', 'BMC密码', '创建时间'
-            ];
-            fputcsv($output, $physicalMachineColumns);
-            
-            // 写入物理机数据
-            if (isset($cluster['physical_machines']) && is_array($cluster['physical_machines'])) {
-                foreach ($cluster['physical_machines'] as $pmIndex => $pm) {
-                    // 确保物理机密码和解密
-                    $pmPassword = isset($pm['cluster_pm_password']) ? $pm['cluster_pm_password'] : '';
-                    $bmcPassword = isset($pm['cluster_pm_bmc_password']) ? $pm['cluster_pm_bmc_password'] : '';
-                    
-                    $pmData = [
-                        $pmIndex + 1,
-                        isset($pm['cluster_pm_ip']) ? $pm['cluster_pm_ip'] : '',
-                        isset($pm['cluster_pm_username']) ? $pm['cluster_pm_username'] : '',
-                        $pmPassword,
-                        isset($pm['cluster_pm_bmc_ip']) ? $pm['cluster_pm_bmc_ip'] : '',
-                        isset($pm['cluster_pm_bmc_username']) ? $pm['cluster_pm_bmc_username'] : '',
-                        $bmcPassword,
-                        isset($pm['cluster_pm_created_at']) ? $pm['cluster_pm_created_at'] : ''
-                    ];
-                    fputcsv($output, $pmData);
+            // 写入数据行
+            foreach ($data as $index => $row) {
+                $rowData = [];
+                foreach ($selectedColumns as $column) {
+                    $value = isset($row[$column]) ? $row[$column] : '';
+                    $rowData[] = $value;
                 }
+                fputcsv($output, $rowData);
             }
+        } else {
+            // 默认导出格式：包含集群信息和物理机信息
+            fputcsv($output, ['宿主机集群导出']);
+            fputcsv($output, []);
             
-            // 添加分隔行
-            fputcsv($output, []);
-            fputcsv($output, ['--------------------------------------------------']);
-            fputcsv($output, []);
+            // 遍历每个集群
+            foreach ($data as $clusterIndex => $cluster) {
+                // 导出集群基本信息
+                $clusterColumns = [
+                    '集群名称', '集群ID', '集群地址', '集群用户名', '集群密码', '宿主机数量', '创建时间'
+                ];
+                fputcsv($output, $clusterColumns);
+                
+                $clusterData = [
+                    isset($cluster['cluster_name']) ? $cluster['cluster_name'] : '',
+                    isset($cluster['cluster_id']) ? $cluster['cluster_id'] : '',
+                    isset($cluster['cluster_address']) ? $cluster['cluster_address'] : '',
+                    isset($cluster['cluster_username']) ? $cluster['cluster_username'] : '',
+                    isset($cluster['cluster_password']) ? $cluster['cluster_password'] : '',
+                    isset($cluster['pm_count']) ? $cluster['pm_count'] : '',
+                    isset($cluster['cluster_created_at']) ? $cluster['cluster_created_at'] : ''
+                ];
+                fputcsv($output, $clusterData);
+                
+                // 导出物理机信息
+                fputcsv($output, []);
+                fputcsv($output, ['物理机信息']);
+                
+                $physicalMachineColumns = [
+                    '序号', '物理机IP', '物理机用户名', '物理机密码', 'BMC IP', 'BMC用户名', 'BMC密码', '创建时间'
+                ];
+                fputcsv($output, $physicalMachineColumns);
+                
+                // 写入物理机数据
+                if (isset($cluster['physical_machines']) && is_array($cluster['physical_machines'])) {
+                    foreach ($cluster['physical_machines'] as $pmIndex => $pm) {
+                        // 确保物理机密码和解密
+                        $pmPassword = isset($pm['cluster_pm_password']) ? $pm['cluster_pm_password'] : '';
+                        $bmcPassword = isset($pm['cluster_pm_bmc_password']) ? $pm['cluster_pm_bmc_password'] : '';
+                        
+                        $pmData = [
+                            $pmIndex + 1,
+                            isset($pm['cluster_pm_ip']) ? $pm['cluster_pm_ip'] : '',
+                            isset($pm['cluster_pm_username']) ? $pm['cluster_pm_username'] : '',
+                            $pmPassword,
+                            isset($pm['cluster_pm_bmc_ip']) ? $pm['cluster_pm_bmc_ip'] : '',
+                            isset($pm['cluster_pm_bmc_username']) ? $pm['cluster_pm_bmc_username'] : '',
+                            $bmcPassword,
+                            isset($pm['cluster_pm_created_at']) ? $pm['cluster_pm_created_at'] : ''
+                        ];
+                        fputcsv($output, $pmData);
+                    }
+                }
+                
+                // 添加分隔行
+                fputcsv($output, []);
+                fputcsv($output, ['--------------------------------------------------']);
+                fputcsv($output, []);
+            }
         }
     } else {
         // 使用用户选择的列或默认列
