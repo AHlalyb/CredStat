@@ -161,9 +161,9 @@
           </el-col>
         </el-row>
         
-        <!-- 新增行：EDR安装、NTP配置 -->
+        <!-- 新增行：EDR安装、NTP配置、服务器负责人 -->
         <el-row :gutter="[20, 20]">
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <el-col :xs="24" :sm="12" :md="8" :lg="8">
             <el-form-item label="EDR安装" prop="server_cred_edr_installed">
               <el-select
                 v-model="formData.server_cred_edr_installed"
@@ -176,7 +176,7 @@
             </el-form-item>
           </el-col>
           
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <el-col :xs="24" :sm="12" :md="8" :lg="8">
             <el-form-item label="NTP配置" prop="server_cred_ntp_configured">
               <el-select
                 v-model="formData.server_cred_ntp_configured"
@@ -186,6 +186,15 @@
                 <el-option label="是" value="是"></el-option>
                 <el-option label="否" value="否"></el-option>
               </el-select>
+            </el-form-item>
+          </el-col>
+          
+          <el-col :xs="24" :sm="12" :md="8" :lg="8">
+            <el-form-item label="服务器负责人" prop="server_cred_header">
+              <el-input
+                v-model="formData.server_cred_header"
+                placeholder="请输入服务器负责人"
+              ></el-input>
             </el-form-item>
           </el-col>
         </el-row>
@@ -685,6 +694,7 @@ export default {
         server_cred_login_password: '',
         server_cred_edr_installed: '是',
         server_cred_ntp_configured: '是',
+        server_cred_header: '',
         server_cred_notes: ''
       },
       // 磁盘信息数据
@@ -757,6 +767,10 @@ export default {
             validator: this.validateHostCluster,
             trigger: 'blur, change'
           }
+        ],
+        // 服务器负责人验证规则（可选字段，限制最大长度）
+        server_cred_header: [
+          { max: 100, message: '服务器负责人不能超过100个字符', trigger: 'blur' }
         ]
       },
       // 验证带单位的存储容量

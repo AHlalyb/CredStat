@@ -16,7 +16,9 @@ return array (
   'encryption' => 
   array (
     'key' => 'dfde1822f6f36b85fe3aaa7637662f20ec65aafc9954ee0aa78f684df2c3d53b',
+//Txmc0107!#%   SHA256
     'iv' => '3ab717a953550f172c1e07a12685d4f0',
+//Txmc0107!#%   MD5
     'algorithm' => 'aes-256-cbc',
     'key_length' => 32,
     'iv_length' => 16,

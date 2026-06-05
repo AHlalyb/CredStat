@@ -92,9 +92,10 @@ function saveServerCred($data, $dbConfig) {
             server_cred_login_password,
             server_cred_edr_installed,
             server_cred_ntp_configured,
+            server_cred_header,
             server_cred_notes,
             server_cred_created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         // 创建预处理语句
         $stmt = $conn->prepare($sql);
@@ -107,8 +108,11 @@ function saveServerCred($data, $dbConfig) {
         
         // 绑定参数
         $createdBy = 'system';
+        // 获取服务器负责人字段，默认为空字符串
+        $serverCredHeader = isset($data['server_cred_header']) ? $data['server_cred_header'] : '';
+        
         $bindResult = $stmt->bind_param(
-            'sssssssssssss',
+            'ssssssssssssss',
             $data['server_cred_network_area'],
             $data['server_cred_server_type'],
             $data['server_cred_host_cluster'],
@@ -120,6 +124,7 @@ function saveServerCred($data, $dbConfig) {
             $encryptedPassword,
             $data['server_cred_edr_installed'],
             $data['server_cred_ntp_configured'],
+            $serverCredHeader,
             $data['server_cred_notes'],
             $createdBy // server_cred_created_by，默认值为system
         );

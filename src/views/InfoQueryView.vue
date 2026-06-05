@@ -608,9 +608,9 @@
             </el-col>
           </el-row>
           
-          <!-- 新增行：EDR安装、NTP配置 -->
+          <!-- 新增行：EDR安装、NTP配置、服务器负责人 -->
           <el-row :gutter="[20, 20]">
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
               <el-form-item label="EDR安装" prop="server_cred_edr_installed">
                 <el-select
                   v-model="editFormData.server_cred_edr_installed"
@@ -623,7 +623,7 @@
               </el-form-item>
             </el-col>
             
-            <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
               <el-form-item label="NTP配置" prop="server_cred_ntp_configured">
                 <el-select
                   v-model="editFormData.server_cred_ntp_configured"
@@ -633,6 +633,15 @@
                   <el-option label="是" value="是"></el-option>
                   <el-option label="否" value="否"></el-option>
                 </el-select>
+              </el-form-item>
+            </el-col>
+            
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="服务器负责人" prop="server_cred_header">
+                <el-input
+                  v-model="editFormData.server_cred_header"
+                  placeholder="请输入服务器负责人"
+                ></el-input>
               </el-form-item>
             </el-col>
           </el-row>
@@ -1459,11 +1468,14 @@
               <el-descriptions-item label="NTP配置">
                 <span>{{ currentRecord.server_cred_ntp_configured || '无' }}</span>
               </el-descriptions-item>
-              <el-descriptions-item label="是否有效">
-                <span>{{ Number(currentRecord.is_active) === 1 ? '有效' : (Number(currentRecord.is_active) === 2 ? '无效' : '无') }}</span>
+              <el-descriptions-item label="服务器负责人">
+                <span>{{ currentRecord.server_cred_header || '无' }}</span>
               </el-descriptions-item>
               
               <!-- 第七行 -->
+              <el-descriptions-item label="是否有效">
+                <span>{{ Number(currentRecord.is_active) === 1 ? '有效' : (Number(currentRecord.is_active) === 2 ? '无效' : '无') }}</span>
+              </el-descriptions-item>
               <el-descriptions-item label="备注信息">
                 <span>{{ currentRecord.server_cred_notes || '无' }}</span>
               </el-descriptions-item>
@@ -2224,6 +2236,7 @@ export default {
           server_cred_login_password: '',
           server_cred_edr_installed: '是',
           server_cred_ntp_configured: '是',
+          server_cred_header: '',
           server_cred_notes: '',
           // 网络设备登录信息
           dev_type: '',
@@ -2688,6 +2701,7 @@ export default {
           { value: 'server_cred_login_password', label: '密码' },
           { value: 'server_cred_edr_installed', label: 'EDR安装' },
           { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+          { value: 'server_cred_header', label: '服务器负责人' },
           { value: 'server_cred_notes', label: '备注信息' },
           { value: 'created_at', label: '创建时间' },
           { value: 'updated_at', label: '更新时间' },
@@ -3628,6 +3642,7 @@ export default {
             { value: 'server_cred_login_password', label: '密码' },
             { value: 'server_cred_edr_installed', label: 'EDR安装' },
             { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_header', label: '服务器负责人' },
             { value: 'server_cred_notes', label: '备注信息' },
             { value: 'created_at', label: '创建时间' },
             { value: 'updated_at', label: '更新时间' },
@@ -3705,6 +3720,7 @@ export default {
             { value: 'server_cred_login_password', label: '密码' },
             { value: 'server_cred_edr_installed', label: 'EDR安装' },
             { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_header', label: '服务器负责人' },
             { value: 'server_cred_notes', label: '备注信息' },
             { value: 'created_at', label: '创建时间' },
             { value: 'updated_at', label: '更新时间' },
@@ -3786,6 +3802,7 @@ export default {
             { value: 'server_cred_login_password', label: '密码' },
             { value: 'server_cred_edr_installed', label: 'EDR安装' },
             { value: 'server_cred_ntp_configured', label: 'NTP配置' },
+            { value: 'server_cred_header', label: '服务器负责人' },
             { value: 'server_cred_notes', label: '备注信息' },
             { value: 'created_at', label: '创建时间' },
             { value: 'updated_at', label: '更新时间' },
@@ -4551,6 +4568,7 @@ export default {
             server_cred_login_password: record.password || record.server_cred_login_password || '',
             server_cred_edr_installed: record.server_cred_edr_installed || '是',
             server_cred_ntp_configured: record.server_cred_ntp_configured || '是',
+            server_cred_header: record.server_cred_header || '',
             server_cred_notes: record.notes || record.server_cred_notes || ''
           };
           

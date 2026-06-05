@@ -439,6 +439,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             server_cred_network_area = :networkArea,
                             server_cred_server_type = :serverType,
                             server_cred_host_cluster = :hostCluster,
+                            server_cred_edr_installed = :edrInstalled,
+                            server_cred_ntp_configured = :ntpConfigured,
+                            server_cred_header = :header,
                             server_cred_notes = :notes,
                             updated_at = NOW()
                             WHERE id = :id";
@@ -454,6 +457,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $networkArea = isset($data['server_cred_network_area']) ? $data['server_cred_network_area'] : (isset($data['networkArea']) ? $data['networkArea'] : '');
                         $serverType = isset($data['server_cred_server_type']) ? $data['server_cred_server_type'] : (isset($data['serverType']) ? $data['serverType'] : '');
                         $hostCluster = isset($data['server_cred_host_cluster']) ? $data['server_cred_host_cluster'] : (isset($data['hostCluster']) ? $data['hostCluster'] : '');
+                        $edrInstalled = isset($data['server_cred_edr_installed']) ? $data['server_cred_edr_installed'] : '是';
+                        $ntpConfigured = isset($data['server_cred_ntp_configured']) ? $data['server_cred_ntp_configured'] : '是';
+                        $header = isset($data['server_cred_header']) ? $data['server_cred_header'] : '';
                         $notes = isset($data['server_cred_notes']) ? $data['server_cred_notes'] : (isset($data['notes']) ? $data['notes'] : '');
                         
                         $stmt->bindValue(':name', $name, PDO::PARAM_STR);
@@ -467,6 +473,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->bindValue(':networkArea', $networkArea, PDO::PARAM_STR);
                         $stmt->bindValue(':serverType', $serverType, PDO::PARAM_STR);
                         $stmt->bindValue(':hostCluster', $hostCluster, PDO::PARAM_STR);
+                        $stmt->bindValue(':edrInstalled', $edrInstalled, PDO::PARAM_STR);
+                        $stmt->bindValue(':ntpConfigured', $ntpConfigured, PDO::PARAM_STR);
+                        $stmt->bindValue(':header', $header, PDO::PARAM_STR);
                         $stmt->bindValue(':notes', $notes, PDO::PARAM_STR);
                         $stmt->bindValue(':id', $serverId, PDO::PARAM_INT);
                         $stmt->execute();
@@ -843,6 +852,7 @@ function getFieldLabel($field) {
         'server_cred_login_password' => '密码',
         'server_cred_edr_installed' => 'EDR安装',
         'server_cred_ntp_configured' => 'NTP配置',
+        'server_cred_header' => '服务器负责人',
         'server_cred_notes' => '备注信息',
         'created_at' => '创建时间',
         'updated_at' => '更新时间',

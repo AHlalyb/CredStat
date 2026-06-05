@@ -268,11 +268,11 @@ function saveToDatabase($data) {
                 (`server_cred_server_name`, `server_cred_server_ip`, `server_cred_server_port`, `server_cred_server_os`, 
                  `server_cred_network_area`, `server_cred_server_type`, `server_cred_host_cluster`,
                  `server_cred_login_username`, `server_cred_login_password`, `server_cred_edr_installed`,
-                 `server_cred_ntp_configured`, `server_cred_notes`, `server_cred_created_by`)
+                 `server_cred_ntp_configured`, `server_cred_header`, `server_cred_notes`, `server_cred_created_by`)
                 VALUES (:serverName, :serverIP, :serverPort, :serverOS, 
                         :networkArea, :serverType, :hostCluster,
                         :username, :password, :edrInstalled,
-                        :ntpConfigured, :notes, :createdBy)";
+                        :ntpConfigured, :header, :notes, :createdBy)";
         
         $stmt = $pdo->prepare($sql);
         
@@ -288,6 +288,7 @@ function saveToDatabase($data) {
         $stmt->bindParam(':password', $data['password'], PDO::PARAM_STR);
         $stmt->bindParam(':edrInstalled', $data['edrInstalled'], PDO::PARAM_STR);
         $stmt->bindParam(':ntpConfigured', $data['ntpConfigured'], PDO::PARAM_STR);
+        $stmt->bindParam(':header', $data['header'], PDO::PARAM_STR);
         $stmt->bindParam(':notes', $data['notes'], PDO::PARAM_STR);
         $stmt->bindParam(':createdBy', $data['createdBy'], PDO::PARAM_STR);
         
@@ -464,6 +465,8 @@ function processRequest() {
         // EDR安装和NTP配置字段
         $edrInstalled = isset($requestData['server_cred_edr_installed']) ? sanitizeInput($requestData['server_cred_edr_installed']) : '是';
         $ntpConfigured = isset($requestData['server_cred_ntp_configured']) ? sanitizeInput($requestData['server_cred_ntp_configured']) : '是';
+        // 服务器负责人字段
+        $header = isset($requestData['server_cred_header']) ? sanitizeInput($requestData['server_cred_header']) : '';
         // 验证创建人信息，不能为空
         $createdBy = isset($requestData['server_cred_created_by']) ? sanitizeInput($requestData['server_cred_created_by']) : '';
         if (empty($createdBy)) {
@@ -484,7 +487,7 @@ function processRequest() {
             'server_cred_server_port', 'server_cred_login_username', 'server_cred_login_password',
             'server_cred_notes',
             'server_cred_network_area', 'server_cred_server_type', 'server_cred_host_cluster',
-            'server_cred_edr_installed', 'server_cred_ntp_configured',
+            'server_cred_edr_installed', 'server_cred_ntp_configured', 'server_cred_header',
             'server_cred_created_by',
             'disks'
         ];
@@ -588,6 +591,7 @@ function processRequest() {
             'password' => $encryptedPassword,
             'edrInstalled' => $edrInstalled,
             'ntpConfigured' => $ntpConfigured,
+            'header' => $header,
             'notes' => $notes,
             'createdBy' => $createdBy,
             'disks' => $disks
