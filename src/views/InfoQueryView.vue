@@ -140,6 +140,9 @@
                       <el-tooltip v-if="!isServerRecordValid(scope.row)" content="数据标注为无效" placement="top">
                         <span class="status-icon invalid"></span>
                       </el-tooltip>
+                      <el-tooltip v-if="isServerShutdown(scope.row)" content="服务器已关机" placement="top">
+                        <span class="status-icon shutdown"></span>
+                      </el-tooltip>
                     </template>
                   </div>
                 </div>
@@ -178,6 +181,29 @@
                 <div class="ip-port-protocol-cell">
                   <div class="ip-port">{{ scope.row.ip_port || '无' }}</div>
                   <div class="protocol">({{ scope.row.protocol || '无' }})</div>
+                </div>
+              </template>
+              <!-- 服务器负责人列的双击编辑模板 -->
+              <template #default="scope" v-else-if="column.prop === 'server_cred_header' && searchForm.queryType === 'server'">
+                <div
+                  class="editable-cell"
+                  @dblclick="startEditHeader(scope.row, scope.$index)"
+                  @click="handleHeaderClick"
+                >
+                  <template v-if="editingCell.editing && editingCell.rowIndex === scope.$index">
+                    <el-input
+                      v-model="editingCell.value"
+                      class="header-edit-input"
+                      @blur="saveEditHeader(scope.row, scope.$index)"
+                      @keyup.enter="saveEditHeader(scope.row, scope.$index)"
+                      @click.stop
+                      ref="headerInputRef"
+                      autofocus
+                    ></el-input>
+                  </template>
+                  <template v-else>
+                    <span>{{ scope.row.server_cred_header || '-' }}</span>
+                  </template>
                 </div>
               </template>
             </el-table-column>
@@ -642,6 +668,22 @@
                   v-model="editFormData.server_cred_header"
                   placeholder="请输入服务器负责人"
                 ></el-input>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
+          <!-- 服务器状态行 -->
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="服务器状态" prop="server_cred_is_active" required>
+                <el-select
+                  v-model="editFormData.server_cred_is_active"
+                  placeholder="请选择服务器状态"
+                  style="width: 100%"
+                >
+                  <el-option label="在用" value="1"></el-option>
+                  <el-option label="关机" value="2"></el-option>
+                </el-select>
               </el-form-item>
             </el-col>
           </el-row>
@@ -2238,6 +2280,7 @@ export default {
           server_cred_ntp_configured: '是',
           server_cred_header: '',
           server_cred_notes: '',
+          server_cred_is_active: '1',
           // 网络设备登录信息
           dev_type: '',
           net_type: '',
@@ -2262,6 +2305,12 @@ export default {
         },
       // 磁盘信息数据
       diskForms: [this.getEmptyDiskForm()],
+      // 负责人双击编辑相关
+      editingCell: {
+        rowIndex: -1,
+        editing: false,
+        value: ''
+      },
       // 自动提取磁盘信息对话框
       extractType: 'windows', // windows或linux
       dialogOsType: '', // 对话框中选择的操作系统类型
@@ -4190,7 +4239,8 @@ export default {
             { prop: 'port', label: '服务器端口', minWidth: 60 },
             { prop: 'os', label: '服务器操作系统', minWidth: 150 },
             { prop: 'username', label: '登录用户名', minWidth: 120 },
-            { prop: 'password', label: '登录密码', minWidth: 120 }
+            { prop: 'password', label: '登录密码', minWidth: 120 },
+            { prop: 'server_cred_header', label: '负责人', minWidth: 120 }
           ];
           break;
         case 'network':
@@ -4569,7 +4619,8 @@ export default {
             server_cred_edr_installed: record.server_cred_edr_installed || '是',
             server_cred_ntp_configured: record.server_cred_ntp_configured || '是',
             server_cred_header: record.server_cred_header || '',
-            server_cred_notes: record.notes || record.server_cred_notes || ''
+            server_cred_notes: record.notes || record.server_cred_notes || '',
+            server_cred_is_active: String(record.is_active || record.server_cred_is_active || '1')
           };
           
           // 初始化磁盘表单
@@ -5354,6 +5405,91 @@ export default {
       return isActive !== '0' && isActive !== 0;
     },
     
+    // 检查服务器是否已关机
+    isServerShutdown(record) {
+      // is_active字段值为2表示服务器已关机
+      const isActive = record.is_active;
+      return isActive === '2' || isActive === 2;
+    },
+    
+    // 开始编辑负责人
+    startEditHeader(row, rowIndex) {
+      if (!this.hasPermission('edit')) {
+        ElMessage.warning('您没有修改权限');
+        return;
+      }
+      this.editingCell = {
+        rowIndex: rowIndex,
+        editing: true,
+        value: row.server_cred_header || ''
+      };
+    },
+    
+    // 处理负责人单元格点击
+    handleHeaderClick() {
+    },
+    
+    // 保存编辑的负责人
+    async saveEditHeader(row, rowIndex) {
+      const newValue = this.editingCell.value.trim();
+      const oldValue = row.server_cred_header || '';
+      
+      if (newValue === oldValue) {
+        this.editingCell = {
+          rowIndex: -1,
+          editing: false,
+          value: ''
+        };
+        return;
+      }
+      
+      // 获取当前登录用户名
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      const localUser = localStorage.getItem('userInfo');
+      if (sessionUser) {
+        username = JSON.parse(sessionUser).username;
+      } else if (localUser) {
+        username = JSON.parse(localUser).username || JSON.parse(localUser).account;
+      }
+      
+      try {
+        const response = await fetch('search_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'update',
+            type: 'server_cred',
+            data: {
+              id: row.id || row.server_cred_id,
+              server_cred_header: newValue
+            },
+            username: username
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          row.server_cred_header = newValue;
+          ElMessage.success('负责人信息更新成功');
+        } else {
+          ElMessage.error('更新失败: ' + (result.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('更新负责人失败:', error);
+        ElMessage.error('更新失败，请重试');
+      } finally {
+        this.editingCell = {
+          rowIndex: -1,
+          editing: false,
+          value: ''
+        };
+      }
+    },
+    
     // 获取base_obj表数据
     async fetchBaseObjData() {
       try {
@@ -5751,6 +5887,29 @@ export default {
 .status-icon.invalid {
   background-color: #FF0000;
   box-shadow: 0 0 2px rgba(255, 0, 0, 0.8);
+}
+
+.status-icon.shutdown {
+  background-color: #FF9800;
+  box-shadow: 0 0 2px rgba(255, 152, 0, 0.8);
+}
+
+/* 负责人编辑单元格样式 */
+.editable-cell {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.editable-cell:hover {
+  background-color: #f5f7fa;
+}
+
+.header-edit-input {
+  width: 100%;
+  padding: 2px 6px;
+  font-size: 14px;
 }
 
 /* 响应式调整 */

@@ -428,6 +428,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     if ($serverId) {
+                        // 获取原有记录的所有字段值（用于保留未传递的字段）
+                        $getRecordSql = "SELECT * FROM server_cred WHERE id = :id";
+                        $recordStmt = $pdo->prepare($getRecordSql);
+                        $recordStmt->bindValue(':id', $serverId, PDO::PARAM_INT);
+                        $recordStmt->execute();
+                        $existingRecord = $recordStmt->fetch(PDO::FETCH_ASSOC);
+                        
                         // 更新服务器账号密码信息
                         $updateSql = "UPDATE server_cred SET 
                             server_cred_server_name = :name,
@@ -443,33 +450,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             server_cred_ntp_configured = :ntpConfigured,
                             server_cred_header = :header,
                             server_cred_notes = :notes,
+                            is_active = :isActive,
                             updated_at = NOW()
                             WHERE id = :id";
                         
                         $stmt = $pdo->prepare($updateSql);
-                        // 处理服务器基本信息字段，支持前端的完整字段名
-                        $name = isset($data['server_cred_server_name']) ? $data['server_cred_server_name'] : (isset($data['name']) ? $data['name'] : '');
-                        $ip = isset($data['server_cred_server_ip']) ? $data['server_cred_server_ip'] : (isset($data['ip']) ? $data['ip'] : '');
-                        $port = isset($data['server_cred_server_port']) ? $data['server_cred_server_port'] : (isset($data['port']) ? $data['port'] : 22);
-                        $os = isset($data['server_cred_server_os']) ? $data['server_cred_server_os'] : (isset($data['os']) ? $data['os'] : '');
-                        $loginUsername = isset($data['server_cred_login_username']) ? $data['server_cred_login_username'] : (isset($data['loginUsername']) ? $data['loginUsername'] : '');
-                        $loginPassword = isset($data['server_cred_login_password']) ? $data['server_cred_login_password'] : (isset($data['loginPassword']) ? $data['loginPassword'] : '');
-                        $networkArea = isset($data['server_cred_network_area']) ? $data['server_cred_network_area'] : (isset($data['networkArea']) ? $data['networkArea'] : '');
-                        $serverType = isset($data['server_cred_server_type']) ? $data['server_cred_server_type'] : (isset($data['serverType']) ? $data['serverType'] : '');
-                        $hostCluster = isset($data['server_cred_host_cluster']) ? $data['server_cred_host_cluster'] : (isset($data['hostCluster']) ? $data['hostCluster'] : '');
-                        $edrInstalled = isset($data['server_cred_edr_installed']) ? $data['server_cred_edr_installed'] : '是';
-                        $ntpConfigured = isset($data['server_cred_ntp_configured']) ? $data['server_cred_ntp_configured'] : '是';
-                        $header = isset($data['server_cred_header']) ? $data['server_cred_header'] : '';
-                        $notes = isset($data['server_cred_notes']) ? $data['server_cred_notes'] : (isset($data['notes']) ? $data['notes'] : '');
+                        // 处理服务器基本信息字段，使用前端传递的值或原有值
+                        $name = isset($data['server_cred_server_name']) ? $data['server_cred_server_name'] : (isset($data['name']) ? $data['name'] : ($existingRecord['server_cred_server_name'] ?? ''));
+                        $ip = isset($data['server_cred_server_ip']) ? $data['server_cred_server_ip'] : (isset($data['ip']) ? $data['ip'] : ($existingRecord['server_cred_server_ip'] ?? ''));
+                        $port = isset($data['server_cred_server_port']) ? $data['server_cred_server_port'] : (isset($data['port']) ? $data['port'] : ($existingRecord['server_cred_server_port'] ?? 22));
+                        $os = isset($data['server_cred_server_os']) ? $data['server_cred_server_os'] : (isset($data['os']) ? $data['os'] : ($existingRecord['server_cred_server_os'] ?? ''));
+                        $loginUsername = isset($data['server_cred_login_username']) ? $data['server_cred_login_username'] : (isset($data['loginUsername']) ? $data['loginUsername'] : ($existingRecord['server_cred_login_username'] ?? ''));
+                        $loginPassword = isset($data['server_cred_login_password']) ? $data['server_cred_login_password'] : (isset($data['loginPassword']) ? $data['loginPassword'] : ($existingRecord['server_cred_login_password'] ?? ''));
+                        $networkArea = isset($data['server_cred_network_area']) ? $data['server_cred_network_area'] : (isset($data['networkArea']) ? $data['networkArea'] : ($existingRecord['server_cred_network_area'] ?? '内网'));
+                        $serverType = isset($data['server_cred_server_type']) ? $data['server_cred_server_type'] : (isset($data['serverType']) ? $data['serverType'] : ($existingRecord['server_cred_server_type'] ?? '虚拟机'));
+                        $hostCluster = isset($data['server_cred_host_cluster']) ? $data['server_cred_host_cluster'] : (isset($data['hostCluster']) ? $data['hostCluster'] : ($existingRecord['server_cred_host_cluster'] ?? ''));
+                        $edrInstalled = isset($data['server_cred_edr_installed']) ? $data['server_cred_edr_installed'] : ($existingRecord['server_cred_edr_installed'] ?? '是');
+                        $ntpConfigured = isset($data['server_cred_ntp_configured']) ? $data['server_cred_ntp_configured'] : ($existingRecord['server_cred_ntp_configured'] ?? '是');
+                        $header = isset($data['server_cred_header']) ? $data['server_cred_header'] : ($existingRecord['server_cred_header'] ?? '');
+                        $notes = isset($data['server_cred_notes']) ? $data['server_cred_notes'] : (isset($data['notes']) ? $data['notes'] : ($existingRecord['server_cred_notes'] ?? ''));
+                        $isActive = isset($data['server_cred_is_active']) ? (int)$data['server_cred_is_active'] : ($existingRecord['is_active'] ?? 1);
                         
                         $stmt->bindValue(':name', $name, PDO::PARAM_STR);
                         $stmt->bindValue(':ip', $ip, PDO::PARAM_STR);
                         $stmt->bindValue(':port', $port, PDO::PARAM_INT);
                         $stmt->bindValue(':os', $os, PDO::PARAM_STR);
                         $stmt->bindValue(':loginUsername', $loginUsername, PDO::PARAM_STR);
-                        // 加密密码
-                        $encryptedPassword = SecurityUtils::encrypt($loginPassword);
-                        $stmt->bindValue(':loginPassword', $encryptedPassword, PDO::PARAM_STR);
+                        // 如果前端没有传递密码，使用原有密码；否则加密新密码
+                        if (!isset($data['server_cred_login_password']) && !isset($data['loginPassword'])) {
+                            $stmt->bindValue(':loginPassword', $loginPassword, PDO::PARAM_STR);
+                        } else {
+                            $encryptedPassword = SecurityUtils::encrypt($loginPassword);
+                            $stmt->bindValue(':loginPassword', $encryptedPassword, PDO::PARAM_STR);
+                        }
                         $stmt->bindValue(':networkArea', $networkArea, PDO::PARAM_STR);
                         $stmt->bindValue(':serverType', $serverType, PDO::PARAM_STR);
                         $stmt->bindValue(':hostCluster', $hostCluster, PDO::PARAM_STR);
@@ -477,6 +490,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->bindValue(':ntpConfigured', $ntpConfigured, PDO::PARAM_STR);
                         $stmt->bindValue(':header', $header, PDO::PARAM_STR);
                         $stmt->bindValue(':notes', $notes, PDO::PARAM_STR);
+                        $stmt->bindValue(':isActive', $isActive, PDO::PARAM_INT);
                         $stmt->bindValue(':id', $serverId, PDO::PARAM_INT);
                         $stmt->execute();
                         error_log('服务器账号密码更新成功');
@@ -1779,7 +1793,7 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
             break;
             
         case 'server_cred':
-            // 查询服务器账号密码 - 返回所有字段
+            // 查询服务器账号密码 - 返回所有字段（包括关机状态的服务器）
             $baseSql = "SELECT 
                         *, 
                         server_cred_server_name as name, 
@@ -1791,8 +1805,7 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                         server_cred_notes as description, 
                         server_cred_notes as remark,
                         'server' as category
-                    FROM server_cred 
-                    WHERE is_active = 1";
+                    FROM server_cred";
             $orderClause = " ORDER BY created_at DESC";
             $category = 'server';
             break;
