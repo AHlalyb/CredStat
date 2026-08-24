@@ -107,6 +107,43 @@
               </el-button>
             </el-col>
           </el-row>
+
+          <!-- 网络设备批量测试栏 -->
+          <el-row
+            v-if="searchForm.queryType === 'network' && searchData.length > 0"
+            class="mb-3"
+          >
+            <el-col :span="24">
+              <div class="batch-test-bar">
+                <span class="batch-test-title">批量测试：</span>
+                <el-button
+                  type="success"
+                  size="small"
+                  :loading="batchPingRunning"
+                  :disabled="batchRunning"
+                  @click="handleBatchPing"
+                >
+                  <el-icon v-if="!batchPingRunning"><Monitor /></el-icon>
+                  <span v-if="!batchPingRunning">批量Ping</span>
+                </el-button>
+                <el-button
+                  type="warning"
+                  size="small"
+                  :loading="batchSnmpRunning"
+                  :disabled="batchRunning"
+                  @click="handleBatchSnmp"
+                >
+                  <el-icon v-if="!batchSnmpRunning"><Cpu /></el-icon>
+                  <span v-if="!batchSnmpRunning">批量SNMP测试</span>
+                </el-button>
+                <span class="batch-test-hint">
+                  <span class="state-dot dot-untested"></span>未测试
+                  <span class="state-dot dot-success"></span>正常
+                  <span class="state-dot dot-fail"></span>异常
+                </span>
+              </div>
+            </el-col>
+          </el-row>
           
           <!-- 结果表格 -->
           <el-table
@@ -208,6 +245,59 @@
               </template>
             </el-table-column>
             
+            <!-- 管理列（仅网络设备查询时显示）：Ping/SNMP测试/远程连接 -->
+            <el-table-column v-if="searchForm.queryType === 'network'" label="管理" width="300" align="center" fixed="right">
+              <template #default="scope">
+                <div class="network-manage-buttons">
+                  <!-- Ping 测试按钮 -->
+                  <el-tooltip :content="pingStatusText(scope.row)" placement="top">
+                    <el-button
+                      size="small"
+                      :type="getPingBtnType(scope.row)"
+                      :loading="pingLoadingId === scope.row.id || rowIsTesting(scope.row, 'ping')"
+                      :disabled="pingLoadingId !== null || batchRunning"
+                      @click="handlePing(scope.row)"
+                    >
+                      <el-icon v-if="pingLoadingId !== scope.row.id && !rowIsTesting(scope.row, 'ping')"><Monitor /></el-icon>
+                      <span v-if="!rowIsTesting(scope.row, 'ping')">Ping</span>
+                    </el-button>
+                  </el-tooltip>
+                  <!-- SNMP 测试按钮 -->
+                  <el-tooltip :content="snmpStatusText(scope.row)" placement="top">
+                    <el-button
+                      size="small"
+                      :type="getSnmpBtnType(scope.row)"
+                      :loading="snmpLoadingId === scope.row.id || rowIsTesting(scope.row, 'snmp')"
+                      :disabled="snmpLoadingId !== null || batchRunning"
+                      @click="handleSnmpTest(scope.row)"
+                    >
+                      <el-icon v-if="snmpLoadingId !== scope.row.id && !rowIsTesting(scope.row, 'snmp')"><Cpu /></el-icon>
+                      <span v-if="!rowIsTesting(scope.row, 'snmp')">SNMP</span>
+                    </el-button>
+                  </el-tooltip>
+                  <!-- 远程连接下拉按钮 -->
+                  <el-dropdown trigger="click" @command="(cmd) => handleRemote(cmd, scope.row)">
+                    <el-button type="primary" size="small">
+                      远程<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="ssh">
+                          <el-icon><Promotion /></el-icon>SSH
+                        </el-dropdown-item>
+                        <el-dropdown-item command="telnet">
+                          <el-icon><Connection /></el-icon>Telnet
+                        </el-dropdown-item>
+                        <el-dropdown-item command="web">
+                          <el-icon><Link /></el-icon>Web
+                        </el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </template>
+            </el-table-column>
+
             <!-- 操作列 -->
             <el-table-column label="操作" width="115" align="center" fixed="right">
               <template #default="scope">
@@ -2187,7 +2277,8 @@
 // 导入Element Plus图标
 import { 
   Search, RefreshRight, Download, DocumentCopy, Document, 
-  Edit, Delete, Loading, Check, ArrowDown, Close, Plus
+  Edit, Delete, Loading, Check, ArrowDown, Close, Plus,
+  Monitor, Cpu, Promotion, Connection, Link
 } from '@element-plus/icons-vue';
 
 // 导入Element Plus组件
@@ -2251,6 +2342,13 @@ export default {
       extractDialogVisible: false,
       // 当前操作的记录
       currentRecord: null,
+      // 网络设备管理列状态
+      pingLoadingId: null,
+      snmpLoadingId: null,
+      // 批量测试状态
+      batchRunning: false,
+      batchPingRunning: false,
+      batchSnmpRunning: false,
       // 附加账户密码数组，用于密码显示控制
       additionalPasswords: ['', '', '', ''],
       // 编辑对话框相关
@@ -2985,6 +3083,270 @@ export default {
     console.log('- Has query permission:', this.hasPermission('query'));
   },
   methods: {
+    // 获取当前登录用户名
+    getLoginUsername() {
+      let username = '';
+      const sessionUser = sessionStorage.getItem('currentUser');
+      const localUser = localStorage.getItem('userInfo');
+      if (sessionUser) {
+        try { username = JSON.parse(sessionUser).username; } catch (e) { /* 忽略 */ }
+      }
+      if (!username && localUser) {
+        try {
+          const parsed = JSON.parse(localUser);
+          username = parsed.username || parsed.account;
+        } catch (e) { /* 忽略 */ }
+      }
+      return username;
+    },
+
+    // 获取网络设备管理IP
+    getNetworkIp(row) {
+      return row.ip_url || row.net_dev_cred_management_ip || '';
+    },
+
+    // 获取Ping按钮类型：success=正常(绿) danger=异常(红) warning=未测试(黄)
+    getPingBtnType(row) {
+      if (row.pingStatus === 'success') return 'success';
+      if (row.pingStatus === 'fail') return 'danger';
+      return 'warning';
+    },
+
+    // 获取SNMP按钮类型：success=正常(绿) danger=异常(红) warning=未测试(黄)
+    getSnmpBtnType(row) {
+      if (row.snmpStatus === 'success') return 'success';
+      if (row.snmpStatus === 'fail') return 'danger';
+      return 'warning';
+    },
+
+    // 判断指定行是否正在测试中
+    rowIsTesting(row, type) {
+      return type === 'ping' ? row.pingStatus === 'testing' : row.snmpStatus === 'testing';
+    },
+
+    // Ping 按钮提示文本
+    pingStatusText(row) {
+      if (row.pingStatus === 'success') return 'Ping 测试正常（绿色）';
+      if (row.pingStatus === 'fail') return 'Ping 测试异常（红色）';
+      if (row.pingStatus === 'testing') return '正在 Ping 测试中...';
+      return '未测试（黄色），点击进行 Ping 测试';
+    },
+
+    // SNMP 按钮提示文本
+    snmpStatusText(row) {
+      if (row.snmpStatus === 'success') return 'SNMP 测试正常（绿色）';
+      if (row.snmpStatus === 'fail') return 'SNMP 测试异常（红色）';
+      if (row.snmpStatus === 'testing') return '正在 SNMP 测试中...';
+      return '未测试（黄色），点击进行 SNMP 测试';
+    },
+
+    // 执行单个 Ping 测试（不弹窗），更新行状态，返回是否成功
+    async testPing(row) {
+      const ip = this.getNetworkIp(row);
+      if (!ip) {
+        row.pingStatus = 'fail';
+        row.pingMessage = '该设备没有管理IP';
+        return false;
+      }
+      try {
+        const response = await fetch('/network_manage_api.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ping',
+            username: this.getLoginUsername(),
+            ip: ip
+          })
+        });
+        const data = await response.json();
+        row.pingMessage = (data && data.message) || '';
+        const ok = !!(data && data.success);
+        row.pingStatus = ok ? 'success' : 'fail';
+        return ok;
+      } catch (error) {
+        console.error('Ping测试请求失败:', error);
+        row.pingStatus = 'fail';
+        row.pingMessage = error.message || '请求失败';
+        return false;
+      }
+    },
+
+    // 单条 Ping 测试（带结果弹窗）
+    async handlePing(row) {
+      const ip = this.getNetworkIp(row);
+      if (!ip) {
+        ElMessage.warning('该设备没有管理IP，无法进行Ping测试');
+        return;
+      }
+      this.pingLoadingId = row.id;
+      try {
+        const ok = await this.testPing(row);
+        if (ok) {
+          this.$alert(`设备 ${ip} 连通正常\n\n${row.pingMessage || ''}`, 'Ping 测试结果', {
+            confirmButtonText: '确定',
+            type: 'success'
+          });
+        } else {
+          this.$alert(`设备 ${ip} 无法连通\n\n${row.pingMessage || ''}`, 'Ping 测试结果', {
+            confirmButtonText: '确定',
+            type: 'error'
+          });
+        }
+      } finally {
+        this.pingLoadingId = null;
+      }
+    },
+
+    // 批量 Ping 测试
+    async handleBatchPing() {
+      const devices = this.searchData.filter(row => this.getNetworkIp(row));
+      if (devices.length === 0) {
+        ElMessage.warning('当前结果中没有可用的网络设备IP');
+        return;
+      }
+      this.batchRunning = true;
+      this.batchPingRunning = true;
+      try {
+        let successCount = 0;
+        for (const row of devices) {
+          row.pingStatus = 'testing';
+          if (await this.testPing(row)) successCount++;
+        }
+        const failCount = devices.length - successCount;
+        ElMessage.success(`批量Ping完成：共 ${devices.length} 台，成功 ${successCount} 台，失败 ${failCount} 台`);
+      } finally {
+        this.batchPingRunning = false;
+        this.batchRunning = false;
+      }
+    },
+
+    // 执行单个 SNMP 测试（不弹窗），更新行状态，返回是否成功
+    async testSnmp(row) {
+      const ip = this.getNetworkIp(row);
+      if (!ip) {
+        row.snmpStatus = 'fail';
+        row.snmpMessage = '该设备没有管理IP';
+        return false;
+      }
+      try {
+        const response = await fetch('/network_manage_api.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'snmp',
+            username: this.getLoginUsername(),
+            ip: ip,
+            id: row.id
+          })
+        });
+        const data = await response.json();
+        row.snmpMessage = (data && data.message) || '';
+        const ok = !!(data && data.success);
+        row.snmpStatus = ok ? 'success' : 'fail';
+        return ok;
+      } catch (error) {
+        console.error('SNMP测试请求失败:', error);
+        row.snmpStatus = 'fail';
+        row.snmpMessage = error.message || '请求失败';
+        return false;
+      }
+    },
+
+    // 单条 SNMP 测试（带结果弹窗）
+    async handleSnmpTest(row) {
+      const ip = this.getNetworkIp(row);
+      if (!ip) {
+        ElMessage.warning('该设备没有管理IP，无法进行SNMP测试');
+        return;
+      }
+      this.snmpLoadingId = row.id;
+      try {
+        const ok = await this.testSnmp(row);
+        if (ok) {
+          this.$alert(`设备 ${ip} SNMP 测试正常\n\n${row.snmpMessage || ''}`, 'SNMP 测试结果', {
+            confirmButtonText: '确定',
+            type: 'success'
+          });
+        } else {
+          this.$alert(`设备 ${ip} SNMP 测试失败\n\n${row.snmpMessage || ''}`, 'SNMP 测试结果', {
+            confirmButtonText: '确定',
+            type: 'error'
+          });
+        }
+      } finally {
+        this.snmpLoadingId = null;
+      }
+    },
+
+    // 批量 SNMP 测试
+    async handleBatchSnmp() {
+      const devices = this.searchData.filter(row => this.getNetworkIp(row));
+      if (devices.length === 0) {
+        ElMessage.warning('当前结果中没有可用的网络设备IP');
+        return;
+      }
+      this.batchRunning = true;
+      this.batchSnmpRunning = true;
+      try {
+        let successCount = 0;
+        for (const row of devices) {
+          row.snmpStatus = 'testing';
+          if (await this.testSnmp(row)) successCount++;
+        }
+        const failCount = devices.length - successCount;
+        ElMessage.success(`批量SNMP测试完成：共 ${devices.length} 台，成功 ${successCount} 台，失败 ${failCount} 台`);
+      } finally {
+        this.batchSnmpRunning = false;
+        this.batchRunning = false;
+      }
+    },
+
+    // 远程连接
+    handleRemote(command, row) {
+      const ip = this.getNetworkIp(row);
+      if (!ip) {
+        ElMessage.warning('该设备没有管理IP，无法远程连接');
+        return;
+      }
+      const port = row.net_dev_cred_port || row.port || '';
+      const username = row.net_dev_cred_username || row.username || '';
+      let url = '';
+      switch (command) {
+        case 'ssh':
+          url = username ? `ssh://${username}@${ip}` : `ssh://${ip}`;
+          if (port) url += `:${port}`;
+          break;
+        case 'telnet':
+          url = `telnet://${ip}`;
+          if (port) url += `:${port}`;
+          break;
+        case 'web': {
+          const protocol = (row.protocol || row.net_dev_cred_protocol || '').toLowerCase();
+          const scheme = protocol.includes('https') ? 'https' : 'http';
+          url = `${scheme}://${ip}`;
+          if (port && !((scheme === 'http' && port === '80') || (scheme === 'https' && port === '443'))) {
+            url += `:${port}`;
+          }
+          break;
+        }
+        default:
+          ElMessage.warning('未知的远程连接方式');
+          return;
+      }
+      // http/https 网页用新窗口打开；ssh/telnet 等自定义协议需用 a 标签点击
+      // 触发浏览器协议处理器（window.open 对自定义协议会被静默忽略）
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        window.open(url, '_blank', 'noopener');
+      } else {
+        const link = document.createElement('a');
+        link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    },
+
     // 权限检查函数
     hasPermission(action) {
       // Permission values are already normalized to numbers during initialization
@@ -4147,6 +4509,11 @@ export default {
               
               return {
                 ...item,
+                // 网络测试状态：null=未测试 success=正常 fail=异常 testing=测试中
+                pingStatus: null,
+                snmpStatus: null,
+                pingMessage: '',
+                snmpMessage: '',
                 // 网络类型字段，直接使用net_dev_cred_net_type
                 net_type: item.net_dev_cred_net_type || '',
                 // 设备品牌（型号）字段
@@ -5684,6 +6051,66 @@ export default {
 .action-buttons {
   display: flex;
   gap: 1px;
+}
+
+/* 网络设备管理列按钮样式 */
+.network-manage-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.network-manage-buttons .el-button + .el-button {
+  margin-left: 0;
+}
+
+/* 批量测试栏样式 */
+.batch-test-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #f8f9fc;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+}
+
+.batch-test-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.batch-test-hint {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+}
+
+.state-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot-untested {
+  background: #e6a23c;
+}
+
+.dot-success {
+  background: #67c23a;
+}
+
+.dot-fail {
+  background: #f56c6c;
 }
 
 /* 详细信息对话框样式 */
