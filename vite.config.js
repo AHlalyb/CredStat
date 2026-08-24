@@ -130,6 +130,12 @@ export default defineConfig({
         // 重写路径，确保正确的项目目录
         rewrite: () => '/CredStat/server_cred_api.php'
       },
+      '/remote_terminal_api.php': {
+        target: 'http://localhost',
+        changeOrigin: true,
+        // 重写路径，确保正确的项目目录
+        rewrite: () => '/CredStat/remote_terminal_api.php'
+      },
       '/network_manage_api.php': {
         target: 'http://localhost',
         changeOrigin: true,

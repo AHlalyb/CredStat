@@ -61,6 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($requestData['action']) ? trim($requestData['action']) : 'search';
     $keyword1 = isset($requestData['keyword1']) ? trim($requestData['keyword1']) : '';
     $keyword2 = isset($requestData['keyword2']) ? trim($requestData['keyword2']) : '';
+    $keyword3 = isset($requestData['keyword3']) ? trim($requestData['keyword3']) : '';
+    $keyword4 = isset($requestData['keyword4']) ? trim($requestData['keyword4']) : '';
     $queryType = isset($requestData['queryType']) ? trim($requestData['queryType']) : '';
     $page = isset($requestData['page']) ? intval($requestData['page']) : 1;
     $pageSize = isset($requestData['pageSize']) ? intval($requestData['pageSize']) : 10;
@@ -655,7 +657,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($tables as $table) {
                     try {
                         // 对每个表查询所有匹配数据（不分页）
-                    $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, 1, PHP_INT_MAX, $requestData);
+                    $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, $keyword3, $keyword4, 1, PHP_INT_MAX, $requestData);
                         $allResults = array_merge($allResults, $tableResults['data']);
                     } catch (Exception $e) {
                         error_log('查询表 ' . $table . ' 出错: ' . $e->getMessage());
@@ -696,7 +698,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log('选定的表: ' . $table);
                 
                 // 使用普通查询逻辑
-                $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requestData);
+                $tableResults = searchTable($pdo, $table, $keyword1, $keyword2, $keyword3, $keyword4, $page, $pageSize, $requestData);
                 $results = $tableResults['data'];
                 $total = $tableResults['total'];
             }
@@ -1743,12 +1745,14 @@ function exportToPDF($data, $dataType = 'default', $selectedColumns = [], $expor
  * @param string $table 表名
  * @param string $keyword1 第一个关键词
  * @param string $keyword2 第二个关键词
+ * @param string $keyword3 第三个关键词
+ * @param string $keyword4 第四个关键词
  * @param int $page 页码
  * @param int $pageSize 每页数量
  * @param array $requestData 请求数据
  * @return array 查询结果
  */
-function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requestData = []) {
+function searchTable($pdo, $table, $keyword1, $keyword2, $keyword3, $keyword4, $page, $pageSize, $requestData = []) {
     $results = [];
     $total = 0;
     
@@ -1893,6 +1897,8 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
     // 获取关键词匹配方式，默认包含
     $keyword1MatchType = isset($requestData['keyword1MatchType']) ? $requestData['keyword1MatchType'] : 'include';
     $keyword2MatchType = isset($requestData['keyword2MatchType']) ? $requestData['keyword2MatchType'] : 'include';
+    $keyword3MatchType = isset($requestData['keyword3MatchType']) ? $requestData['keyword3MatchType'] : 'include';
+    $keyword4MatchType = isset($requestData['keyword4MatchType']) ? $requestData['keyword4MatchType'] : 'include';
     
     // 处理第一个关键词
     if (!empty($keyword1)) {
@@ -1941,6 +1947,56 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $page, $pageSize, $requ
                 $conditions[] = '(' . implode(' OR ', $keyword2Conditions) . ')';
             }
             $params[':keyword2'] = $keyword2Param;
+        }
+    }
+    
+    // 处理第三个关键词
+    if (!empty($keyword3)) {
+        $keyword3Param = '%' . $keyword3 . '%';
+        $keyword3Conditions = [];
+        
+        foreach ($fields as $field) {
+            // 跳过不需要搜索的字段
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'is_active', 'login_info_is_active'])) {
+                continue;
+            }
+            $keyword3Conditions[] = "$field LIKE :keyword3";
+        }
+        
+        if (!empty($keyword3Conditions)) {
+            if ($keyword3MatchType === 'exclude') {
+                // 排除包含关键词的记录：NOT (field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = 'NOT (' . implode(' OR ', $keyword3Conditions) . ')';
+            } else {
+                // 包含关键词的记录：(field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = '(' . implode(' OR ', $keyword3Conditions) . ')';
+            }
+            $params[':keyword3'] = $keyword3Param;
+        }
+    }
+    
+    // 处理第四个关键词
+    if (!empty($keyword4)) {
+        $keyword4Param = '%' . $keyword4 . '%';
+        $keyword4Conditions = [];
+        
+        foreach ($fields as $field) {
+            // 跳过不需要搜索的字段
+            if (in_array($field, ['id', 'created_at', 'updated_at', 'is_active', 'login_info_is_active'])) {
+                continue;
+            }
+            $keyword4Conditions[] = "$field LIKE :keyword4";
+        }
+        
+        if (!empty($keyword4Conditions)) {
+            if ($keyword4MatchType === 'exclude') {
+                // 排除包含关键词的记录：NOT (field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = 'NOT (' . implode(' OR ', $keyword4Conditions) . ')';
+            } else {
+                // 包含关键词的记录：(field1 LIKE :keyword OR field2 LIKE :keyword OR ...)
+                $conditions[] = '(' . implode(' OR ', $keyword4Conditions) . ')';
+            }
+            $params[':keyword4'] = $keyword4Param;
         }
     }
     

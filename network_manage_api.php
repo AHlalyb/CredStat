@@ -2,13 +2,15 @@
 /**
  * network_manage_api.php
  * 网络设备管理接口
- * 提供：ping 测试、SNMP 测试
+ * 提供：ping 测试、拨测（probe）、SNMP 测试
  * 请求方式：POST JSON
  * 请求参数：
- *   action    : ping | snmp
+ *   action    : ping | probe | snmp
  *   username  : 当前登录用户名（鉴权）
- *   ip        : 管理IP（ping/snmp 均需要）
- *   id        : 网络设备记录ID（snmp 从数据库取 SNMP 团体字时使用）
+ *   ip        : 管理IP（ping/probe/snmp 均需要）
+ *   port      : 管理端口（probe 使用，缺省按协议取默认端口）
+ *   protocol  : 远程协议 ssh/telnet/http/https（probe 使用）
+ *   id        : 网络设备记录ID（probe/snmp 从数据库取账号密码/SNMP 团体字时使用）
  */
 
 // 设置响应头
@@ -71,9 +73,15 @@ try {
         }
     }
 
+    // 确保数据库已具备拨测/SNMP 状态字段（自动补齐，无需手动执行 SQL）
+    ensureProbeColumns($pdo);
+
     switch ($action) {
         case 'ping':
             handlePing($requestData);
+            break;
+        case 'probe':
+            handleProbe($pdo, $requestData);
             break;
         case 'snmp':
             handleSnmpTest($pdo, $requestData);
@@ -89,6 +97,612 @@ try {
         'message' => $e->getMessage()
     ], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+/**
+ * 确保 net_dev_cred 表具备拨测/SNMP 状态字段（自动补齐，幂等）
+ */
+function ensureProbeColumns($pdo)
+{
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM net_dev_cred LIKE 'net_dev_cred_probe_status'");
+        if ($stmt->rowCount() > 0) {
+            return;
+        }
+        $pdo->exec(
+            "ALTER TABLE `net_dev_cred`
+                ADD COLUMN `net_dev_cred_probe_status` varchar(20) NULL DEFAULT NULL COMMENT '拨测状态(success/fail)' AFTER `net_dev_cred_snmp`,
+                ADD COLUMN `net_dev_cred_probe_message` varchar(1000) NULL DEFAULT NULL COMMENT '最近拨测结果' AFTER `net_dev_cred_probe_status`,
+                ADD COLUMN `net_dev_cred_probe_time` datetime NULL DEFAULT NULL COMMENT '最近拨测时间' AFTER `net_dev_cred_probe_message`,
+                ADD COLUMN `net_dev_cred_snmp_status` varchar(20) NULL DEFAULT NULL COMMENT 'SNMP测试状态(success/fail)' AFTER `net_dev_cred_probe_time`,
+                ADD COLUMN `net_dev_cred_snmp_message` varchar(1000) NULL DEFAULT NULL COMMENT '最近SNMP测试结果' AFTER `net_dev_cred_snmp_status`,
+                ADD COLUMN `net_dev_cred_snmp_time` datetime NULL DEFAULT NULL COMMENT '最近SNMP测试时间' AFTER `net_dev_cred_snmp_message`"
+        );
+    } catch (Exception $e) {
+        error_log('ensureProbeColumns: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 系统错误信息（如 Winsock 错误）可能为 GBK 编码，统一转为 UTF-8，避免 json_encode 失败
+ */
+function probeSafeText($text)
+{
+    if ($text === '' || $text === null) {
+        return '';
+    }
+    if (mb_check_encoding($text, 'UTF-8')) {
+        return $text;
+    }
+    $converted = @mb_convert_encoding($text, 'UTF-8', 'GBK');
+    if ($converted !== false && $converted !== '') {
+        return $converted;
+    }
+    return '连接超时';
+}
+
+/**
+ * 将拨测/SNMP 测试结果写入数据库状态字段
+ */
+function probeSaveStatus($pdo, $id, $type, $status, $message)
+{
+    if ($id <= 0) {
+        return;
+    }
+    $column = ($type === 'snmp') ? 'snmp' : 'probe';
+    try {
+        $stmt = $pdo->prepare(
+            "UPDATE `net_dev_cred` SET
+                `net_dev_cred_{$column}_status` = :status,
+                `net_dev_cred_{$column}_message` = :message,
+                `net_dev_cred_{$column}_time` = NOW()
+             WHERE `id` = :id"
+        );
+        $stmt->bindValue(':status', $status, PDO::PARAM_STR);
+        $stmt->bindValue(':message', mb_substr($message, 0, 1000), PDO::PARAM_STR);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    } catch (Exception $e) {
+        error_log('probeSaveStatus: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 全自动拨测：通过 IP、端口、协议及账号密码判断设备是否在线、远程方式是否正确，并记录状态
+ */
+function handleProbe($pdo, $requestData)
+{
+    $id = isset($requestData['id']) ? intval($requestData['id']) : 0;
+    $ip = isset($requestData['ip']) ? trim($requestData['ip']) : '';
+    $port = isset($requestData['port']) ? intval($requestData['port']) : 0;
+    $protocol = isset($requestData['protocol']) ? strtolower(trim($requestData['protocol'])) : '';
+
+    if (empty($ip)) {
+        throw new Exception('缺少管理IP参数');
+    }
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        throw new Exception('IP地址格式不正确');
+    }
+
+    // 从数据库读取账号密码（用于认证验证）
+    $username = '';
+    $password = '';
+    if ($id > 0) {
+        $stmt = $pdo->prepare(
+            "SELECT net_dev_cred_username, net_dev_cred_password_hash, net_dev_cred_protocol, net_dev_cred_port
+             FROM net_dev_cred WHERE id = ?"
+        );
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $username = isset($row['net_dev_cred_username']) ? trim($row['net_dev_cred_username']) : '';
+            if (!empty($row['net_dev_cred_password_hash'])) {
+                try {
+                    require_once __DIR__ . '/app/utils/SecurityUtils.php';
+                    $decrypted = SecurityUtils::decrypt($row['net_dev_cred_password_hash']);
+                    if ($decrypted !== null && $decrypted !== false) {
+                        $password = $decrypted;
+                    }
+                } catch (Exception $e) {
+                    $password = '';
+                }
+            }
+            if (empty($protocol)) {
+                $protocol = strtolower(trim($row['net_dev_cred_protocol'] ?? ''));
+            }
+            if ($port < 1 && !empty($row['net_dev_cred_port'])) {
+                $port = intval($row['net_dev_cred_port']);
+            }
+        }
+    }
+
+    // 默认端口
+    if ($port < 1 || $port > 65535) {
+        $port = ($protocol === 'ssh') ? 22
+            : (($protocol === 'telnet') ? 23
+            : (($protocol === 'https') ? 443 : 80));
+    }
+
+    // 1. 在线检测：TCP 端口连通性
+    $tcpResult = probeTcpConnect($ip, $port, 3);
+    if (!$tcpResult['success']) {
+        $message = "设备不在线：无法建立 TCP 连接 {$ip}:{$port}\n原因：" . $tcpResult['error'];
+        probeSaveStatus($pdo, $id, 'probe', 'fail', $message);
+        echo json_encode([
+            'success' => false,
+            'message' => $message,
+            'data' => [
+                'ip' => $ip,
+                'port' => $port,
+                'protocol' => $protocol,
+                'online' => false,
+                'auth' => 'skipped',
+                'detail' => $tcpResult['error']
+            ]
+        ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
+    }
+
+    // 2. 协议 / 认证验证
+    $verify = probeVerifyProtocol($ip, $port, $protocol, $username, $password);
+
+    if ($verify['success']) {
+        $message = "设备在线，远程方式正确。\n[协议] " . strtoupper($protocol) . " {$ip}:{$port}\n[结果] " . $verify['message'];
+        $status = 'success';
+    } else {
+        $message = "设备在线，但远程方式验证失败。\n[协议] " . strtoupper($protocol) . " {$ip}:{$port}\n[结果] " . $verify['message'];
+        $status = 'fail';
+    }
+    probeSaveStatus($pdo, $id, 'probe', $status, $message);
+
+    echo json_encode([
+        'success' => $verify['success'],
+        'message' => $message,
+        'data' => [
+            'ip' => $ip,
+            'port' => $port,
+            'protocol' => $protocol,
+            'online' => true,
+            'auth' => $verify['auth'],
+            'detail' => $verify['message']
+        ]
+    ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+}
+
+/**
+ * TCP 端口连通性检测
+ */
+function probeTcpConnect($ip, $port, $timeout = 3)
+{
+    $errno = 0;
+    $errstr = '';
+    $fp = @stream_socket_client("tcp://{$ip}:{$port}", $errno, $errstr, $timeout);
+    if ($fp) {
+        stream_set_timeout($fp, $timeout);
+        fclose($fp);
+        return ['success' => true];
+    }
+    return ['success' => false, 'error' => $errstr !== '' ? probeSafeText($errstr) : '连接超时'];
+}
+
+/**
+ * 按协议执行远程方式 / 认证验证
+ */
+function probeVerifyProtocol($ip, $port, $protocol, $username, $password)
+{
+    switch ($protocol) {
+        case 'ssh':
+            return probeVerifySsh($ip, $port, $username, $password);
+        case 'telnet':
+            return probeVerifyTelnet($ip, $port, $username, $password);
+        case 'http':
+        case 'https':
+            return probeVerifyHttp($ip, $port, $protocol, $username, $password);
+        default:
+            return [
+                'success' => true,
+                'message' => "协议 {$protocol} 端口开放（TCP 连通），未做登录认证验证",
+                'auth' => 'skipped'
+            ];
+    }
+}
+
+/**
+ * SSH 验证：读取服务 banner 确认 SSH 协议，尽量做账号认证
+ */
+function probeVerifySsh($ip, $port, $username, $password)
+{
+    $banner = '';
+    $errno = 0;
+    $errstr = '';
+    $fp = @stream_socket_client("tcp://{$ip}:{$port}", $errno, $errstr, 5);
+    if (!$fp) {
+        return ['success' => false, 'message' => 'SSH 端口无法连接: ' . ($errstr !== '' ? probeSafeText($errstr) : '超时'), 'auth' => 'skipped'];
+    }
+    stream_set_timeout($fp, 5);
+    $banner = @fgets($fp, 256);
+    if ($banner !== false) {
+        $banner = trim($banner);
+    }
+    fclose($fp);
+
+    if ($banner === '' || stripos($banner, 'SSH-') !== 0) {
+        return [
+            'success' => false,
+            'message' => '端口已开放，但未返回 SSH 协议 Banner' . ($banner !== '' ? "（响应: {$banner}）" : '（无响应）'),
+            'auth' => 'skipped'
+        ];
+    }
+
+    // 尝试使用 phpseclib 做真实认证验证（如已安装）
+    $sshAuthed = false;
+    $sshDetail = '';
+    $phpseclib = __DIR__ . '/vendor/autoload.php';
+    if ($username !== '' && $password !== '' && file_exists($phpseclib)) {
+        try {
+            require_once $phpseclib;
+            if (class_exists('phpseclib3\\Net\\SSH2')) {
+                $ssh = new \phpseclib3\Net\SSH2($ip, $port, 5);
+                if ($ssh->login($username, $password)) {
+                    $sshAuthed = true;
+                    $sshDetail = "账号 {$username} 认证成功";
+                } else {
+                    $sshDetail = "账号 {$username} 认证失败（用户名或密码错误）";
+                }
+            }
+        } catch (Exception $e) {
+            $sshDetail = '';
+        }
+    }
+
+    if ($sshAuthed) {
+        return ['success' => true, 'message' => "SSH 服务正常，{$sshDetail}", 'auth' => 'passed'];
+    }
+    if ($sshDetail !== '') {
+        return ['success' => false, 'message' => "SSH 服务正常（{$banner}），但{$sshDetail}", 'auth' => 'failed'];
+    }
+    return [
+        'success' => true,
+        'message' => "SSH 服务正常（{$banner}），未做账号认证验证",
+        'auth' => 'skipped'
+    ];
+}
+
+/**
+ * Telnet 验证：使用账号密码执行真实登录交互
+ * 支持两种模式：
+ *   1) 标准账号+密码（先 login/username 提示，后 password 提示）
+ *   2) 仅密码认证（如 Cisco/H3C 的 User Access Verification，直接要求输入密码）
+ */
+function probeVerifyTelnet($ip, $port, $username, $password)
+{
+    $errno = 0;
+    $errstr = '';
+    $fp = @stream_socket_client("tcp://{$ip}:{$port}", $errno, $errstr, 5);
+    if (!$fp) {
+        return ['success' => false, 'message' => 'Telnet 端口无法连接: ' . ($errstr !== '' ? probeSafeText($errstr) : '超时'), 'auth' => 'skipped'];
+    }
+    stream_set_timeout($fp, 5);
+
+    // 读取并剥离 Telnet 协商字节，直到出现登录提示
+    $buffer = '';
+    $deadline = microtime(true) + 5;
+    $authMode = ''; // 'user_pass' 或 'password_only'
+    while (microtime(true) < $deadline) {
+        $chunk = @fread($fp, 512);
+        if ($chunk === false || $chunk === '') {
+            if (feof($fp)) break;
+            continue;
+        }
+        $buffer .= $chunk;
+        // 剥离 Telnet IAC 协商序列
+        $clean = probeStripTelnetIac($buffer);
+        // 模式 A：标准账号+密码（先出现 login / username 提示）
+        if (preg_match('/(?:\blogin\s*[:：]|\buser\s*name\s*[:：]|用户名\s*[:：]|账号\s*[:：])/i', $clean, $m)) {
+            $authMode = 'user_pass';
+            break;
+        }
+        // 模式 B：仅密码认证（出现 User Access Verification / Password: 但前面没有 login 提示）
+        if (preg_match('/(?:user\s*access\s*verification|password\s*[:：])/i', $clean, $m)) {
+            $authMode = 'password_only';
+            break;
+        }
+        if (stripos($clean, 'Press ENTER') !== false || stripos($clean, 'press any key') !== false) {
+            // 某些设备要求先按回车
+            @fwrite($fp, "\r\n");
+        }
+    }
+    $clean = probeStripTelnetIac($buffer);
+
+    // 未出现登录提示：可能设备不支持登录或已直接进入
+    if ($authMode === '') {
+        // 若提示 "Press ENTER"，发送回车后继续
+        @fwrite($fp, "\r\n");
+        usleep(300000);
+        $buffer .= (string)@fread($fp, 512);
+        $clean = probeStripTelnetIac($buffer);
+        if (preg_match('/(?:\blogin\s*[:：]|\buser\s*name\s*[:：]|用户名\s*[:：]|账号\s*[:：])/i', $clean, $m)) {
+            $authMode = 'user_pass';
+        } elseif (preg_match('/(?:user\s*access\s*verification|password\s*[:：])/i', $clean, $m)) {
+            $authMode = 'password_only';
+        } else {
+            fclose($fp);
+            return [
+                'success' => false,
+                'message' => 'Telnet 端口已开放，但未检测到登录提示，可能不是标准 Telnet 登录服务',
+                'auth' => 'skipped'
+            ];
+        }
+    }
+
+    // 未配置账号密码
+    if ($username === '' && $password === '') {
+        fclose($fp);
+        return [
+            'success' => true,
+            'message' => 'Telnet 服务正常，检测到登录提示（未配置账号密码）',
+            'auth' => 'skipped'
+        ];
+    }
+
+    // ========== 模式 B：仅密码认证 ==========
+    if ($authMode === 'password_only') {
+        // 如果当前缓冲区还没有出现 Password: 提示，等待它
+        $passwordPrompt = false;
+        $deadline = microtime(true) + 5;
+        while (microtime(true) < $deadline) {
+            $clean = probeStripTelnetIac($buffer);
+            if (preg_match('/password\s*[:：]/i', $clean)) {
+                $passwordPrompt = true;
+                break;
+            }
+            $chunk = @fread($fp, 512);
+            if ($chunk === false || $chunk === '') {
+                if (feof($fp)) break;
+                continue;
+            }
+            $buffer .= $chunk;
+        }
+        if (!$passwordPrompt) {
+            fclose($fp);
+            return [
+                'success' => false,
+                'message' => 'Telnet 仅密码认证：检测到 User Access Verification，但未出现 Password 提示',
+                'auth' => 'failed'
+            ];
+        }
+        // 发送密码（使用密码字段，若为空则使用用户名作为密码回退）
+        $sendPass = $password !== '' ? $password : $username;
+        @fwrite($fp, $sendPass . "\r\n");
+        // 等待结果
+        $buffer = '';
+        $deadline = microtime(true) + 5;
+        $resultText = '';
+        while (microtime(true) < $deadline) {
+            $chunk = @fread($fp, 512);
+            if ($chunk === false || $chunk === '') {
+                if (feof($fp)) break;
+                continue;
+            }
+            $buffer .= $chunk;
+            $clean = probeStripTelnetIac($buffer);
+            if ($clean !== '') {
+                $resultText = $clean;
+            }
+            // 失败标志
+            if (preg_match('/(?:login incorrect|authentication failed|access denied|invalid|错误|失败|密码错误|被拒绝)/i', $clean)) {
+                fclose($fp);
+                return [
+                    'success' => false,
+                    'message' => "Telnet 仅密码认证失败：密码错误，请检查密码",
+                    'auth' => 'failed'
+                ];
+            }
+            // 成功标志：出现设备提示符
+            if (preg_match('/[#>\$]\s*$/', $clean)) {
+                fclose($fp);
+                return [
+                    'success' => true,
+                    'message' => "Telnet 仅密码认证成功，已进入设备命令行提示符",
+                    'auth' => 'passed'
+                ];
+            }
+        }
+        fclose($fp);
+        if ($resultText !== '') {
+            return [
+                'success' => true,
+                'message' => "Telnet 仅密码认证交互完成，未检测到明确的失败标志",
+                'auth' => 'passed'
+            ];
+        }
+        return [
+            'success' => false,
+            'message' => 'Telnet 仅密码认证结果无法确认（响应为空或超时）',
+            'auth' => 'failed'
+        ];
+    }
+
+    // ========== 模式 A：标准账号+密码 ==========
+    // 发送用户名
+    @fwrite($fp, $username . "\r\n");
+    // 等待密码提示
+    $buffer = '';
+    $deadline = microtime(true) + 5;
+    $passwordPrompt = '';
+    while (microtime(true) < $deadline) {
+        $chunk = @fread($fp, 512);
+        if ($chunk === false || $chunk === '') {
+            if (feof($fp)) break;
+            continue;
+        }
+        $buffer .= $chunk;
+        $clean = probeStripTelnetIac($buffer);
+        if (preg_match('/password\s*[:：]/i', $clean)) {
+            $passwordPrompt = 'password:';
+            break;
+        }
+        if (preg_match('/(?:login incorrect|authentication failed|invalid|denied|错误|失败|密码错误)/i', $clean)) {
+            break;
+        }
+    }
+
+    if ($passwordPrompt === '') {
+        fclose($fp);
+        return [
+            'success' => false,
+            'message' => 'Telnet 登录交互异常：未检测到密码提示，可能用户名错误或设备不要求密码',
+            'auth' => 'failed'
+        ];
+    }
+
+    // 发送密码
+    @fwrite($fp, $password . "\r\n");
+
+    // 等待登录结果
+    $buffer = '';
+    $deadline = microtime(true) + 5;
+    $resultText = '';
+    while (microtime(true) < $deadline) {
+        $chunk = @fread($fp, 512);
+        if ($chunk === false || $chunk === '') {
+            if (feof($fp)) break;
+            continue;
+        }
+        $buffer .= $chunk;
+        $clean = probeStripTelnetIac($buffer);
+        if ($clean !== '') {
+            $resultText = $clean;
+        }
+        // 失败标志
+        if (preg_match('/(?:login incorrect|authentication failed|access denied|invalid username|错误|失败|密码错误|被拒绝)/i', $clean)) {
+            fclose($fp);
+            return [
+                'success' => false,
+                'message' => "Telnet 登录失败（账号 {$username}）：检测到失败提示，请检查用户名或密码",
+                'auth' => 'failed'
+            ];
+        }
+        // 成功标志：出现设备提示符
+        if (preg_match('/[#>\$]\s*$/', $clean)) {
+            fclose($fp);
+            return [
+                'success' => true,
+                'message' => "Telnet 登录成功（账号 {$username}），已进入设备命令行提示符",
+                'auth' => 'passed'
+            ];
+        }
+    }
+
+    fclose($fp);
+    if ($resultText !== '') {
+        return [
+            'success' => true,
+            'message' => "Telnet 交互完成，未检测到明确的失败标志（账号 {$username}）",
+            'auth' => 'passed'
+        ];
+    }
+    return [
+        'success' => false,
+        'message' => 'Telnet 登录结果无法确认（响应为空或超时）',
+        'auth' => 'failed'
+    ];
+}
+
+/**
+ * 剥离 Telnet IAC 协商字节序列
+ */
+function probeStripTelnetIac($data)
+{
+    $result = '';
+    $len = strlen($data);
+    $i = 0;
+    while ($i < $len) {
+        $ord = ord($data[$i]);
+        if ($ord === 255) { // IAC
+            if ($i + 1 < $len) {
+                $cmd = ord($data[$i + 1]);
+                if ($cmd === 251 || $cmd === 252 || $cmd === 253 || $cmd === 254) {
+                    // WILL/WONT/DO/DONT 后跟 1 字节选项
+                    $i += 3;
+                    continue;
+                } elseif ($cmd === 250) {
+                    // SB ... SE
+                    $j = strpos($data, chr(255) . chr(240), $i + 2);
+                    $i = ($j !== false) ? $j + 2 : $len;
+                    continue;
+                } else {
+                    $i += 2;
+                    continue;
+                }
+            }
+            break;
+        }
+        $result .= $data[$i];
+        $i++;
+    }
+    return $result;
+}
+
+/**
+ * HTTP/HTTPS 验证：请求管理页面，按状态码判断服务与认证
+ */
+function probeVerifyHttp($ip, $port, $protocol, $username, $password)
+{
+    if (!function_exists('curl_init')) {
+        // 无 cURL 时退化为 TCP 检测
+        $tcp = probeTcpConnect($ip, $port, 3);
+        if ($tcp['success']) {
+            return ['success' => true, 'message' => "{$protocol} 端口开放（TCP 连通，服务器未启用 cURL，未做 HTTP 验证）", 'auth' => 'skipped'];
+        }
+        return ['success' => false, 'message' => "{$protocol} 端口无法连接: " . $tcp['error'], 'auth' => 'skipped'];
+    }
+
+    $url = "{$protocol}://{$ip}:{$port}/";
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 5,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 3,
+        CURLOPT_NOBODY => true,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_USERAGENT => 'CredStat-Probe/1.0'
+    ]);
+    if ($username !== '') {
+        curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+        curl_setopt($ch, CURLOPT_USERPWD, $username . ':' . $password);
+    }
+    $body = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($httpCode <= 0) {
+        return ['success' => false, 'message' => "HTTP 请求失败: " . ($error ?: '无响应'), 'auth' => 'skipped'];
+    }
+    if ($httpCode >= 200 && $httpCode < 500) {
+        if ($httpCode === 401 || $httpCode === 403) {
+            return [
+                'success' => true,
+                'message' => "Web 服务正常（HTTP {$httpCode}，需要认证，账号密码可能生效）",
+                'auth' => ($username !== '') ? 'passed' : 'skipped'
+            ];
+        }
+        return [
+            'success' => true,
+            'message' => "Web 服务正常（HTTP {$httpCode}）",
+            'auth' => 'skipped'
+        ];
+    }
+    return [
+        'success' => false,
+        'message' => "Web 服务异常（HTTP {$httpCode}）",
+        'auth' => 'skipped'
+    ];
 }
 
 /**
@@ -222,9 +836,11 @@ function handleSnmpTest($pdo, $requestData)
 
     // 注意：SNMP 原始响应是二进制数据，必须 base64 编码后才能放进 JSON
     if ($result['success']) {
+        $message = "SNMP 测试成功，设备返回系统描述：\n" . $result['sysDescr'];
+        probeSaveStatus($pdo, $id, 'snmp', 'success', $message);
         echo json_encode([
             'success' => true,
-            'message' => "SNMP 测试成功，设备返回系统描述：\n" . $result['sysDescr'],
+            'message' => $message,
             'data' => [
                 'ip' => $ip,
                 'community' => $community,
@@ -233,9 +849,11 @@ function handleSnmpTest($pdo, $requestData)
             ]
         ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     } else {
+        $message = "SNMP 测试失败：" . $result['error'];
+        probeSaveStatus($pdo, $id, 'snmp', 'fail', $message);
         echo json_encode([
             'success' => false,
-            'message' => "SNMP 测试失败：" . $result['error'],
+            'message' => $message,
             'data' => [
                 'ip' => $ip,
                 'community' => $community,

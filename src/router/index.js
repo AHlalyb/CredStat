@@ -14,6 +14,7 @@ const DatabaseSettingsView = () => import('../views/DatabaseSettingsView.vue')
 const UserSettingsView = () => import('../views/UserSettingsView.vue')
 const BaseObjectSettingsView = () => import('../views/BaseObjectSettingsView.vue')
 const ServiceManagementView = () => import('../views/ServiceManagementView.vue')
+const RemoteTerminalSettingsView = () => import('../views/RemoteTerminalSettingsView.vue')
 
 const routes = [
   {
@@ -124,6 +125,15 @@ const routes = [
       title: '服务管理',
       requiresAuth: true
     }
+  },
+  {
+    path: '/remote-terminal-settings',
+    name: 'remoteTerminalSettings',
+    component: RemoteTerminalSettingsView,
+    meta: {
+      title: '远程终端设置',
+      requiresAuth: true
+    }
   }
 ]
 
@@ -173,7 +183,7 @@ router.beforeEach((to, from, next) => {
     next({ name: 'welcome', replace: true });
   } else if (isLoggedIn && currentUser) {
     // 检查是否需要管理权限
-    const requiresManagePermission = ['databaseSettings', 'userSettings'].includes(to.name);
+    const requiresManagePermission = ['databaseSettings', 'userSettings', 'remoteTerminalSettings'].includes(to.name);
     if (requiresManagePermission && currentUser.permissions?.manage !== 1) {
       // 没有管理权限，跳转到首页并显示提示
       next({ name: 'welcome', replace: true });

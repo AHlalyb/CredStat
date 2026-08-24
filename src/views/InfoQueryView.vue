@@ -11,7 +11,7 @@
         <!-- 查询表单 -->
         <el-form ref="searchForm" :model="searchForm" label-position="top" label-width="100px" size="default" class="mb-4">
           <el-row :gutter="[20, 20]">
-            <el-col :xs="24" :sm="12" :md="6">
+            <el-col :xs="24" :sm="12" :md="3">
               <el-form-item label="关键词1">
                 <div class="keyword-input-wrapper">
                   <el-input
@@ -24,7 +24,7 @@
                     v-model="searchForm.keyword1MatchType"
                     placeholder="匹配方式"
                     class="match-type-select"
-                    style="width: 120px;"
+                    style="width: 90px;"
                   >
                     <el-option label="包含" value="include"></el-option>
                     <el-option label="不包含" value="exclude"></el-option>
@@ -32,7 +32,7 @@
                 </div>
               </el-form-item>
             </el-col>
-            <el-col :xs="24" :sm="12" :md="6">
+            <el-col :xs="24" :sm="12" :md="3">
               <el-form-item label="关键词2">
                 <div class="keyword-input-wrapper">
                   <el-input
@@ -45,7 +45,49 @@
                     v-model="searchForm.keyword2MatchType"
                     placeholder="匹配方式"
                     class="match-type-select"
-                    style="width: 120px;"
+                    style="width: 90px;"
+                  >
+                    <el-option label="包含" value="include"></el-option>
+                    <el-option label="不包含" value="exclude"></el-option>
+                  </el-select>
+                </div>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="3">
+              <el-form-item label="关键词3">
+                <div class="keyword-input-wrapper">
+                  <el-input
+                    v-model="searchForm.keyword3"
+                    placeholder="请输入第三个关键词，支持模糊匹配"
+                    clearable
+                    class="keyword-input"
+                  ></el-input>
+                  <el-select
+                    v-model="searchForm.keyword3MatchType"
+                    placeholder="匹配方式"
+                    class="match-type-select"
+                    style="width: 90px;"
+                  >
+                    <el-option label="包含" value="include"></el-option>
+                    <el-option label="不包含" value="exclude"></el-option>
+                  </el-select>
+                </div>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="3">
+              <el-form-item label="关键词4">
+                <div class="keyword-input-wrapper">
+                  <el-input
+                    v-model="searchForm.keyword4"
+                    placeholder="请输入第四个关键词，支持模糊匹配"
+                    clearable
+                    class="keyword-input"
+                  ></el-input>
+                  <el-select
+                    v-model="searchForm.keyword4MatchType"
+                    placeholder="匹配方式"
+                    class="match-type-select"
+                    style="width: 90px;"
                   >
                     <el-option label="包含" value="include"></el-option>
                     <el-option label="不包含" value="exclude"></el-option>
@@ -68,14 +110,14 @@
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="3">
-              <el-form-item>
+              <el-form-item label=" ">
                 <el-button type="primary" @click="performSearch" class="w-100" size="small">
                   <el-icon><Search /></el-icon> 查询
                 </el-button>
               </el-form-item>
             </el-col>
             <el-col :xs="24" :sm="12" :md="3">
-              <el-form-item>
+              <el-form-item label=" ">
                 <el-button @click="resetSearch" class="w-100" size="small">
                   <el-icon><RefreshRight /></el-icon> 重置
                 </el-button>
@@ -119,12 +161,12 @@
                 <el-button
                   type="success"
                   size="small"
-                  :loading="batchPingRunning"
+                  :loading="batchProbeRunning"
                   :disabled="batchRunning"
-                  @click="handleBatchPing"
+                  @click="handleBatchProbe"
                 >
-                  <el-icon v-if="!batchPingRunning"><Monitor /></el-icon>
-                  <span v-if="!batchPingRunning">批量Ping</span>
+                  <el-icon v-if="!batchProbeRunning"><Monitor /></el-icon>
+                  <span v-if="!batchProbeRunning">批量拨测</span>
                 </el-button>
                 <el-button
                   type="warning"
@@ -245,21 +287,21 @@
               </template>
             </el-table-column>
             
-            <!-- 管理列（仅网络设备查询时显示）：Ping/SNMP测试/远程连接 -->
+            <!-- 管理列（仅网络设备查询时显示）：拨测/SNMP测试/远程连接 -->
             <el-table-column v-if="searchForm.queryType === 'network'" label="管理" width="300" align="center" fixed="right">
               <template #default="scope">
                 <div class="network-manage-buttons">
-                  <!-- Ping 测试按钮 -->
-                  <el-tooltip :content="pingStatusText(scope.row)" placement="top">
+                  <!-- 拨测按钮 -->
+                  <el-tooltip :content="probeStatusText(scope.row)" placement="top">
                     <el-button
                       size="small"
-                      :type="getPingBtnType(scope.row)"
-                      :loading="pingLoadingId === scope.row.id || rowIsTesting(scope.row, 'ping')"
-                      :disabled="pingLoadingId !== null || batchRunning"
-                      @click="handlePing(scope.row)"
+                      :type="getProbeBtnType(scope.row)"
+                      :loading="probeLoadingId === scope.row.id || rowIsTesting(scope.row, 'probe')"
+                      :disabled="probeLoadingId !== null || batchRunning"
+                      @click="handleProbe(scope.row)"
                     >
-                      <el-icon v-if="pingLoadingId !== scope.row.id && !rowIsTesting(scope.row, 'ping')"><Monitor /></el-icon>
-                      <span v-if="!rowIsTesting(scope.row, 'ping')">Ping</span>
+                      <el-icon v-if="probeLoadingId !== scope.row.id && !rowIsTesting(scope.row, 'probe')"><Monitor /></el-icon>
+                      <span v-if="!rowIsTesting(scope.row, 'probe')">拨测</span>
                     </el-button>
                   </el-tooltip>
                   <!-- SNMP 测试按钮 -->
@@ -1093,10 +1135,10 @@
           <!-- 第四行：用户名、密码、使能密码 -->
           <el-row :gutter="[20, 20]">
             <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <el-form-item label="用户名" prop="username" required>
+              <el-form-item label="用户名" prop="netUsername">
                 <el-input
                   v-model="editFormData.username"
-                  placeholder="请输入用户名"
+                  placeholder="请输入用户名（仅密码认证的设备可留空）"
                   autocomplete="new-username"
                   :name="'random-username-' + Math.random().toString(36).substring(2, 15)"
                   readonly
@@ -2155,10 +2197,12 @@
 
 .keyword-input {
   flex: 1;
+  min-width: 0;
 }
 
 .match-type-select {
-  width: 120px;
+  width: 90px;
+  flex-shrink: 0;
 }
 
 /* 导出选择对话框样式 */
@@ -2315,6 +2359,10 @@ export default {
         keyword1MatchType: 'include',
         keyword2: '',
         keyword2MatchType: 'include',
+        keyword3: '',
+        keyword3MatchType: 'include',
+        keyword4: '',
+        keyword4MatchType: 'include',
         queryType: ''
       },
       // 查询结果
@@ -2343,11 +2391,11 @@ export default {
       // 当前操作的记录
       currentRecord: null,
       // 网络设备管理列状态
-      pingLoadingId: null,
+      probeLoadingId: null,
       snmpLoadingId: null,
       // 批量测试状态
       batchRunning: false,
-      batchPingRunning: false,
+      batchProbeRunning: false,
       batchSnmpRunning: false,
       // 附加账户密码数组，用于密码显示控制
       additionalPasswords: ['', '', '', ''],
@@ -2557,6 +2605,10 @@ export default {
         ],
         username: [
           { required: true, message: '请输入用户名', trigger: 'blur' },
+          { max: 50, message: '用户名不能超过50个字符', trigger: 'blur' }
+        ],
+        // 网络设备用户名：可为空（存在仅密码认证的交换机）
+        netUsername: [
           { max: 50, message: '用户名不能超过50个字符', trigger: 'blur' }
         ],
         password: [
@@ -3105,47 +3157,96 @@ export default {
       return row.ip_url || row.net_dev_cred_management_ip || '';
     },
 
-    // 获取Ping按钮类型：success=正常(绿) danger=异常(红) warning=未测试(黄)
-    getPingBtnType(row) {
-      if (row.pingStatus === 'success') return 'success';
-      if (row.pingStatus === 'fail') return 'danger';
+    // 测试时间距今天数；无时间或解析失败返回 null
+    getTestAgeDays(timeStr) {
+      if (!timeStr) return null;
+      const normalized = String(timeStr).replace(' ', 'T');
+      const t = new Date(normalized);
+      if (isNaN(t.getTime())) return null;
+      return (Date.now() - t.getTime()) / (24 * 60 * 60 * 1000);
+    },
+
+    // 当前时间格式化为 "YYYY-MM-DD HH:MM:SS"，与数据库时间格式一致
+    formatNow() {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    },
+
+    // 拨测按钮颜色：1天内绿(success)、7天内蓝(primary)、15天内黄(warning)、
+    // 超过15天或未测试灰(info)；异常15天内红(danger)
+    getProbeBtnType(row) {
+      if (row.probeStatus === 'testing') return 'warning';
+      const age = this.getTestAgeDays(row.probeTime);
+      if (row.probeStatus === 'fail') {
+        return age !== null && age <= 15 ? 'danger' : 'info';
+      }
+      if (row.probeStatus !== 'success' || age === null || age > 15) return 'info';
+      if (age <= 1) return 'success';
+      if (age <= 7) return 'primary';
       return 'warning';
     },
 
-    // 获取SNMP按钮类型：success=正常(绿) danger=异常(红) warning=未测试(黄)
+    // SNMP 按钮颜色：与拨测相同的按测试时间分级
     getSnmpBtnType(row) {
-      if (row.snmpStatus === 'success') return 'success';
-      if (row.snmpStatus === 'fail') return 'danger';
+      if (row.snmpStatus === 'testing') return 'warning';
+      const age = this.getTestAgeDays(row.snmpTime);
+      if (row.snmpStatus === 'fail') {
+        return age !== null && age <= 15 ? 'danger' : 'info';
+      }
+      if (row.snmpStatus !== 'success' || age === null || age > 15) return 'info';
+      if (age <= 1) return 'success';
+      if (age <= 7) return 'primary';
       return 'warning';
     },
 
     // 判断指定行是否正在测试中
     rowIsTesting(row, type) {
-      return type === 'ping' ? row.pingStatus === 'testing' : row.snmpStatus === 'testing';
+      return type === 'probe' ? row.probeStatus === 'testing' : row.snmpStatus === 'testing';
     },
 
-    // Ping 按钮提示文本
-    pingStatusText(row) {
-      if (row.pingStatus === 'success') return 'Ping 测试正常（绿色）';
-      if (row.pingStatus === 'fail') return 'Ping 测试异常（红色）';
-      if (row.pingStatus === 'testing') return '正在 Ping 测试中...';
-      return '未测试（黄色），点击进行 Ping 测试';
+    // 拨测按钮提示文本（含测试时间和颜色说明）
+    probeStatusText(row) {
+      if (row.probeStatus === 'testing') return '正在拨测中...';
+      const age = this.getTestAgeDays(row.probeTime);
+      const timeLabel = row.probeTime ? ` 测试时间：${row.probeTime}` : '';
+      if (row.probeStatus === 'fail') {
+        if (age !== null && age <= 15) return `拨测异常（红色）${timeLabel}，点击查看详情`;
+        return '未拨测（灰色），点击进行全自动拨测';
+      }
+      if (row.probeStatus === 'success') {
+        if (age !== null && age <= 1) return `拨测正常（绿色，1天内）${timeLabel}`;
+        if (age !== null && age <= 7) return `拨测正常（蓝色，7天内）${timeLabel}`;
+        if (age !== null && age <= 15) return `拨测正常（黄色，15天内）${timeLabel}`;
+        return `拨测已超过15天未更新（灰色）${timeLabel}，点击重新拨测`;
+      }
+      return '未拨测（灰色），点击进行全自动拨测';
     },
 
-    // SNMP 按钮提示文本
+    // SNMP 按钮提示文本（含测试时间和颜色说明）
     snmpStatusText(row) {
-      if (row.snmpStatus === 'success') return 'SNMP 测试正常（绿色）';
-      if (row.snmpStatus === 'fail') return 'SNMP 测试异常（红色）';
       if (row.snmpStatus === 'testing') return '正在 SNMP 测试中...';
-      return '未测试（黄色），点击进行 SNMP 测试';
+      const age = this.getTestAgeDays(row.snmpTime);
+      const timeLabel = row.snmpTime ? ` 测试时间：${row.snmpTime}` : '';
+      if (row.snmpStatus === 'fail') {
+        if (age !== null && age <= 15) return `SNMP 测试异常（红色）${timeLabel}，点击查看详情`;
+        return '未测试（灰色），点击进行 SNMP 测试';
+      }
+      if (row.snmpStatus === 'success') {
+        if (age !== null && age <= 1) return `SNMP 测试正常（绿色，1天内）${timeLabel}`;
+        if (age !== null && age <= 7) return `SNMP 测试正常（蓝色，7天内）${timeLabel}`;
+        if (age !== null && age <= 15) return `SNMP 测试正常（黄色，15天内）${timeLabel}`;
+        return `SNMP 测试已超过15天未更新（灰色）${timeLabel}，点击重新测试`;
+      }
+      return '未测试（灰色），点击进行 SNMP 测试';
     },
 
-    // 执行单个 Ping 测试（不弹窗），更新行状态，返回是否成功
-    async testPing(row) {
+    // 执行单个拨测（不弹窗），更新行状态，返回是否成功
+    async testProbe(row) {
       const ip = this.getNetworkIp(row);
       if (!ip) {
-        row.pingStatus = 'fail';
-        row.pingMessage = '该设备没有管理IP';
+        row.probeStatus = 'fail';
+        row.probeMessage = '该设备没有管理IP';
         return false;
       }
       try {
@@ -3153,69 +3254,74 @@ export default {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            action: 'ping',
+            action: 'probe',
             username: this.getLoginUsername(),
-            ip: ip
+            id: row.id,
+            ip: ip,
+            port: row.net_dev_cred_port || row.port || '',
+            protocol: row.protocol || row.net_dev_cred_protocol || ''
           })
         });
         const data = await response.json();
-        row.pingMessage = (data && data.message) || '';
+        row.probeMessage = (data && data.message) || '';
         const ok = !!(data && data.success);
-        row.pingStatus = ok ? 'success' : 'fail';
+        row.probeStatus = ok ? 'success' : 'fail';
+        row.probeTime = this.formatNow();
         return ok;
       } catch (error) {
-        console.error('Ping测试请求失败:', error);
-        row.pingStatus = 'fail';
-        row.pingMessage = error.message || '请求失败';
+        console.error('拨测请求失败:', error);
+        row.probeStatus = 'fail';
+        row.probeMessage = error.message || '请求失败';
+        row.probeTime = this.formatNow();
         return false;
       }
     },
 
-    // 单条 Ping 测试（带结果弹窗）
-    async handlePing(row) {
+    // 单条拨测（带结果弹窗）
+    async handleProbe(row) {
       const ip = this.getNetworkIp(row);
       if (!ip) {
-        ElMessage.warning('该设备没有管理IP，无法进行Ping测试');
+        ElMessage.warning('该设备没有管理IP，无法进行拨测');
         return;
       }
-      this.pingLoadingId = row.id;
+      this.probeLoadingId = row.id;
       try {
-        const ok = await this.testPing(row);
+        const ok = await this.testProbe(row);
         if (ok) {
-          this.$alert(`设备 ${ip} 连通正常\n\n${row.pingMessage || ''}`, 'Ping 测试结果', {
+          this.$alert(`设备 ${ip} 在线，远程方式正确\n\n${row.probeMessage || ''}`, '拨测结果', {
             confirmButtonText: '确定',
             type: 'success'
           });
         } else {
-          this.$alert(`设备 ${ip} 无法连通\n\n${row.pingMessage || ''}`, 'Ping 测试结果', {
+          this.$alert(`设备 ${ip} 拨测未通过\n\n${row.probeMessage || ''}`, '拨测结果', {
             confirmButtonText: '确定',
             type: 'error'
           });
         }
       } finally {
-        this.pingLoadingId = null;
+        this.probeLoadingId = null;
       }
     },
 
-    // 批量 Ping 测试
-    async handleBatchPing() {
+    // 批量拨测
+    async handleBatchProbe() {
       const devices = this.searchData.filter(row => this.getNetworkIp(row));
       if (devices.length === 0) {
         ElMessage.warning('当前结果中没有可用的网络设备IP');
         return;
       }
       this.batchRunning = true;
-      this.batchPingRunning = true;
+      this.batchProbeRunning = true;
       try {
         let successCount = 0;
         for (const row of devices) {
-          row.pingStatus = 'testing';
-          if (await this.testPing(row)) successCount++;
+          row.probeStatus = 'testing';
+          if (await this.testProbe(row)) successCount++;
         }
         const failCount = devices.length - successCount;
-        ElMessage.success(`批量Ping完成：共 ${devices.length} 台，成功 ${successCount} 台，失败 ${failCount} 台`);
+        ElMessage.success(`批量拨测完成：共 ${devices.length} 台，在线且远程正常 ${successCount} 台，异常 ${failCount} 台`);
       } finally {
-        this.batchPingRunning = false;
+        this.batchProbeRunning = false;
         this.batchRunning = false;
       }
     },
@@ -3243,11 +3349,13 @@ export default {
         row.snmpMessage = (data && data.message) || '';
         const ok = !!(data && data.success);
         row.snmpStatus = ok ? 'success' : 'fail';
+        row.snmpTime = this.formatNow();
         return ok;
       } catch (error) {
         console.error('SNMP测试请求失败:', error);
         row.snmpStatus = 'fail';
         row.snmpMessage = error.message || '请求失败';
+        row.snmpTime = this.formatNow();
         return false;
       }
     },
@@ -3302,7 +3410,7 @@ export default {
     },
 
     // 远程连接
-    handleRemote(command, row) {
+    async handleRemote(command, row) {
       const ip = this.getNetworkIp(row);
       if (!ip) {
         ElMessage.warning('该设备没有管理IP，无法远程连接');
@@ -3310,40 +3418,45 @@ export default {
       }
       const port = row.net_dev_cred_port || row.port || '';
       const username = row.net_dev_cred_username || row.username || '';
-      let url = '';
-      switch (command) {
-        case 'ssh':
-          url = username ? `ssh://${username}@${ip}` : `ssh://${ip}`;
-          if (port) url += `:${port}`;
-          break;
-        case 'telnet':
-          url = `telnet://${ip}`;
-          if (port) url += `:${port}`;
-          break;
-        case 'web': {
-          const protocol = (row.protocol || row.net_dev_cred_protocol || '').toLowerCase();
-          const scheme = protocol.includes('https') ? 'https' : 'http';
-          url = `${scheme}://${ip}`;
-          if (port && !((scheme === 'http' && port === '80') || (scheme === 'https' && port === '443'))) {
-            url += `:${port}`;
-          }
-          break;
+      // http/https 网页用新窗口打开
+      if (command === 'web') {
+        const protocol = (row.protocol || row.net_dev_cred_protocol || '').toLowerCase();
+        const scheme = protocol.includes('https') ? 'https' : 'http';
+        let url = `${scheme}://${ip}`;
+        if (port && !((scheme === 'http' && port === '80') || (scheme === 'https' && port === '443'))) {
+          url += `:${port}`;
         }
-        default:
-          ElMessage.warning('未知的远程连接方式');
-          return;
-      }
-      // http/https 网页用新窗口打开；ssh/telnet 等自定义协议需用 a 标签点击
-      // 触发浏览器协议处理器（window.open 对自定义协议会被静默忽略）
-      if (url.startsWith('http://') || url.startsWith('https://')) {
         window.open(url, '_blank', 'noopener');
-      } else {
-        const link = document.createElement('a');
-        link.href = url;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        return;
+      }
+      // ssh/telnet 调用后端启动终端软件（按系统设置中的配置调用 PuTTY 或 SecureCRT）
+      if (command !== 'ssh' && command !== 'telnet') {
+        ElMessage.warning('未知的远程连接方式');
+        return;
+      }
+      try {
+        const response = await fetch('remote_terminal_api.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'launch',
+            ip: ip,
+            port: port,
+            protocol: command,
+            username: username
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          ElMessage.success(data.message || '远程连接已启动');
+        } else {
+          ElMessage.error(data.message || '远程连接启动失败');
+        }
+      } catch (error) {
+        console.error('远程连接启动失败:', error);
+        ElMessage.error('远程连接启动失败，请检查服务是否正常');
       }
     },
 
@@ -4334,6 +4447,10 @@ export default {
           keyword1MatchType: this.searchForm.keyword1MatchType,
           keyword2: this.searchForm.keyword2,
           keyword2MatchType: this.searchForm.keyword2MatchType,
+          keyword3: this.searchForm.keyword3,
+          keyword3MatchType: this.searchForm.keyword3MatchType,
+          keyword4: this.searchForm.keyword4,
+          keyword4MatchType: this.searchForm.keyword4MatchType,
           queryType: this.searchForm.queryType,
           page: 1,
           pageSize: 1000000, // 导出所有数据（使用足够大的数值）
@@ -4441,6 +4558,10 @@ export default {
           keyword1MatchType: this.searchForm.keyword1MatchType,
           keyword2: this.searchForm.keyword2,
           keyword2MatchType: this.searchForm.keyword2MatchType,
+          keyword3: this.searchForm.keyword3,
+          keyword3MatchType: this.searchForm.keyword3MatchType,
+          keyword4: this.searchForm.keyword4,
+          keyword4MatchType: this.searchForm.keyword4MatchType,
           queryType: this.searchForm.queryType,
           page: page,
           pageSize: this.pageSize,
@@ -4510,10 +4631,14 @@ export default {
               return {
                 ...item,
                 // 网络测试状态：null=未测试 success=正常 fail=异常 testing=测试中
-                pingStatus: null,
-                snmpStatus: null,
-                pingMessage: '',
-                snmpMessage: '',
+                // 优先读取数据库记录的历史拨测/SNMP 状态，便于后期维护列表
+                probeStatus: item.net_dev_cred_probe_status || null,
+                snmpStatus: item.net_dev_cred_snmp_status || null,
+                probeMessage: item.net_dev_cred_probe_message || '',
+                snmpMessage: item.net_dev_cred_snmp_message || '',
+                // 测试时间：用于颜色分级（1天内绿/7天内蓝/15天内黄/超15天灰）
+                probeTime: item.net_dev_cred_probe_time || '',
+                snmpTime: item.net_dev_cred_snmp_time || '',
                 // 网络类型字段，直接使用net_dev_cred_net_type
                 net_type: item.net_dev_cred_net_type || '',
                 // 设备品牌（型号）字段
@@ -4568,7 +4693,13 @@ export default {
       // 清空查询表单
       this.searchForm = {
         keyword1: '',
+        keyword1MatchType: 'include',
         keyword2: '',
+        keyword2MatchType: 'include',
+        keyword3: '',
+        keyword3MatchType: 'include',
+        keyword4: '',
+        keyword4MatchType: 'include',
         queryType: ''
       };
       

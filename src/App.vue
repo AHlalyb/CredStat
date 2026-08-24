@@ -83,6 +83,11 @@
                 <i class="fas fa-server me-2"></i> 服务管理
               </router-link>
             </li>
+            <li class="menu-item" v-if="hasManagePermission">
+              <router-link to="/remote-terminal-settings" class="menu-link">
+                <i class="fas fa-terminal me-2"></i> 远程终端设置
+              </router-link>
+            </li>
           </ul>
           </li>
         </ul>
