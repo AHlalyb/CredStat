@@ -1,12 +1,16 @@
 <template>
   <div class="base-object-settings">
-    <h1>基础对象设置</h1>
-    <div class="button-group">
-      <el-button type="primary" @click="openModal('room')">机房/站点</el-button>
-      <el-button type="primary" @click="openModal('netDeviceType')">网络设备类型</el-button>
-      <el-button type="primary" @click="openModal('netDeviceBrand')">网络设备品牌</el-button>
-      <el-button type="primary" @click="openModal('netDeviceModel')">网络设备型号</el-button>
-      <el-button type="primary" @click="openModal('serverOs')">服务器操作系统</el-button>
+    <div class="page-header">
+      <h3>基础对象设置</h3>
+      <div class="header-actions">
+        <div class="button-group">
+          <el-button type="primary" @click="openModal('room')">机房/站点</el-button>
+          <el-button type="primary" @click="openModal('netDeviceType')">网络设备类型</el-button>
+          <el-button type="primary" @click="openModal('netDeviceBrand')">网络设备品牌</el-button>
+          <el-button type="primary" @click="openModal('netDeviceModel')">网络设备型号</el-button>
+          <el-button type="primary" @click="openModal('serverOs')">服务器操作系统</el-button>
+        </div>
+      </div>
     </div>
 
     <!-- 基础对象设置模态框 -->
@@ -213,11 +217,11 @@ export default {
 
 <style scoped>
 .base-object-settings {
-  padding: 20px;
+  padding: 0;
 }
 
 .button-group {
-  margin-top: 20px;
+  margin-top: 0;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;

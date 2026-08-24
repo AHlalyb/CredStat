@@ -2,8 +2,9 @@
   <div class="login-container">
     <div class="login-box shadow-lg">
       <div class="login-header text-center mb-4">
-        <h1 class="login-title">凭证统计管理系统</h1>
-        <p class="login-subtitle">请输入您的账号和密码</p>
+        <i class="fas fa-shield-halved login-logo"></i>
+        <h1 class="login-title">CredStat</h1>
+        <p class="login-subtitle">凭证统计管理系统 · 请输入您的账号和密码</p>
       </div>
       
       <form class="login-form" @submit.prevent="handleLogin">
@@ -294,18 +295,26 @@ export default defineComponent({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2d3540 0%, #1b2330 100%);
   padding: 20px;
 }
 
 .login-box {
   background-color: #ffffff;
-  border-radius: 16px;
+  border-radius: 2px;
+  border: 1px solid #e4e7ed;
   padding: 40px;
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
+}
+
+.login-logo {
+  display: inline-block;
+  font-size: 40px;
+  color: #1770e6;
+  margin-bottom: 12px;
 }
 
 .login-header {
@@ -313,15 +322,16 @@ export default defineComponent({
 }
 
 .login-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 600;
   color: #2d3748;
   margin-bottom: 8px;
+  letter-spacing: 1px;
 }
 
 .login-subtitle {
-  font-size: 14px;
-  color: #718096;
+  font-size: 13px;
+  color: #909399;
   margin: 0;
 }
 
@@ -350,82 +360,82 @@ export default defineComponent({
 }
 
 .input-group {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
   overflow: hidden;
   width: 100%;
 }
 
 .form-control {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dcdfe6;
   border-left: none;
   border-right: none;
   border-radius: 0;
-  padding: 12px 16px;
-  font-size: 15px;
+  padding: 11px 14px;
+  font-size: 14px;
   transition: all 0.3s ease;
   width: 100%;
 }
 
 .form-control:focus {
-  border-color: #667eea;
+  border-color: #1770e6;
   box-shadow: none;
   outline: none;
 }
 
 .input-group-text {
-  background-color: #f7fafc;
-  border: 1px solid #e2e8f0;
+  background-color: #fafbfc;
+  border: 1px solid #dcdfe6;
   border-right: none;
-  color: #718096;
-  padding: 12px 16px;
+  color: #909399;
+  padding: 11px 14px;
 }
 
 .btn-outline-secondary {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dcdfe6;
   border-left: none;
-  color: #718096;
-  padding: 12px 16px;
+  color: #909399;
+  padding: 11px 14px;
   transition: all 0.3s ease;
 }
 
 .btn-outline-secondary:hover {
-  background-color: #f7fafc;
-  border-color: #cbd5e0;
-  color: #4a5568;
+  background-color: #f5f7fa;
+  border-color: #c0c4cc;
+  color: #606266;
 }
 
 .forgot-password-link {
   font-size: 13px;
-  color: #667eea;
+  color: #1770e6;
   text-decoration: none;
   transition: color 0.3s ease;
 }
 
 .forgot-password-link:hover {
-  color: #5a67d8;
+  color: #1464cc;
   text-decoration: underline;
 }
 
 .login-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #1770e6;
   border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 2px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
   color: #ffffff;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: background-color 0.2s ease;
 }
 
 .login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+  background: #1464cc;
+  transform: none;
+  box-shadow: none;
 }
 
 .login-btn:active {
-  transform: translateY(0);
+  background: #1259b8;
 }
 
 .login-btn:disabled {
@@ -438,14 +448,15 @@ export default defineComponent({
 .invalid-feedback {
   font-size: 13px;
   margin-top: 4px;
+  color: #e64545;
 }
 
 .alert-danger {
   font-size: 14px;
-  border-radius: 8px;
-  border: none;
-  background-color: #fed7d7;
-  color: #c53030;
+  border-radius: 2px;
+  border: 1px solid #fbc4c4;
+  background-color: #fef0f0;
+  color: #e64545;
 }
 
 /* 左右对齐布局 */

@@ -564,7 +564,7 @@
             v-model="commandOutput"
             placeholder="在此粘贴命令输出结果..."
             rows="10"
-            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            style="width: 100%; border: 2px solid #1770e6; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
             @paste="handlePaste"
           ></textarea>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -574,7 +574,7 @@
             <button 
               v-if="commandOutput"
               @click="commandOutput = ''"
-              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+              style="background: none; border: none; color: #1770e6; cursor: pointer; font-size: 12px; padding: 0;"
             >
               清空
             </button>
@@ -621,7 +621,7 @@
             v-model="linuxCommandOutput"
             placeholder="在此粘贴命令输出结果..."
             rows="10"
-            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            style="width: 100%; border: 2px solid #1770e6; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
             @paste="handleLinuxPaste"
           ></textarea>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -631,7 +631,7 @@
             <button 
               v-if="linuxCommandOutput"
               @click="linuxCommandOutput = ''"
-              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+              style="background: none; border: none; color: #1770e6; cursor: pointer; font-size: 12px; padding: 0;"
             >
               清空
             </button>
@@ -2697,7 +2697,7 @@ export default {
 .server-cred-entry-view {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 0;
 }
 
 .card-header {

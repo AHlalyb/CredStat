@@ -548,7 +548,7 @@ export default {
 <style scoped>
 /* 视图特定样式 */
 .cluster-entry-view {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .card-header {
@@ -628,7 +628,7 @@ export default {
 }
 
 .physical-machines-table .el-input__inner:focus {
-  border-color: #409eff;
+  border-color: #1770e6;
   outline: none;
 }
 
@@ -637,7 +637,7 @@ export default {
 }
 
 .physical-machines-table .el-table__row:hover > td {
-  background-color: #ecf5ff !important;
+  background-color: #f5f7fa !important;
 }
 
 @media (max-width: 768px) {

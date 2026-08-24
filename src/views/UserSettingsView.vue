@@ -640,7 +640,7 @@ export default {
 <style scoped>
 /* 视图特定样式 */
 .settings-view {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .card-header {

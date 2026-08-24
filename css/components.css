@@ -1,96 +1,273 @@
-/* 顶部导航栏 */
-.top-navbar {
-    background-color: #ffffff;
-    border-bottom: 1px solid #e9ecef;
-    padding: 10px 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* ==========================================================
+   CredStat 通用组件样式（AutoOps 风格）
+   ========================================================== */
+
+/* ---------- 页面头部（AutoOps header-bar） ---------- */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
 }
 
-.navbar-brand {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #2c3e50;
-    text-decoration: none;
+.page-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
 }
 
-.navbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.page-header .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* 按钮样式 - 移除Bootstrap样式，使用Element Plus组件替代 */
-
-/* 表单样式 */
-.form-container {
-    background-color: #ffffff;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
+/* ---------- 表格卡片（AutoOps table-card） ---------- */
+.table-card {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
 }
 
-.form-label {
-    font-weight: 500;
-    margin-bottom: 5px;
-    display: block;
+.table-card .table-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ebeef5;
+  background: #fff;
 }
 
-.form-control {
-    border-radius: 4px;
-    padding: 10px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+.table-card .table-card__header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
 }
 
-.form-control:focus {
-    border-color: #3498db;
-    box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
-    outline: none;
+.table-card .table-card__body {
+  padding: 16px;
 }
 
-/* 通用间距类 */
-.mb-3 {
-    margin-bottom: 1rem;
+/* ---------- 表单卡片 ---------- */
+.form-card {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
 }
 
-.mt-3 {
-    margin-top: 1rem;
+.form-card .form-card__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #ebeef5;
 }
 
-/* 文本样式 */
-.text-danger {
-    color: #dc3545;
+.form-card .form-card__header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
 }
 
-d-flex {
-    display: flex;
+.form-card .form-card__body {
+  padding: 20px 16px 8px;
 }
 
-gap-2 {
-    gap: 0.5rem;
+/* ---------- AutoOps 风格按钮 ---------- */
+.btn-primary {
+  background-color: #1770e6;
+  color: #fff;
+  border: none;
+  border-radius: 2px;
+  padding: 6px 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.justify-content-between {
-    justify-content: space-between;
+.btn-primary:hover {
+  background-color: #1464cc;
 }
 
-.align-items-center {
-    align-items: center;
+.btn-link {
+  color: #1770e6;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
 }
 
-.text-bold {
-    font-weight: bold;
+.btn-link:hover {
+  color: #1464cc;
+  text-decoration: underline;
 }
 
-.text-right {
-    text-align: right;
+/* ---------- Bootstrap 工具类兜底（项目未引入 Bootstrap） ---------- */
+/* 间距 */
+.m-0 { margin: 0 !important; }
+.mt-1 { margin-top: 4px !important; }
+.mt-2 { margin-top: 8px !important; }
+.mt-3 { margin-top: 12px !important; }
+.mt-4 { margin-top: 16px !important; }
+.mt-5 { margin-top: 24px !important; }
+.mb-1 { margin-bottom: 4px !important; }
+.mb-2 { margin-bottom: 8px !important; }
+.mb-3 { margin-bottom: 12px !important; }
+.mb-4 { margin-bottom: 16px !important; }
+.mb-5 { margin-bottom: 24px !important; }
+.me-1 { margin-right: 4px !important; }
+.me-2 { margin-right: 8px !important; }
+.me-3 { margin-right: 12px !important; }
+.ms-1 { margin-left: 4px !important; }
+.ms-2 { margin-left: 8px !important; }
+.ms-3 { margin-left: 12px !important; }
+.p-0 { padding: 0 !important; }
+.p-3 { padding: 12px !important; }
+.p-4 { padding: 16px !important; }
+.px-3 { padding-left: 12px !important; padding-right: 12px !important; }
+.py-3 { padding-top: 12px !important; padding-bottom: 12px !important; }
+.pe-3 { padding-right: 12px !important; }
+.ps-3 { padding-left: 12px !important; }
+
+/* 文本 */
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+.text-left { text-align: left !important; }
+.text-muted { color: #6c757d !important; }
+.text-primary { color: #1770e6 !important; }
+.text-secondary { color: #6c757d !important; }
+.text-success { color: #67c23a !important; }
+.text-danger { color: #e64545 !important; }
+.text-warning { color: #e6a23c !important; }
+.text-white { color: #fff !important; }
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.text-muted {
-    color: #909399;
+/* 弹性布局 */
+.d-flex { display: flex !important; }
+.d-inline-flex { display: inline-flex !important; }
+.d-none { display: none !important; }
+.d-block { display: block !important; }
+.flex-column { flex-direction: column !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.flex-grow-1 { flex-grow: 1 !important; }
+.justify-content-start { justify-content: flex-start !important; }
+.justify-content-end { justify-content: flex-end !important; }
+.justify-content-center { justify-content: center !important; }
+.justify-content-between { justify-content: space-between !important; }
+.justify-content-around { justify-content: space-around !important; }
+.align-items-start { align-items: flex-start !important; }
+.align-items-end { align-items: flex-end !important; }
+.align-items-center { align-items: center !important; }
+.align-items-baseline { align-items: baseline !important; }
+.align-self-center { align-self: center !important; }
+
+/* 宽度 */
+.w-100 { width: 100% !important; }
+.w-50 { width: 50% !important; }
+.h-100 { height: 100% !important; }
+
+/* 栅格（简易） */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-left: -12px;
+  margin-right: -12px;
 }
+
+.row > [class*="col-"] {
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-bottom: 12px;
+}
+
+.col-md-4 { width: 33.333333%; }
+.col-md-6 { width: 50%; }
+.col-md-8 { width: 66.666667%; }
+.col-md-12 { width: 100%; }
+.col-sm-6 { width: 50%; }
+.col-sm-12 { width: 100%; }
+.col-lg-3 { width: 25%; }
+.col-lg-4 { width: 33.333333%; }
+.col-6 { width: 50%; }
+.col-12 { width: 100%; }
+
+/* 卡片（Bootstrap 兜底） */
+.card {
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 2px;
+  box-shadow: none;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e7ed;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  background: #fff;
+}
+
+.card-body {
+  padding: 16px;
+}
+
+.card-body h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+
+.card-body h4 {
+  font-size: 15px;
+  color: #333;
+}
+
+.card-body h5 {
+  font-size: 14px;
+  color: #333;
+}
+
+.card-body p {
+  color: #606266;
+  line-height: 1.7;
+  font-size: 12px;
+  margin-bottom: 0;
+}
+
+.card-body .fa-3x {
+  color: #1770e6;
+}
+
+/* 阴影 */
+.shadow-sm { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important; }
+.shadow { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important; }
+.shadow-lg { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important; }
+
+/* 圆角 */
+.rounded { border-radius: 4px !important; }
+.rounded-circle { border-radius: 50% !important; }
+
+/* 其他 */
+.list-unstyled {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fw-bold { font-weight: 700 !important; }
+.fw-normal { font-weight: 400 !important; }
+.fs-5 { font-size: 14px !important; }
+.fs-6 { font-size: 12px !important; }

@@ -1916,7 +1916,7 @@
             v-model="commandOutput"
             placeholder="在此粘贴命令输出结果..."
             rows="10"
-            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            style="width: 100%; border: 2px solid #1770e6; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
             @paste="handlePaste"
           ></textarea>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -1926,7 +1926,7 @@
             <button 
               v-if="commandOutput"
               @click="commandOutput = ''"
-              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+              style="background: none; border: none; color: #1770e6; cursor: pointer; font-size: 12px; padding: 0;"
             >
               清空
             </button>
@@ -1973,7 +1973,7 @@
             v-model="linuxCommandOutput"
             placeholder="在此粘贴命令输出结果..."
             rows="10"
-            style="width: 100%; border: 2px solid #409EFF; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
+            style="width: 100%; border: 2px solid #1770e6; border-radius: 4px; padding: 10px; font-size: 14px; font-family: inherit; min-height: 150px; background-color: #f9f9f9; resize: vertical;"
             @paste="handleLinuxPaste"
           ></textarea>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -1983,7 +1983,7 @@
             <button 
               v-if="linuxCommandOutput"
               @click="linuxCommandOutput = ''"
-              style="background: none; border: none; color: #409EFF; cursor: pointer; font-size: 12px; padding: 0;"
+              style="background: none; border: none; color: #1770e6; cursor: pointer; font-size: 12px; padding: 0;"
             >
               清空
             </button>
@@ -2225,12 +2225,12 @@
 }
 
 .file-type-item:hover {
-  border-color: #409eff;
+  border-color: #1770e6;
 }
 
 .file-type-selected {
-  border-color: #409eff;
-  background-color: #ecf5ff;
+  border-color: #1770e6;
+  background-color: #edf5fe;
 }
 
 .file-type-icon {
@@ -5936,7 +5936,7 @@ export default {
 <style scoped>
 /* 视图特定样式 */
 .info-query-view {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .card-header {
@@ -6206,7 +6206,7 @@ export default {
 }
 
 .physical-machines-table .el-input__inner:focus {
-  border-color: #409eff;
+  border-color: #1770e6;
   outline: none;
 }
 
@@ -6215,7 +6215,7 @@ export default {
 }
 
 .physical-machines-table .el-table__row:hover > td {
-  background-color: #ecf5ff !important;
+  background-color: #f5f7fa !important;
 }
 
 @media (max-width: 768px) {

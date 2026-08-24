@@ -863,7 +863,7 @@ export default {
 <style scoped>
 /* 视图特定样式 */
 .domain-cert-entry-view {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .card-header {

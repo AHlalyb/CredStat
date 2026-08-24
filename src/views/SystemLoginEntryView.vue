@@ -757,7 +757,7 @@ export default {
         // 根据进度更新状态
         if (this.importProgress < 100) {
           this.progressStatus = 'progress';
-          this.progressColor = '#409EFF';
+          this.progressColor = '#1770E6';
         } else {
           this.progressStatus = 'success';
           this.progressColor = '#67C23A';

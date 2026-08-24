@@ -1576,7 +1576,7 @@ export default {
         // 根据进度更新状态
         if (this.importProgress < 100) {
           this.progressStatus = 'progress';
-          this.progressColor = '#409EFF';
+          this.progressColor = '#1770E6';
         } else {
           this.progressStatus = 'success';
           this.progressColor = '#67C23A';
@@ -1724,7 +1724,7 @@ export default {
 <style scoped>
 /* 视图特定样式 */
 .phy-server-entry-view {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .card-header {
@@ -1803,7 +1803,7 @@ export default {
 /* 响应式样式 */
 @media (max-width: 768px) {
   .phy-server-entry-view {
-    padding: 0 10px;
+    padding: 0;
   }
   
   .section-header {

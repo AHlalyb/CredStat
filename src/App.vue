@@ -2,32 +2,13 @@
   <div id="app">
     <!-- 只有登录页不显示导航栏和顶部栏 -->
     <template v-if="$route.name !== 'login'">
-      <!-- 顶部栏 -->
-      <header class="top-bar">
-        <div v-if="currentUser" class="user-info-container">
-          <el-dropdown trigger="click" @command="handleUserMenuCommand">
-            <div class="user-info" @click.stop>
-              <span class="username">{{ currentUser.name || currentUser.username }}</span>
-              <el-avatar :size="32" :src="currentUser.avatar || defaultAvatar" class="ml-2">
-                {{ (currentUser.name || currentUser.username).charAt(0).toUpperCase() }}
-              </el-avatar>
-            </div>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile" :icon="User">个人信息</el-dropdown-item>
-                <el-dropdown-item command="avatar" :icon="Camera">修改头像</el-dropdown-item>
-                <el-dropdown-item command="password" :icon="Key">修改密码</el-dropdown-item>
-                <el-dropdown-item command="logout" :icon="SwitchButton" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-      </header>
-      
       <!-- 侧边栏 -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2>CredStat</h2>
+          <div class="logo">
+            <i class="fas fa-shield-halved"></i>
+            <span>CredStat</span>
+          </div>
         </div>
         <ul class="sidebar-menu">
           <li class="menu-item">
@@ -105,6 +86,25 @@
           </ul>
           </li>
         </ul>
+        <!-- 侧边栏底部用户区 -->
+        <div v-if="currentUser" class="sidebar-footer">
+          <el-dropdown trigger="click" @command="handleUserMenuCommand">
+            <div class="user-info" @click.stop>
+              <el-avatar :size="28" :src="currentUser.avatar || defaultAvatar">
+                {{ (currentUser.name || currentUser.username).charAt(0).toUpperCase() }}
+              </el-avatar>
+              <span class="username">{{ currentUser.name || currentUser.username }}</span>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile" :icon="User">个人信息</el-dropdown-item>
+                <el-dropdown-item command="avatar" :icon="Camera">修改头像</el-dropdown-item>
+                <el-dropdown-item command="password" :icon="Key">修改密码</el-dropdown-item>
+                <el-dropdown-item command="logout" :icon="SwitchButton" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </aside>
     </template>
 
@@ -555,103 +555,8 @@ export function setAppInstance(instance) {
 }
 </script>
 
-<style scoped>
-/* 组件样式将从外部CSS文件引入 */
-</style>
-
 <style>
-/* 顶部栏样式 */
-.top-bar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  padding: 10px 20px;
-  z-index: 1001;
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* 调整主内容区域的顶部边距，避免被顶部栏遮挡 */
-.main-content {
-  margin-top: 60px;
-}
-
-/* 登录页面全屏样式 */
-.main-content-full {
-  margin-top: 0;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* 欢迎信息样式 */
-.welcome-message {
-  font-size: 14px;
-  color: #4a5568;
-  margin-right: auto;
-  margin-left: 20px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-/* 登出容器样式 */
-.logout-container {
-  margin-left: auto;
-  margin-right: 20px;
-}
-
-/* 登出按钮样式 */
-.logout-btn {
-  background-color: #f56565;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: background-color 0.2s ease;
-}
-
-.logout-btn:hover {
-  background-color: #e53e3e;
-}
-
-/* 用户信息容器样式 */
-.user-info-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.user-info:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.username {
-  font-size: 14px;
-  color: #4a5568;
-  font-weight: 500;
-}
-
-.ml-2 {
-  margin-left: 8px;
-}
+/* 布局与侧边栏样式已统一在 css/main.css（AutoOps 风格） */
 
 /* 头像上传容器样式 */
 .avatar-upload-container {
@@ -671,12 +576,5 @@ export function setAppInstance(instance) {
 
 .avatar-preview:hover {
   transform: scale(1.05);
-}
-
-/* 调整顶部栏布局 */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
 }
 </style>
