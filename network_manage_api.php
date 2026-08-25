@@ -100,24 +100,26 @@ try {
 }
 
 /**
- * 确保 net_dev_cred 表具备拨测/SNMP 状态字段（自动补齐，幂等）
+ * 确保 net_dev_cred 表具备拨测/SNMP 状态字段（自动补齐，幂等；逐列检查缺失才添加）
  */
 function ensureProbeColumns($pdo)
 {
+    $columns = [
+        'net_dev_cred_probe_status'   => "varchar(20) NULL DEFAULT NULL COMMENT '拨测状态(success/fail)' AFTER `net_dev_cred_snmp`",
+        'net_dev_cred_probe_message'  => "varchar(1000) NULL DEFAULT NULL COMMENT '最近拨测结果' AFTER `net_dev_cred_probe_status`",
+        'net_dev_cred_probe_time'     => "datetime NULL DEFAULT NULL COMMENT '最近拨测时间' AFTER `net_dev_cred_probe_message`",
+        'net_dev_cred_snmp_status'    => "varchar(20) NULL DEFAULT NULL COMMENT 'SNMP测试状态(success/fail)' AFTER `net_dev_cred_probe_time`",
+        'net_dev_cred_snmp_message'   => "varchar(1000) NULL DEFAULT NULL COMMENT '最近SNMP测试结果' AFTER `net_dev_cred_snmp_status`",
+        'net_dev_cred_snmp_time'      => "datetime NULL DEFAULT NULL COMMENT '最近SNMP测试时间' AFTER `net_dev_cred_snmp_message`",
+        'net_dev_cred_snmp_support'   => "varchar(20) NULL DEFAULT NULL COMMENT '是否支持SNMP(yes/no，拨测时自动检测)' AFTER `net_dev_cred_snmp_time`",
+    ];
     try {
-        $stmt = $pdo->query("SHOW COLUMNS FROM net_dev_cred LIKE 'net_dev_cred_probe_status'");
-        if ($stmt->rowCount() > 0) {
-            return;
+        foreach ($columns as $col => $def) {
+            $stmt = $pdo->query("SHOW COLUMNS FROM net_dev_cred LIKE '{$col}'");
+            if ($stmt->rowCount() === 0) {
+                $pdo->exec("ALTER TABLE `net_dev_cred` ADD COLUMN `{$col}` {$def}");
+            }
         }
-        $pdo->exec(
-            "ALTER TABLE `net_dev_cred`
-                ADD COLUMN `net_dev_cred_probe_status` varchar(20) NULL DEFAULT NULL COMMENT '拨测状态(success/fail)' AFTER `net_dev_cred_snmp`,
-                ADD COLUMN `net_dev_cred_probe_message` varchar(1000) NULL DEFAULT NULL COMMENT '最近拨测结果' AFTER `net_dev_cred_probe_status`,
-                ADD COLUMN `net_dev_cred_probe_time` datetime NULL DEFAULT NULL COMMENT '最近拨测时间' AFTER `net_dev_cred_probe_message`,
-                ADD COLUMN `net_dev_cred_snmp_status` varchar(20) NULL DEFAULT NULL COMMENT 'SNMP测试状态(success/fail)' AFTER `net_dev_cred_probe_time`,
-                ADD COLUMN `net_dev_cred_snmp_message` varchar(1000) NULL DEFAULT NULL COMMENT '最近SNMP测试结果' AFTER `net_dev_cred_snmp_status`,
-                ADD COLUMN `net_dev_cred_snmp_time` datetime NULL DEFAULT NULL COMMENT '最近SNMP测试时间' AFTER `net_dev_cred_snmp_message`"
-        );
     } catch (Exception $e) {
         error_log('ensureProbeColumns: ' . $e->getMessage());
     }
@@ -164,6 +166,77 @@ function probeSaveStatus($pdo, $id, $type, $status, $message)
         $stmt->execute();
     } catch (Exception $e) {
         error_log('probeSaveStatus: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 从数据库获取并解密 SNMP 团体字（未配置时返回 null）
+ */
+function probeGetSnmpCommunity($pdo, $id)
+{
+    if ($id <= 0) {
+        return null;
+    }
+    try {
+        $stmt = $pdo->prepare("SELECT net_dev_cred_snmp FROM net_dev_cred WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['net_dev_cred_snmp'])) {
+            require_once __DIR__ . '/app/utils/SecurityUtils.php';
+            $decrypted = SecurityUtils::decrypt($row['net_dev_cred_snmp']);
+            if ($decrypted !== null && $decrypted !== false && $decrypted !== '') {
+                return $decrypted;
+            }
+            return $row['net_dev_cred_snmp'];
+        }
+    } catch (Exception $e) {
+        error_log('probeGetSnmpCommunity: ' . $e->getMessage());
+    }
+    return null;
+}
+
+/**
+ * 记录设备是否支持 SNMP（yes/no）
+ */
+function probeSaveSnmpSupport($pdo, $id, $support)
+{
+    if ($id <= 0 || !in_array($support, ['yes', 'no'], true)) {
+        return;
+    }
+    try {
+        $stmt = $pdo->prepare("UPDATE `net_dev_cred` SET `net_dev_cred_snmp_support` = :support WHERE `id` = :id");
+        $stmt->bindValue(':support', $support, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+    } catch (Exception $e) {
+        error_log('probeSaveSnmpSupport: ' . $e->getMessage());
+    }
+}
+
+/**
+ * 检测设备是否支持 SNMP 并记录：
+ * - SNMP 探测成功 → 支持（yes）
+ * - UDP 无响应/超时 → 不支持（no）
+ * - 有响应但团体字错误等 → 支持（yes，仅团体字不对）
+ */
+function probeCheckSnmpSupport($pdo, $id, $ip)
+{
+    if ($id <= 0 || empty($ip)) {
+        return;
+    }
+    $community = probeGetSnmpCommunity($pdo, $id);
+    if (empty($community)) {
+        $community = 'public';
+    }
+    $result = snmpGetSysDescr($ip, $community, 2, 161);
+    if ($result['success']) {
+        probeSaveSnmpSupport($pdo, $id, 'yes');
+    } elseif (isset($result['error']) && (mb_strpos($result['error'], '无响应') !== false || mb_strpos($result['error'], '超时') !== false)) {
+        // UDP 端口不可达或无响应：设备不支持 SNMP（或未开启）
+        probeSaveSnmpSupport($pdo, $id, 'no');
+    } else {
+        // 有 SNMP 响应但出错（如团体字错误、响应解析失败），说明设备支持 SNMP
+        probeSaveSnmpSupport($pdo, $id, 'yes');
     }
 }
 
@@ -249,6 +322,8 @@ function handleProbe($pdo, $requestData)
     if ($verify['success']) {
         $message = "设备在线，远程方式正确。\n[协议] " . strtoupper($protocol) . " {$ip}:{$port}\n[结果] " . $verify['message'];
         $status = 'success';
+        // 设备在线且登录验证成功：顺便检测并记录设备是否支持 SNMP
+        probeCheckSnmpSupport($pdo, $id, $ip);
     } else {
         $message = "设备在线，但远程方式验证失败。\n[协议] " . strtoupper($protocol) . " {$ip}:{$port}\n[结果] " . $verify['message'];
         $status = 'fail';
@@ -450,7 +525,7 @@ function probeVerifyTelnet($ip, $port, $username, $password)
     }
     stream_set_timeout($fp, 5);
 
-    // 读取并剥离 Telnet 协商字节，直到出现登录提示
+    // 读取并剥离 Telnet 协商字节，回复 IAC 让设备继续发送登录提示
     $buffer = '';
     $deadline = microtime(true) + 5;
     $authMode = ''; // 'user_pass' 或 'password_only'
@@ -461,6 +536,11 @@ function probeVerifyTelnet($ip, $port, $username, $password)
             continue;
         }
         $buffer .= $chunk;
+        // 回复 Telnet IAC 协商（如 H3C 等设备需要客户端回复才会发送登录提示）
+        $iacReply = probeReplyTelnetIac($buffer);
+        if ($iacReply !== '') {
+            @fwrite($fp, $iacReply);
+        }
         // 剥离 Telnet IAC 协商序列
         $clean = probeStripTelnetIac($buffer);
         // 模式 A：标准账号+密码（先出现 login / username 提示）
@@ -480,12 +560,15 @@ function probeVerifyTelnet($ip, $port, $username, $password)
     }
     $clean = probeStripTelnetIac($buffer);
 
-    // 未出现登录提示：可能设备不支持登录或已直接进入
+    // 未出现登录提示：回复 IAC 后发送回车触发设备响应
     if ($authMode === '') {
-        // 若提示 "Press ENTER"，发送回车后继续
+        $iacReply = probeReplyTelnetIac($buffer);
+        if ($iacReply !== '') {
+            @fwrite($fp, $iacReply);
+        }
         @fwrite($fp, "\r\n");
-        usleep(300000);
-        $buffer .= (string)@fread($fp, 512);
+        usleep(500000);
+        $buffer .= (string)@fread($fp, 1024);
         $clean = probeStripTelnetIac($buffer);
         if (preg_match('/(?:\blogin\s*[:：]|\buser\s*name\s*[:：]|用户名\s*[:：]|账号\s*[:：])/i', $clean, $m)) {
             $authMode = 'user_pass';
@@ -564,8 +647,8 @@ function probeVerifyTelnet($ip, $port, $username, $password)
                     'auth' => 'failed'
                 ];
             }
-            // 成功标志：出现设备提示符
-            if (preg_match('/[#>\$]\s*$/', $clean)) {
+            // 成功标志：出现设备提示符（覆盖 Cisco #、H3C <>/[] 等）
+            if (preg_match('/[#>$%<\]]\s*$/', $clean)) {
                 fclose($fp);
                 return [
                     'success' => true,
@@ -642,8 +725,8 @@ function probeVerifyTelnet($ip, $port, $username, $password)
                 'auth' => 'failed'
             ];
         }
-        // 成功标志：出现设备提示符
-        if (preg_match('/[#>\$]\s*$/', $clean)) {
+        // 成功标志：出现设备提示符（覆盖 Cisco #、H3C <>/[] 等）
+        if (preg_match('/[#>$%<\]]\s*$/', $clean)) {
             fclose($fp);
             return [
                 'success' => true,
@@ -694,6 +777,45 @@ function probeStripTelnetIac($data)
         $i++;
     }
     return $result;
+}
+
+/**
+ * 生成 Telnet IAC 协商回复字节序列
+ * 对服务器发来的 DO 回复 WILL，对 WILL 回复 DO
+ */
+function probeReplyTelnetIac($data)
+{
+    $replies = '';
+    $len = strlen($data);
+    $i = 0;
+    while ($i < $len) {
+        $ord = ord($data[$i]);
+        if ($ord === 255 && $i + 2 < $len) {
+            $cmd = ord($data[$i + 1]);
+            $opt = $data[$i + 2];
+            if ($cmd === 253) {         // DO   → WILL
+                $replies .= chr(255) . chr(251) . $opt;
+                $i += 3; continue;
+            } elseif ($cmd === 251) {   // WILL → DO
+                $replies .= chr(255) . chr(253) . $opt;
+                $i += 3; continue;
+            } elseif ($cmd === 252) {   // WONT → DONT
+                $replies .= chr(255) . chr(254) . $opt;
+                $i += 3; continue;
+            } elseif ($cmd === 254) {   // DONT → WONT
+                $replies .= chr(255) . chr(252) . $opt;
+                $i += 3; continue;
+            } elseif ($cmd === 250) {
+                $j = strpos($data, chr(255) . chr(240), $i + 2);
+                $i = ($j !== false) ? $j + 2 : $len;
+                continue;
+            } else {
+                $i += 2; continue;
+            }
+        }
+        $i++;
+    }
+    return $replies;
 }
 
 /**
@@ -889,6 +1011,8 @@ function handleSnmpTest($pdo, $requestData)
     if ($result['success']) {
         $message = "SNMP 测试成功，设备返回系统描述：\n" . $result['sysDescr'];
         probeSaveStatus($pdo, $id, 'snmp', 'success', $message);
+        // SNMP 测试成功说明设备支持 SNMP
+        probeSaveSnmpSupport($pdo, $id, 'yes');
         echo json_encode([
             'success' => true,
             'message' => $message,
@@ -902,6 +1026,12 @@ function handleSnmpTest($pdo, $requestData)
     } else {
         $message = "SNMP 测试失败：" . $result['error'];
         probeSaveStatus($pdo, $id, 'snmp', 'fail', $message);
+        // 根据失败原因更新设备 SNMP 支持状态：无响应/超时视为不支持，其余视为支持（仅团体字/配置问题）
+        if (mb_strpos($result['error'], '无响应') !== false || mb_strpos($result['error'], '超时') !== false) {
+            probeSaveSnmpSupport($pdo, $id, 'no');
+        } else {
+            probeSaveSnmpSupport($pdo, $id, 'yes');
+        }
         echo json_encode([
             'success' => false,
             'message' => $message,
@@ -917,17 +1047,26 @@ function handleSnmpTest($pdo, $requestData)
 }
 
 /**
- * 执行 SNMP v1 GET 请求，获取 sysDescr (1.3.6.1.2.1.1.1.0)
+ * 执行 SNMP GET 请求（优先 v2c，回退 v1），获取 sysDescr (1.3.6.1.2.1.1.1.0)
  */
 function snmpGetSysDescr($ip, $community, $timeout = 3, $port = 161)
 {
-    // 优先使用 PHP snmp 扩展
+    // 优先使用 PHP snmp 扩展：先尝试 v2c，失败再回退 v1
     if (function_exists('snmpget') && !in_array('snmpget', array_map('trim', explode(',', ini_get('disable_functions'))))) {
         try {
+            // v2c (version=2)
+            $result = @snmpget($ip, $community, '.1.3.6.1.2.1.1.1.0', $timeout, 2);
+            if ($result !== false) {
+                $text = is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result;
+                if (preg_match('/STRING:\s*(.+)$/i', $text, $m)) {
+                    $text = trim($m[1], " \t\n\r\0\x0B\"");
+                }
+                return ['success' => true, 'sysDescr' => $text, 'raw' => $text];
+            }
+            // 回退 v1 (version=1)
             $result = @snmpget($ip, $community, '.1.3.6.1.2.1.1.1.0', $timeout, 1);
             if ($result !== false) {
                 $text = is_array($result) ? json_encode($result, JSON_UNESCAPED_UNICODE) : (string)$result;
-                // snmpget 返回形如 "STRING: xxx" 或 "Hex-STRING: ..."
                 if (preg_match('/STRING:\s*(.+)$/i', $text, $m)) {
                     $text = trim($m[1], " \t\n\r\0\x0B\"");
                 }
@@ -939,7 +1078,7 @@ function snmpGetSysDescr($ip, $community, $timeout = 3, $port = 161)
         }
     }
 
-    // 使用纯 PHP UDP socket 实现 SNMP v1 GET
+    // 使用纯 PHP UDP socket 实现 SNMP v2c GET（优先 v2c，兼容更多设备）
     $socket = @stream_socket_client("udp://{$ip}:{$port}", $errno, $errstr, $timeout);
     if (!$socket) {
         return ['success' => false, 'error' => "无法连接 {$ip}:{$port} (UDP) - {$errstr}"];
@@ -947,8 +1086,8 @@ function snmpGetSysDescr($ip, $community, $timeout = 3, $port = 161)
 
     stream_set_timeout($socket, $timeout);
 
-    // 构造 SNMP v1 GetRequest
-    $request = snmpBuildGetRequest($community, '1.3.6.1.2.1.1.1.0');
+    // 构造 SNMP v2c GetRequest
+    $request = snmpBuildGetRequestV2c($community, '1.3.6.1.2.1.1.1.0');
 
     if (@fwrite($socket, $request) === false) {
         fclose($socket);
@@ -991,7 +1130,34 @@ function snmpGetSysDescr($ip, $community, $timeout = 3, $port = 161)
 }
 
 /**
- * 构造 SNMP v1 GetRequest 报文
+ * 构造 SNMP v2c GetRequest 报文
+ */
+function snmpBuildGetRequestV2c($community, $oid)
+{
+    $oidBytes = snmpEncodeOid($oid);
+    $oidTlv = chr(0x06) . snmpEncodeLength(strlen($oidBytes)) . $oidBytes;
+    $nullTlv = chr(0x05) . chr(0x00);
+    $varbind = chr(0x30) . snmpEncodeLength(strlen($oidTlv) + strlen($nullTlv)) . $oidTlv . $nullTlv;
+    $varbinds = chr(0x30) . snmpEncodeLength(strlen($varbind)) . $varbind;
+
+    $requestId = mt_rand(1, 0x7FFFFFFF);
+    $requestIdTlv = chr(0x02) . snmpEncodeLength(4) . pack('N', $requestId);
+    $errorStatusTlv = chr(0x02) . chr(0x01) . chr(0x00);
+    $errorIndexTlv = chr(0x02) . chr(0x01) . chr(0x00);
+
+    $pduContent = $requestIdTlv . $errorStatusTlv . $errorIndexTlv . $varbinds;
+    // v2c 与 v1 的 GetRequest PDU 类型均为 0xA0，仅 version 不同：v2c=0x01，v1=0x00
+    $pdu = chr(0xA0) . snmpEncodeLength(strlen($pduContent)) . $pduContent;
+
+    $versionTlv = chr(0x02) . chr(0x01) . chr(0x01); // SNMP v2c
+    $communityTlv = chr(0x04) . snmpEncodeLength(strlen($community)) . $community;
+
+    $msgContent = $versionTlv . $communityTlv . $pdu;
+    return chr(0x30) . snmpEncodeLength(strlen($msgContent)) . $msgContent;
+}
+
+/**
+ * 构造 SNMP v1 GetRequest 报文（回退兼容用）
  */
 function snmpBuildGetRequest($community, $oid)
 {

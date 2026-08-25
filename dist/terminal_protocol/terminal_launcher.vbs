@@ -1,31 +1,26 @@
 '============================================================
 ' terminal_launcher.vbs
-' Ô¶³ÌÖÕ¶ËĞ­ÒéÖúÊÖ£º½âÎö crt:// / putty:// URL ²¢ÔÚ±¾»úÆô¶¯ÖÕ¶ËÈí¼ş
-'
-' URL ¸ñÊ½£º
-'   crt://ssh|IP|¶Ë¿Ú|ÓÃ»§Ãû      £¨SecureCRT£©
-'   putty://telnet|IP|¶Ë¿Ú        £¨PuTTY£©
-'
-' ÅäÖÃ£ºÓë½Å±¾Í¬Ä¿Â¼µÄ terminal_config.ini
+' Protocol handler for crt:// and putty://
+' URL: crt://ssh|IP|PORT|USER  or  putty://telnet|IP|PORT
+' Config: terminal_config.ini (same folder, UTF-8 or ANSI)
 '============================================================
 Option Explicit
-
 Dim fso, shell
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set shell = CreateObject("WScript.Shell")
 
-' --- 1. Æ´½ÓÃüÁîĞĞ²ÎÊı£¨ä¯ÀÀÆ÷¿ÉÄÜ·Ö¶à¶Î´«µİ£© ---
+' --- 1. Parse arguments ---
 Dim rawUrl, i
 rawUrl = ""
 For i = 0 To WScript.Arguments.Count - 1
     rawUrl = rawUrl & WScript.Arguments(i)
 Next
 If rawUrl = "" Then
-    MsgBox "Î´ÊÕµ½Ô¶³ÌÁ¬½Ó²ÎÊı£¬Çë´ÓÏµÍ³Ò³Ãæµã»÷"Ô¶³Ì"Ê¹ÓÃ¡£", vbExclamation, "Ô¶³ÌÖÕ¶ËÖúÊÖ"
+    MsgBox "No remote parameters received. Please click Remote on the web page.", vbExclamation, "Terminal Helper"
     WScript.Quit 1
 End If
 
-' --- 2. ½âÎöĞ­ÒéÃûÓëÁ¬½Ó²ÎÊı ---
+' --- 2. Parse URL ---
 Dim scheme, body, parts, protocol, ip, port, username
 If InStr(rawUrl, "://") > 0 Then
     scheme = LCase(Left(rawUrl, InStr(rawUrl, "://") - 1))
@@ -34,7 +29,6 @@ Else
     scheme = "crt"
     body = rawUrl
 End If
-' È¥µô¶àÓàµÄÇ°µ¼Ğ±¸Ü
 Do While Left(body, 1) = "/"
     body = Mid(body, 2)
 Loop
@@ -51,12 +45,12 @@ If UBound(parts) >= 2 Then port = Trim(parts(2))
 If UBound(parts) >= 3 Then username = Trim(parts(3))
 
 If ip = "" Then
-    MsgBox "È±ÉÙÉè±¸IPµØÖ·¡£", vbExclamation, "Ô¶³ÌÖÕ¶ËÖúÊÖ"
+    MsgBox "Missing device IP address.", vbExclamation, "Terminal Helper"
     WScript.Quit 1
 End If
 If protocol <> "ssh" And protocol <> "telnet" Then protocol = "ssh"
 
-' --- 3. ¶ÁÈ¡±¾»úÅäÖÃÎÄ¼ş£¨terminal_config.ini£© ---
+' --- 3. Read config (UTF-8 preferred, ANSI fallback) ---
 Dim dir, iniFile, software, crtPath, puttyPath, exePath
 dir = fso.GetParentFolderName(WScript.ScriptFullName)
 iniFile = dir & "\terminal_config.ini"
@@ -65,20 +59,25 @@ software = "crt"
 crtPath = ""
 puttyPath = ""
 If fso.FileExists(iniFile) Then
-    Dim ts, line
-    Set ts = fso.OpenTextFile(iniFile, 1, False, 0)   ' 0 = °´ ANSI(GBK) ¶ÁÈ¡
-    Do While Not ts.AtEndOfStream
-        line = Trim(ts.ReadLine)
-        If InStr(1, line, "=", 1) > 0 Then
-            Dim key, val
-            key = LCase(Trim(Left(line, InStr(line, "=") - 1)))
-            val = Trim(Mid(line, InStr(line, "=") + 1))
-            If key = "software" Then software = LCase(val)
-            If key = "crt_path" Then crtPath = val
-            If key = "putty_path" Then puttyPath = val
-        End If
-    Loop
-    ts.Close
+    Dim content, utf8CrtPath, utf8PuttyPath, ansiCrtPath, ansiPuttyPath, needAnsi
+    content = ReadFileUtf8(iniFile)
+    ParseIni content, software, utf8CrtPath, utf8PuttyPath
+    crtPath = utf8CrtPath
+    puttyPath = utf8PuttyPath
+    ' è‹¥ UTF-8 è¯»å‡ºçš„è·¯å¾„ä¸å­˜åœ¨ï¼Œå°è¯•æŒ‰ ANSI é‡è¯»ï¼ˆinstall.bat åˆ›å»ºçš„æ˜¯ ANSI ç¼–ç ï¼‰
+    needAnsi = False
+    If crtPath <> "" And Not fso.FileExists(crtPath) Then needAnsi = True
+    If puttyPath <> "" And Not fso.FileExists(puttyPath) Then needAnsi = True
+    If needAnsi Then
+        Dim ts
+        Set ts = fso.OpenTextFile(iniFile, 1, False, 0)
+        content = ts.ReadAll
+        ts.Close
+        ParseIni content, software, ansiCrtPath, ansiPuttyPath
+        ' åªæœ‰ ANSI è¯»å‡ºçš„è·¯å¾„çœŸå®å­˜åœ¨æ—¶æ‰é‡‡ç”¨ï¼Œå¦åˆ™ä¿ç•™ UTF-8 è¯»å‡ºçš„åŸå§‹è·¯å¾„ï¼Œé¿å…ä¹±ç æç¤º
+        If ansiCrtPath <> "" And fso.FileExists(ansiCrtPath) Then crtPath = ansiCrtPath
+        If ansiPuttyPath <> "" And fso.FileExists(ansiPuttyPath) Then puttyPath = ansiPuttyPath
+    End If
 End If
 
 If scheme = "putty" Then
@@ -88,14 +87,14 @@ Else
 End If
 
 If exePath = "" Or (Not fso.FileExists(exePath)) Then
-    MsgBox "Î´ÕÒµ½ÖÕ¶ËÈí¼ş£º" & exePath & vbCrLf & vbCrLf & _
-           "Çë±à¼­ÅäÖÃÎÄ¼ş£º" & iniFile & vbCrLf & _
-           "ÌîĞ´±¾»ú SecureCRT / PuTTY µÄÍêÕûÂ·¾¶ºóÖØÊÔ¡£", _
-           vbExclamation, "Ô¶³ÌÖÕ¶ËÖúÊÖ"
+    MsgBox "Terminal software not found: " & exePath & vbCrLf & vbCrLf & _
+           "Please edit the config file: " & iniFile & vbCrLf & _
+           "and set the correct crt_path or putty_path.", _
+           vbExclamation, "Terminal Helper"
     WScript.Quit 1
 End If
 
-' --- 4. ¹¹ÔìÆô¶¯²ÎÊı£¨Óë SecureCRT / PuTTY ÃüÁîĞĞÒ»ÖÂ£© ---
+' --- 4. Build arguments ---
 Dim args
 If scheme = "putty" Then
     If protocol = "ssh" Then
@@ -120,13 +119,43 @@ Else
     End If
 End If
 
-' --- 5. Æô¶¯ÖÕ¶ËÈí¼ş ---
+' --- 5. Launch ---
 shell.Run """" & exePath & """ " & args, 1, False
 WScript.Quit 0
 
 '============================================================
-' URL ½âÂëº¯Êı£º%20 -> ¿Õ¸ñ¡¢+ -> ¿Õ¸ñ
+' Functions
 '============================================================
+Function ReadFileUtf8(filePath)
+    Dim stream, text
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 2
+    stream.Charset = "utf-8"
+    stream.Open
+    stream.LoadFromFile filePath
+    text = stream.ReadText
+    stream.Close
+    Set stream = Nothing
+    ReadFileUtf8 = text
+End Function
+
+Sub ParseIni(content, sw, cp, pp)
+    Dim lines, ln, pos, k, v
+    content = Replace(content, vbCrLf, vbLf)
+    lines = Split(content, vbLf)
+    For Each ln In lines
+        ln = Trim(ln)
+        pos = InStr(ln, "=")
+        If pos > 0 Then
+            k = LCase(Trim(Left(ln, pos - 1)))
+            v = Trim(Mid(ln, pos + 1))
+            If k = "software" Then sw = LCase(v)
+            If k = "crt_path" Then cp = v
+            If k = "putty_path" Then pp = v
+        End If
+    Next
+End Sub
+
 Function URLDecode(s)
     Dim r, idx, ch
     r = ""

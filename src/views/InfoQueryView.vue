@@ -309,6 +309,7 @@
                     <el-button
                       size="small"
                       :type="getSnmpBtnType(scope.row)"
+                      :class="{ 'snmp-unsupported': scope.row.snmpSupport === 'no' }"
                       :loading="snmpLoadingId === scope.row.id || rowIsTesting(scope.row, 'snmp')"
                       :disabled="snmpLoadingId !== null || batchRunning"
                       @click="handleSnmpTest(scope.row)"
@@ -3187,9 +3188,10 @@ export default {
       return 'warning';
     },
 
-    // SNMP 按钮颜色：与拨测相同的按测试时间分级
+    // SNMP 按钮颜色：不支持 SNMP 显示独特颜色（深紫）；其余按测试时间分级
     getSnmpBtnType(row) {
       if (row.snmpStatus === 'testing') return 'warning';
+      if (row.snmpSupport === 'no') return 'info'; // 配合 .snmp-unsupported 自定义深紫样式
       const age = this.getTestAgeDays(row.snmpTime);
       if (row.snmpStatus === 'fail') {
         return age !== null && age <= 15 ? 'danger' : 'info';
@@ -3226,6 +3228,7 @@ export default {
     // SNMP 按钮提示文本（含测试时间和颜色说明）
     snmpStatusText(row) {
       if (row.snmpStatus === 'testing') return '正在 SNMP 测试中...';
+      if (row.snmpSupport === 'no') return '该设备不支持 SNMP（深紫色），点击可重新检测';
       const age = this.getTestAgeDays(row.snmpTime);
       const timeLabel = row.snmpTime ? ` 测试时间：${row.snmpTime}` : '';
       if (row.snmpStatus === 'fail') {
@@ -3422,9 +3425,14 @@ export default {
       if (command === 'web') {
         const protocol = (row.protocol || row.net_dev_cred_protocol || '').toLowerCase();
         const scheme = protocol.includes('https') ? 'https' : 'http';
+        const defaultPort = scheme === 'https' ? '443' : '80';
+        // 仅当管理协议本身就是 http/https 时，才采用设备配置的端口；
+        // 否则（如 ssh/telnet 记录的是 22/23 端口）Web 访问默认使用 80/443
+        const isWebProtocol = protocol.includes('http');
+        const webPort = (isWebProtocol && port) ? String(port) : defaultPort;
         let url = `${scheme}://${ip}`;
-        if (port && !((scheme === 'http' && port === '80') || (scheme === 'https' && port === '443'))) {
-          url += `:${port}`;
+        if (!((scheme === 'http' && webPort === '80') || (scheme === 'https' && webPort === '443'))) {
+          url += `:${webPort}`;
         }
         window.open(url, '_blank', 'noopener');
         return;
@@ -4663,6 +4671,8 @@ export default {
                 // 优先读取数据库记录的历史拨测/SNMP 状态，便于后期维护列表
                 probeStatus: item.net_dev_cred_probe_status || null,
                 snmpStatus: item.net_dev_cred_snmp_status || null,
+                // 是否支持 SNMP：'yes'=支持 'no'=不支持（拨测时自动检测），空=未检测
+                snmpSupport: item.net_dev_cred_snmp_support || '',
                 probeMessage: item.net_dev_cred_probe_message || '',
                 snmpMessage: item.net_dev_cred_snmp_message || '',
                 // 测试时间：用于颜色分级（1天内绿/7天内蓝/15天内黄/超15天灰）
@@ -6224,6 +6234,19 @@ export default {
 
 .network-manage-buttons .el-button + .el-button {
   margin-left: 0;
+}
+
+/* 不支持 SNMP 的设备：SNMP 按钮显示独特深紫色 */
+.el-button.snmp-unsupported {
+  --el-button-bg-color: #7c3aed;
+  --el-button-border-color: #7c3aed;
+  --el-button-hover-bg-color: #8b5cf6;
+  --el-button-hover-border-color: #8b5cf6;
+  --el-button-active-bg-color: #6d28d9;
+  --el-button-active-border-color: #6d28d9;
+  --el-button-text-color: #ffffff;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-active-text-color: #ffffff;
 }
 
 /* 批量测试栏样式 */

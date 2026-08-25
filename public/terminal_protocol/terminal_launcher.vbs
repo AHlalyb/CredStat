@@ -59,15 +59,24 @@ software = "crt"
 crtPath = ""
 puttyPath = ""
 If fso.FileExists(iniFile) Then
-    Dim content
+    Dim content, utf8CrtPath, utf8PuttyPath, ansiCrtPath, ansiPuttyPath, needAnsi
     content = ReadFileUtf8(iniFile)
-    ParseIni content, software, crtPath, puttyPath
-    If crtPath <> "" And (Not fso.FileExists(crtPath)) Then
+    ParseIni content, software, utf8CrtPath, utf8PuttyPath
+    crtPath = utf8CrtPath
+    puttyPath = utf8PuttyPath
+    ' 若 UTF-8 读出的路径不存在，尝试按 ANSI 重读（install.bat 创建的是 ANSI 编码）
+    needAnsi = False
+    If crtPath <> "" And Not fso.FileExists(crtPath) Then needAnsi = True
+    If puttyPath <> "" And Not fso.FileExists(puttyPath) Then needAnsi = True
+    If needAnsi Then
         Dim ts
         Set ts = fso.OpenTextFile(iniFile, 1, False, 0)
         content = ts.ReadAll
         ts.Close
-        ParseIni content, software, crtPath, puttyPath
+        ParseIni content, software, ansiCrtPath, ansiPuttyPath
+        ' 只有 ANSI 读出的路径真实存在时才采用，否则保留 UTF-8 读出的原始路径，避免乱码提示
+        If ansiCrtPath <> "" And fso.FileExists(ansiCrtPath) Then crtPath = ansiCrtPath
+        If ansiPuttyPath <> "" And fso.FileExists(ansiPuttyPath) Then puttyPath = ansiPuttyPath
     End If
 End If
 

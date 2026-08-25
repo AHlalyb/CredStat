@@ -48,9 +48,16 @@
                 下载协议处理器 .vbs
               </el-button>
               <el-button size="small" tag="a" href="terminal_protocol/terminal_config.ini" download>
-                下载配置文件 .ini
+                下载模板配置 .ini
+              </el-button>
+              <el-button size="small" type="warning" @click="downloadConfig" :disabled="!form.crt_path && !form.putty_path">
+                下载我的配置 .ini（含上方已填路径）
               </el-button>
             </div>
+            <p class="m-0 mb-1">
+              <b>提示：</b>推荐先在上方填写本机软件路径并保存，然后点「下载我的配置 .ini」生成配置，用其覆盖
+              <code>D:\TermTool</code> 下的 <code>terminal_config.ini</code>，避免手动编辑导致的编码/路径错误。
+            </p>
           </template>
         </el-alert>
 
@@ -256,6 +263,29 @@ export default {
       } finally {
         this.saving = false;
       }
+    },
+    // 生成并下载本机配置文件（UTF-8 编码，与协议助手 VBS 的读取方式一致，避免乱码）
+    downloadConfig() {
+      const path = this.form.software === 'putty' ? this.form.putty_path : this.form.crt_path;
+      if (!path || path.trim() === '') {
+        this.showMessage('请先填写 ' + (this.form.software === 'putty' ? 'PuTTY' : 'SecureCRT') + ' 软件的完整路径', 'warning');
+        return;
+      }
+      const iniContent =
+        'software=' + (this.form.software === 'putty' ? 'putty' : 'crt') + '\r\n' +
+        'crt_path=' + this.form.crt_path.trim() + '\r\n' +
+        'putty_path=' + this.form.putty_path.trim() + '\r\n';
+      // Blob 默认以 UTF-8 编码生成文本文件
+      const blob = new Blob([iniContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'terminal_config.ini';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      this.showMessage('已生成 terminal_config.ini（UTF-8），请用它覆盖本机 D:\\TermTool 下的同名文件', 'success');
     },
     // 通过 a.click + 隐藏 iframe 双重触发本机自定义协议，调起终端软件
     launchLocalProtocol(url) {
