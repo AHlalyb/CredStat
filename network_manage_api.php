@@ -309,7 +309,27 @@ function probeVerifyProtocol($ip, $port, $protocol, $username, $password)
 }
 
 /**
- * SSH 验证：读取服务 banner 确认 SSH 协议，尽量做账号认证
+ * 判断 SSH 命令输出是否有效（非空且不是命令错误提示），用于确认已进入命令行
+ */
+function probeSshCliOutputOk($output)
+{
+    $text = trim((string)$output);
+    if ($text === '') {
+        return false;
+    }
+    // 常见的网络设备命令错误标志
+    if (preg_match('/(?:unknown command|unrecognized|invalid input|not found|command not found|no such|unknown keyword|% invalid|syntax error|错误|未知命令|无效命令|命令不存在|无法识别)/i', $text)) {
+        return false;
+    }
+    // 开头是设备错误提示符（如 "% "）或输出过短，视为无效
+    if (preg_match('/^\s*%\s*/', $text) || strlen($text) < 3) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * SSH 验证：读取服务 banner 确认 SSH 协议，登录并确认进入命令行才算拨测成功
  */
 function probeVerifySsh($ip, $port, $username, $password)
 {
@@ -335,38 +355,83 @@ function probeVerifySsh($ip, $port, $username, $password)
         ];
     }
 
-    // 尝试使用 phpseclib 做真实认证验证（如已安装）
-    $sshAuthed = false;
-    $sshDetail = '';
+    // 使用 phpseclib 做真实登录 + 进入命令行验证（只有进入命令行才算拨测成功）
     $phpseclib = __DIR__ . '/vendor/autoload.php';
-    if ($username !== '' && $password !== '' && file_exists($phpseclib)) {
+    if ($username === '' || $password === '' || !file_exists($phpseclib)) {
+        return [
+            'success' => false,
+            'message' => "SSH 服务正常（{$banner}），但未配置账号密码或缺少 phpseclib 库，无法登录进入命令行",
+            'auth' => 'skipped'
+        ];
+    }
+
+    try {
+        require_once $phpseclib;
+        if (!class_exists('phpseclib3\\Net\\SSH2')) {
+            return [
+                'success' => false,
+                'message' => "SSH 服务正常（{$banner}），但 phpseclib 库不可用，无法登录进入命令行",
+                'auth' => 'skipped'
+            ];
+        }
+
+        // 方式一：登录后执行常见命令，确认能进入命令行
+        $ssh = new \phpseclib3\Net\SSH2($ip, $port, 10);
+        if (!$ssh->login($username, $password)) {
+            return [
+                'success' => false,
+                'message' => "SSH 服务正常（{$banner}），但账号 {$username} 认证失败（用户名或密码错误）",
+                'auth' => 'failed'
+            ];
+        }
+
+        $ssh->setTimeout(8);
+        $cmdCandidates = ['display version', 'show version', 'uname -a'];
+        foreach ($cmdCandidates as $cmd) {
+            try {
+                $out = $ssh->exec($cmd);
+                if (is_string($out) && probeSshCliOutputOk($out)) {
+                    return [
+                        'success' => true,
+                        'message' => "SSH 登录成功（账号 {$username}），已进入命令行（{$cmd} 执行正常）",
+                        'auth' => 'passed'
+                    ];
+                }
+            } catch (Exception $e) {
+                // 该命令执行异常，继续尝试下一条
+            }
+        }
+
+        // 方式二：交互式 shell，检测设备命令行提示符
         try {
-            require_once $phpseclib;
-            if (class_exists('phpseclib3\\Net\\SSH2')) {
-                $ssh = new \phpseclib3\Net\SSH2($ip, $port, 5);
-                if ($ssh->login($username, $password)) {
-                    $sshAuthed = true;
-                    $sshDetail = "账号 {$username} 认证成功";
-                } else {
-                    $sshDetail = "账号 {$username} 认证失败（用户名或密码错误）";
+            $ssh2 = new \phpseclib3\Net\SSH2($ip, $port, 10);
+            if ($ssh2->login($username, $password)) {
+                $ssh2->setTimeout(5);
+                $resp = $ssh2->read('/[#>$%]\s*$/', \phpseclib3\Net\SSH2::READ_REGEX);
+                if (is_string($resp) && preg_match('/[#>$%]\s*$/', $resp)) {
+                    return [
+                        'success' => true,
+                        'message' => "SSH 登录成功（账号 {$username}），已进入命令行（检测到设备提示符）",
+                        'auth' => 'passed'
+                    ];
                 }
             }
         } catch (Exception $e) {
-            $sshDetail = '';
+            // 忽略，走失败分支
         }
-    }
 
-    if ($sshAuthed) {
-        return ['success' => true, 'message' => "SSH 服务正常，{$sshDetail}", 'auth' => 'passed'];
+        return [
+            'success' => false,
+            'message' => "SSH 账号 {$username} 认证成功，但未检测到设备命令行提示符，无法确认进入命令行",
+            'auth' => 'failed'
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => 'SSH 登录验证异常：' . probeSafeText($e->getMessage()),
+            'auth' => 'skipped'
+        ];
     }
-    if ($sshDetail !== '') {
-        return ['success' => false, 'message' => "SSH 服务正常（{$banner}），但{$sshDetail}", 'auth' => 'failed'];
-    }
-    return [
-        'success' => true,
-        'message' => "SSH 服务正常（{$banner}），未做账号认证验证",
-        'auth' => 'skipped'
-    ];
 }
 
 /**
@@ -440,8 +505,8 @@ function probeVerifyTelnet($ip, $port, $username, $password)
     if ($username === '' && $password === '') {
         fclose($fp);
         return [
-            'success' => true,
-            'message' => 'Telnet 服务正常，检测到登录提示（未配置账号密码）',
+            'success' => false,
+            'message' => 'Telnet 服务正常，检测到登录提示，但未配置账号密码，无法进入命令行',
             'auth' => 'skipped'
         ];
     }
@@ -510,16 +575,9 @@ function probeVerifyTelnet($ip, $port, $username, $password)
             }
         }
         fclose($fp);
-        if ($resultText !== '') {
-            return [
-                'success' => true,
-                'message' => "Telnet 仅密码认证交互完成，未检测到明确的失败标志",
-                'auth' => 'passed'
-            ];
-        }
         return [
             'success' => false,
-            'message' => 'Telnet 仅密码认证结果无法确认（响应为空或超时）',
+            'message' => 'Telnet 仅密码认证后未检测到设备命令行提示符，无法确认进入命令行',
             'auth' => 'failed'
         ];
     }
@@ -596,16 +654,9 @@ function probeVerifyTelnet($ip, $port, $username, $password)
     }
 
     fclose($fp);
-    if ($resultText !== '') {
-        return [
-            'success' => true,
-            'message' => "Telnet 交互完成，未检测到明确的失败标志（账号 {$username}）",
-            'auth' => 'passed'
-        ];
-    }
     return [
         'success' => false,
-        'message' => 'Telnet 登录结果无法确认（响应为空或超时）',
+        'message' => 'Telnet 登录后未检测到设备命令行提示符，无法确认进入命令行（账号 ' . $username . '）',
         'auth' => 'failed'
     ];
 }

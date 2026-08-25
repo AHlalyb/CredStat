@@ -3429,35 +3429,64 @@ export default {
         window.open(url, '_blank', 'noopener');
         return;
       }
-      // ssh/telnet 调用后端启动终端软件（按系统设置中的配置调用 PuTTY 或 SecureCRT）
+      // ssh/telnet 通过本机注册的 crt:// / putty:// 协议调起本机终端软件
       if (command !== 'ssh' && command !== 'telnet') {
         ElMessage.warning('未知的远程连接方式');
         return;
       }
-      try {
-        const response = await fetch('remote_terminal_api.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'launch',
-            ip: ip,
-            port: port,
-            protocol: command,
-            username: username
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          ElMessage.success(data.message || '远程连接已启动');
-        } else {
-          ElMessage.error(data.message || '远程连接启动失败');
-        }
-      } catch (error) {
-        console.error('远程连接启动失败:', error);
-        ElMessage.error('远程连接启动失败，请检查服务是否正常');
+      const local = this.getLocalTerminalConfig();
+      if (!local || !local.software) {
+        ElMessage.warning('请先在「系统设置 -> 远程终端设置」中配置远程终端软件（并安装本机协议助手）');
+        return;
       }
+      const scheme = local.software === 'crt' ? 'crt' : 'putty';
+      // 分隔符 | 显式编码为 %7C，避免浏览器/系统对 URL 特殊字符的处理差异
+      const url = `${scheme}://${command}%7C${encodeURIComponent(ip)}%7C${encodeURIComponent(port)}%7C${encodeURIComponent(username)}`;
+      const launched = this.launchLocalProtocol(url);
+      if (launched) {
+        ElMessage.success(`已调起本机${local.software === 'crt' ? 'SecureCRT' : 'PuTTY'}连接 ${ip}`);
+      }
+    },
+
+    // 读取本机浏览器保存的远程终端配置
+    getLocalTerminalConfig() {
+      try {
+        const raw = localStorage.getItem('remoteTerminalConfig');
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    },
+
+    // 通过 a.click + 隐藏 iframe 双重触发本机自定义协议，调起终端软件
+    launchLocalProtocol(url) {
+      let triggered = false;
+      // 方式1：模拟点击 <a> 标签（Chrome/Edge 对用户手势触发自定义协议最可靠）
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        if (link.parentNode) link.parentNode.removeChild(link);
+        triggered = true;
+      } catch (e) {
+        console.error('a 标签调起协议失败:', e);
+      }
+      // 方式2：隐藏 iframe 兜底（Firefox 等）
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 2000);
+        triggered = true;
+      } catch (e) {
+        console.error('iframe 调起协议失败:', e);
+      }
+      return triggered;
     },
 
     // 权限检查函数

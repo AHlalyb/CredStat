@@ -24,13 +24,43 @@
           @close="messageVisible = false"
         ></el-alert>
 
+        <!-- 本机协议助手安装指引 -->
+        <el-alert type="warning" show-icon class="mb-4" :closable="false">
+          <template #title>
+            <b>重要：请先在本机安装「远程终端协议助手」</b>
+          </template>
+          <template #default>
+            <p class="m-0 mb-1">
+              远程终端软件运行在<b>你的电脑</b>上，而本系统部署在服务器上，因此需要在本机注册
+              <code>crt://</code> / <code>putty://</code> 协议，让网页能直接调起本机终端软件（每台管理电脑只需安装一次）。
+            </p>
+            <p class="m-0">
+              下载以下 3 个文件放到本机同一文件夹（例如
+              <code>D:\TermTool</code>），右键管理员运行
+              <code>install_terminal_protocol.bat</code>，然后编辑
+              <code>terminal_config.ini</code> 填写本机软件路径即可：
+            </p>
+            <div class="mt-2">
+              <el-button size="small" type="primary" tag="a" href="terminal_protocol/install_terminal_protocol.bat" download>
+                下载安装脚本 .bat
+              </el-button>
+              <el-button size="small" tag="a" href="terminal_protocol/terminal_launcher.vbs" download>
+                下载协议处理器 .vbs
+              </el-button>
+              <el-button size="small" tag="a" href="terminal_protocol/terminal_config.ini" download>
+                下载配置文件 .ini
+              </el-button>
+            </div>
+          </template>
+        </el-alert>
+
         <el-form label-position="top" label-width="120px" style="max-width: 720px;">
           <el-form-item label="远程终端软件" required>
             <el-radio-group v-model="form.software">
               <el-radio value="putty">PuTTY</el-radio>
               <el-radio value="crt">SecureCRT (CRT)</el-radio>
             </el-radio-group>
-            <div class="el-form-item__help">选择点击"远程"时调用的终端软件</div>
+            <div class="el-form-item__help">选择点击"远程"时调用的终端软件（需与本机 terminal_config.ini 中 software 一致）</div>
           </el-form-item>
 
           <el-form-item v-if="form.software === 'putty'" label="PuTTY 软件路径" required>
@@ -39,7 +69,7 @@
               placeholder="例如：C:\tools\putty.exe"
               clearable
             ></el-input>
-            <div class="el-form-item__help">填写 putty.exe 的完整路径</div>
+            <div class="el-form-item__help">填写本机 putty.exe 的完整路径（保存在当前浏览器中，不上传服务器）</div>
           </el-form-item>
 
           <el-form-item v-else label="SecureCRT 软件路径" required>
@@ -48,7 +78,7 @@
               placeholder="例如：C:\Program Files\VanDyke Software\SecureCRT\SecureCRT.exe"
               clearable
             ></el-input>
-            <div class="el-form-item__help">填写 SecureCRT.exe 的完整路径</div>
+            <div class="el-form-item__help">填写本机 SecureCRT.exe 的完整路径（保存在当前浏览器中，不上传服务器）</div>
           </el-form-item>
         </el-form>
 
@@ -88,9 +118,8 @@
             ></el-input>
           </el-form-item>
           <el-form-item label=" ">
-            <el-button type="success" @click="testLaunch" :loading="testing">
-              <el-icon v-if="!testing"><Connection /></el-icon>
-              <el-icon v-else><Loading /></el-icon>
+            <el-button type="success" @click="testLaunch">
+              <el-icon><Connection /></el-icon>
               启动连接
             </el-button>
           </el-form-item>
@@ -99,10 +128,11 @@
         <!-- 使用说明 -->
         <el-alert title="使用说明" type="info" show-icon class="mt-4" :closable="false">
           <template #default>
-            <p class="m-0">1. 先选择远程终端软件（PuTTY 或 SecureCRT），并填写对应软件的完整路径</p>
-            <p class="m-0">2. 点击"保存设置"，信息查询页面的"远程"按钮将按此配置启动终端软件</p>
-            <p class="m-0">3. 可在"测试连接"区域输入 IP/端口/协议/用户名，点击"启动连接"验证配置是否正确</p>
-            <p class="m-0">4. 路径填写后系统会在启动时校验软件是否存在</p>
+            <p class="m-0">1. 本机安装并注册「远程终端协议助手」（见上方黄色提示，每台电脑一次）</p>
+            <p class="m-0">2. 在本页选择终端软件并填写本机路径，点击"保存设置"（仅保存在当前浏览器）</p>
+            <p class="m-0">3. 信息查询页点击"远程"，网页将调起本机已注册的协议助手启动终端软件</p>
+            <p class="m-0">4. 可在"测试连接"区域输入 IP/端口/协议/用户名，点击"启动连接"验证</p>
+            <p class="m-0">5. 更换电脑后需在新电脑上重新安装协议助手并保存路径</p>
           </template>
         </el-alert>
       </div>
@@ -112,6 +142,8 @@
 
 <script>
 import { Check, Loading, Connection } from '@element-plus/icons-vue';
+
+const STORAGE_KEY = 'remoteTerminalConfig';
 
 export default {
   name: 'RemoteTerminalSettingsView',
@@ -136,7 +168,6 @@ export default {
         protocol: 'ssh',
         username: ''
       },
-      testing: false,
       // 消息提示
       messageVisible: false,
       messageText: '',
@@ -153,8 +184,24 @@ export default {
       this.messageType = type;
       this.messageVisible = true;
     },
-    // 加载配置
+    // 从本机浏览器读取配置
+    getLocalConfig() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (error) {
+        return null;
+      }
+    },
+    // 加载配置：优先本机浏览器，其次服务器（兼容服务器本机使用场景）
     async loadConfig() {
+      const local = this.getLocalConfig();
+      if (local) {
+        this.form.software = local.software || 'putty';
+        this.form.putty_path = local.putty_path || '';
+        this.form.crt_path = local.crt_path || '';
+        return;
+      }
       try {
         const response = await fetch('remote_terminal_api.php', {
           method: 'POST',
@@ -173,9 +220,8 @@ export default {
         console.error('加载远程终端配置失败:', error);
       }
     },
-    // 保存配置
+    // 保存配置到本机浏览器
     async saveConfig() {
-      // 校验路径
       const path = this.form.software === 'putty' ? this.form.putty_path : this.form.crt_path;
       if (!path || path.trim() === '') {
         this.showMessage('请填写 ' + (this.form.software === 'putty' ? 'PuTTY' : 'SecureCRT') + ' 软件的完整路径', 'warning');
@@ -184,27 +230,26 @@ export default {
 
       this.saving = true;
       try {
-        const response = await fetch('remote_terminal_api.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'saveConfig',
-            software: this.form.software,
-            putty_path: this.form.putty_path,
-            crt_path: this.form.crt_path
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          this.form.software = data.config.software;
-          this.form.putty_path = data.config.putty_path;
-          this.form.crt_path = data.config.crt_path;
-          this.showMessage('远程终端设置保存成功', 'success');
-        } else {
-          this.showMessage('保存失败：' + (data.message || '未知错误'), 'error');
+        const config = {
+          software: this.form.software,
+          putty_path: this.form.putty_path.trim(),
+          crt_path: this.form.crt_path.trim()
+        };
+        // 1. 保存到本机浏览器（主要方式，远程调用依赖它）
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+        // 2. 同步到服务器（仅用于服务器本机直接使用的场景，失败不影响）
+        try {
+          await fetch('remote_terminal_api.php', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'saveConfig', ...config })
+          });
+        } catch (error) {
+          // 忽略服务器同步失败
         }
+        this.showMessage('已保存到本机浏览器（当前电脑有效）', 'success');
       } catch (error) {
         console.error('保存远程终端配置失败:', error);
         this.showMessage('保存失败，请稍后重试', 'error');
@@ -212,39 +257,46 @@ export default {
         this.saving = false;
       }
     },
-    // 测试启动连接
-    async testLaunch() {
+    // 通过 a.click + 隐藏 iframe 双重触发本机自定义协议，调起终端软件
+    launchLocalProtocol(url) {
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        if (link.parentNode) link.parentNode.removeChild(link);
+      } catch (e) {
+        console.error('a 标签调起协议失败:', e);
+      }
+      try {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        setTimeout(() => {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 2000);
+      } catch (e) {
+        console.error('iframe 调起协议失败:', e);
+      }
+    },
+    // 测试启动连接（走本机协议助手）
+    testLaunch() {
       if (!this.testForm.ip || this.testForm.ip.trim() === '') {
         this.showMessage('请输入设备IP', 'warning');
         return;
       }
-      this.testing = true;
-      try {
-        const response = await fetch('remote_terminal_api.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'launch',
-            ip: this.testForm.ip.trim(),
-            port: this.testForm.port.trim(),
-            protocol: this.testForm.protocol,
-            username: this.testForm.username.trim()
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          this.showMessage(data.message || '连接已启动', 'success');
-        } else {
-          this.showMessage(data.message || '启动失败', 'error');
-        }
-      } catch (error) {
-        console.error('启动远程连接失败:', error);
-        this.showMessage('启动失败，请稍后重试', 'error');
-      } finally {
-        this.testing = false;
+      const local = this.getLocalConfig();
+      if (!local) {
+        this.showMessage('请先在上方保存本机终端软件路径，并在本机安装「远程终端协议助手」', 'warning');
+        return;
       }
+      const scheme = local.software === 'crt' ? 'crt' : 'putty';
+      // 分隔符 | 显式编码为 %7C，避免浏览器/系统对 URL 特殊字符的处理差异
+      const url = `${scheme}://${this.testForm.protocol}%7C${encodeURIComponent(this.testForm.ip.trim())}%7C${encodeURIComponent(this.testForm.port.trim())}%7C${encodeURIComponent(this.testForm.username.trim())}`;
+      this.launchLocalProtocol(url);
+      this.showMessage('已调起本机终端软件连接 ' + this.testForm.ip.trim(), 'success');
     }
   }
 };
@@ -254,5 +306,11 @@ export default {
 .remote-terminal-settings :deep(.el-form-item__help) {
   font-size: 12px;
   color: #909399;
+}
+.mb-1 {
+  margin-bottom: 6px;
+}
+.mt-2 {
+  margin-top: 10px;
 }
 </style>
