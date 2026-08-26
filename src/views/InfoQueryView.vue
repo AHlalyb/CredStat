@@ -326,13 +326,16 @@
                     <template #dropdown>
                       <el-dropdown-menu>
                         <el-dropdown-item command="ssh">
-                          <el-icon><Promotion /></el-icon>SSH
+                          <el-icon><Promotion /></el-icon>SSH <span class="menu-tag">Web终端</span>
                         </el-dropdown-item>
                         <el-dropdown-item command="telnet">
-                          <el-icon><Connection /></el-icon>Telnet
+                          <el-icon><Connection /></el-icon>Telnet <span class="menu-tag">Web终端</span>
                         </el-dropdown-item>
-                        <el-dropdown-item command="web">
+                        <el-dropdown-item command="web" divided>
                           <el-icon><Link /></el-icon>Web
+                        </el-dropdown-item>
+                        <el-dropdown-item command="local" divided>
+                          <el-icon><Monitor /></el-icon>本地终端 (CRT/PuTTY)
                         </el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
@@ -2120,6 +2123,7 @@
         </div>
       </template>
     </el-dialog>
+
   </div>
 </template>
 
@@ -2329,6 +2333,10 @@ import {
 // 导入Element Plus组件
 import { ElMessage } from 'element-plus';
 
+// ===== 跨窗口终端管理：跟踪已打开的 /terminal 独立页面窗口 =====
+let terminalWindowRef = null;
+let terminalChannel = null;
+
 export default {
   name: 'InfoQueryView',
   components: {
@@ -2343,7 +2351,8 @@ export default {
     Check,
     ArrowDown,
     Close,
-    Plus
+    Plus,
+    Monitor
   },
   data() {
     return {
@@ -3412,6 +3421,42 @@ export default {
       }
     },
 
+    // 打开（或复用）Web 终端独立页面；多会话通过 BroadcastChannel 推送到已打开的页面新增 Tab
+    openTerminalWindow(session) {
+      const readyChannel = () => {
+        if (!terminalChannel && 'BroadcastChannel' in window) {
+          terminalChannel = new BroadcastChannel('credstat-terminal');
+        }
+        return terminalChannel;
+      };
+      // 已打开的终端页面仍在 → 直接推送新会话，不重复开窗口
+      if (terminalWindowRef && !terminalWindowRef.closed) {
+        const ch = readyChannel();
+        if (ch) {
+          ch.postMessage({ type: 'add-session', session });
+          return;
+        }
+        ElMessage.warning('终端页面暂不可用，请手动关闭后重试');
+        return;
+      }
+      // 首次打开：新开窗口，首个会话通过 URL 参数传递
+      const params = new URLSearchParams({
+        protocol: session.protocol,
+        ip: session.ip,
+        deviceId: session.deviceId,
+        account: session.account,
+      });
+      terminalWindowRef = window.open(
+        `/terminal?${params.toString()}`,
+        '_blank',
+        'width=1100,height=720,left=150,top=60'
+      );
+      readyChannel();
+      if (!terminalWindowRef) {
+        ElMessage.warning('浏览器可能拦截了弹窗，请允许本网站弹出窗口');
+      }
+    },
+
     // 远程连接
     async handleRemote(command, row) {
       const ip = this.getNetworkIp(row);
@@ -3437,8 +3482,28 @@ export default {
         window.open(url, '_blank', 'noopener');
         return;
       }
-      // ssh/telnet 通过本机注册的 crt:// / putty:// 协议调起本机终端软件
-      if (command !== 'ssh' && command !== 'telnet') {
+      // ssh/telnet 打开 Web 终端弹窗（xterm.js + 终端网关）
+      if (command === 'ssh' || command === 'telnet') {
+        if (!this.hasPermission('query')) {
+          ElMessage.warning('您没有查询权限，无法远程连接');
+          return;
+        }
+        const account = this.getLoginUsername();
+        if (!account) {
+          ElMessage.warning('无法获取当前登录账号');
+          return;
+        }
+        // 新开独立终端页面；若页面已打开则在其内新增一个 Tab
+        this.openTerminalWindow({
+          protocol: command,
+          ip,
+          deviceId: String(row.id),
+          account,
+        });
+        return;
+      }
+      // 本地终端（通过本机注册的 crt:// / putty:// 协议调起本机终端软件）
+      if (command !== 'local') {
         ElMessage.warning('未知的远程连接方式');
         return;
       }
@@ -6234,6 +6299,18 @@ export default {
 
 .network-manage-buttons .el-button + .el-button {
   margin-left: 0;
+}
+
+/* 远程下拉菜单：Web终端标识 */
+.menu-tag {
+  font-size: 11px;
+  color: #67c23a;
+  background: #f0f9eb;
+  border: 1px solid #b3e19d;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+  line-height: 1.5;
 }
 
 /* 不支持 SNMP 的设备：SNMP 按钮显示独特深紫色 */

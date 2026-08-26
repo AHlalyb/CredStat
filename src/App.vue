@@ -1,7 +1,7 @@
 <template>
   <div id="app">
-    <!-- 只有登录页不显示导航栏和顶部栏 -->
-    <template v-if="$route.name !== 'login'">
+    <!-- 只有登录页和终端页不显示导航栏和顶部栏 -->
+    <template v-if="$route.name !== 'login' && $route.name !== 'terminal'">
       <!-- 侧边栏 -->
       <aside class="sidebar">
         <div class="sidebar-header">
@@ -114,7 +114,7 @@
     </template>
 
       <!-- 主内容区域 -->
-      <main :class="$route.name === 'login' ? 'main-content-full' : 'main-content'">
+      <main :class="$route.name === 'login' || $route.name === 'terminal' ? 'main-content-full' : 'main-content'">
         <router-view />
       </main>
 

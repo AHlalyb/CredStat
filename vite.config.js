@@ -141,6 +141,11 @@ export default defineConfig({
         changeOrigin: true,
         // 重写路径，确保正确的项目目录
         rewrite: () => '/CredStat/network_manage_api.php'
+      },
+      '/ws_session_api.php': {
+        target: 'http://localhost',
+        changeOrigin: true,
+        rewrite: (path) => '/CredStat' + path
       }
     }
   },

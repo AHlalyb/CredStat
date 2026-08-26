@@ -15,6 +15,7 @@ const UserSettingsView = () => import('../views/UserSettingsView.vue')
 const BaseObjectSettingsView = () => import('../views/BaseObjectSettingsView.vue')
 const ServiceManagementView = () => import('../views/ServiceManagementView.vue')
 const RemoteTerminalSettingsView = () => import('../views/RemoteTerminalSettingsView.vue')
+const TerminalWindow = () => import('../views/TerminalWindow.vue')
 
 const routes = [
   {
@@ -132,6 +133,16 @@ const routes = [
     component: RemoteTerminalSettingsView,
     meta: {
       title: '远程终端设置',
+      requiresAuth: true
+    }
+  },
+  {
+    // 独立窗口的 Web 终端页面（通过 window.open 打开）
+    path: '/terminal',
+    name: 'terminal',
+    component: TerminalWindow,
+    meta: {
+      title: 'Web 终端',
       requiresAuth: true
     }
   }
