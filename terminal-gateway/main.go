@@ -94,7 +94,13 @@ func redeemCredential(ticket string) (*Credential, error) {
 		return nil, fmt.Errorf("向 PHP 换取凭据失败: %v", err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取 PHP 响应失败: %v", err)
+	}
+	if len(body) == 0 {
+		return nil, fmt.Errorf("PHP 响应为空")
+	}
 
 	var r struct {
 		Success bool   `json:"success"`
@@ -102,14 +108,15 @@ func redeemCredential(ticket string) (*Credential, error) {
 		Credential
 	}
 	if err := json.Unmarshal(body, &r); err != nil {
-		return nil, fmt.Errorf("PHP 响应解析失败: %v", err)
+		return nil, fmt.Errorf("PHP 响应解析失败: %v, body=%s", err, string(body))
 	}
 	if !r.Success {
 		return nil, fmt.Errorf("换取凭据失败: %s", r.Message)
 	}
-	if r.IP == "" || r.Username == "" {
-		return nil, fmt.Errorf("凭据不完整（IP/用户名缺失）")
+	if r.IP == "" {
+		return nil, fmt.Errorf("凭据不完整（IP 缺失）")
 	}
+	// 用户名允许为空（某些设备/Telnet 可能无需用户名）
 	return &r.Credential, nil
 }
 

@@ -12,8 +12,12 @@ import (
 // startSSHSession 建立 SSH 会话并双向转发：设备输出→WS，WS 输入→设备
 func startSSHSession(conn *wsConn, cred *Credential) error {
 	addr := net.JoinHostPort(cred.IP, cred.Port)
+	user := cred.Username
+	if user == "" {
+		user = "root" // SSH 默认回退用户名
+	}
 	clientConfig := &ssh.ClientConfig{
-		User:            cred.Username,
+		User:            user,
 		Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(config.ConnectTimeout) * time.Second,
