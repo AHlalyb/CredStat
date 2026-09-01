@@ -146,6 +146,11 @@ export default defineConfig({
         target: 'http://localhost',
         changeOrigin: true,
         rewrite: (path) => '/CredStat' + path
+      },
+      '/jump_target_api.php': {
+        target: 'http://localhost',
+        changeOrigin: true,
+        rewrite: (path) => '/CredStat' + path
       }
     }
   },

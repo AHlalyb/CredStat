@@ -15,6 +15,7 @@ const UserSettingsView = () => import('../views/UserSettingsView.vue')
 const BaseObjectSettingsView = () => import('../views/BaseObjectSettingsView.vue')
 const ServiceManagementView = () => import('../views/ServiceManagementView.vue')
 const RemoteTerminalSettingsView = () => import('../views/RemoteTerminalSettingsView.vue')
+const JumpTargetView = () => import('../views/JumpTargetView.vue')
 const TerminalWindow = () => import('../views/TerminalWindow.vue')
 
 const routes = [
@@ -137,6 +138,15 @@ const routes = [
     }
   },
   {
+    path: '/jump-target-settings',
+    name: 'jumpTargetSettings',
+    component: JumpTargetView,
+    meta: {
+      title: '跳板目标设置',
+      requiresAuth: true
+    }
+  },
+  {
     // 独立窗口的 Web 终端页面（通过 window.open 打开）
     path: '/terminal',
     name: 'terminal',
@@ -194,7 +204,7 @@ router.beforeEach((to, from, next) => {
     next({ name: 'welcome', replace: true });
   } else if (isLoggedIn && currentUser) {
     // 检查是否需要管理权限
-    const requiresManagePermission = ['databaseSettings', 'userSettings', 'remoteTerminalSettings'].includes(to.name);
+    const requiresManagePermission = ['databaseSettings', 'userSettings', 'remoteTerminalSettings', 'jumpTargetSettings'].includes(to.name);
     if (requiresManagePermission && currentUser.permissions?.manage !== 1) {
       // 没有管理权限，跳转到首页并显示提示
       next({ name: 'welcome', replace: true });

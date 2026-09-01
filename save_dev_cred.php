@@ -106,6 +106,18 @@ function validateFormData($securityConfig, $postData = null) {
             $data[$field] = '';
         }
     }
+
+    // 处理可选的跳板交换机ID（关联 net_dev_cred.id，空=直连）
+    if (isset($dataSource['switchJumpId']) && $dataSource['switchJumpId'] !== '') {
+        $jumpId = intval($dataSource['switchJumpId']);
+        if ($jumpId <= 0) {
+            $errors[] = '请选择有效的跳板交换机';
+        } else {
+            $data['switchJumpId'] = $jumpId;
+        }
+    } else {
+        $data['switchJumpId'] = null;
+    }
     
     // 验证IP地址
     if (empty($errors) && isset($data['switchManagementIp'])) {
@@ -194,6 +206,7 @@ function saveToDatabase($data, $dbConfig, $securityConfig) {
             net_dev_cred_management_ip,
             net_dev_cred_protocol,
             net_dev_cred_port,
+            net_dev_cred_jump_id,
             net_dev_cred_username,
             net_dev_cred_password_hash,
             net_dev_cred_enable_password_hash,
@@ -215,6 +228,7 @@ function saveToDatabase($data, $dbConfig, $securityConfig) {
             :net_dev_cred_management_ip,
             :net_dev_cred_protocol,
             :net_dev_cred_port,
+            :net_dev_cred_jump_id,
             :net_dev_cred_username,
             :net_dev_cred_password_hash,
             :net_dev_cred_enable_password_hash,
@@ -249,6 +263,7 @@ function saveToDatabase($data, $dbConfig, $securityConfig) {
             'net_dev_cred_management_ip' => $data['switchManagementIp'],
             'net_dev_cred_protocol' => $data['switchProtocol'],
             'net_dev_cred_port' => $data['switchPort'],
+            'net_dev_cred_jump_id' => $data['switchJumpId'],
             'net_dev_cred_username' => $data['switchUsername'],
             'net_dev_cred_password_hash' => '***',
             'net_dev_cred_enable_password_hash' => '***',
@@ -272,6 +287,11 @@ function saveToDatabase($data, $dbConfig, $securityConfig) {
         $stmt->bindParam(':net_dev_cred_management_ip', $data['switchManagementIp']);
         $stmt->bindParam(':net_dev_cred_protocol', $data['switchProtocol']);
         $stmt->bindParam(':net_dev_cred_port', $data['switchPort'], PDO::PARAM_INT);
+        if ($data['switchJumpId'] === null) {
+            $stmt->bindValue(':net_dev_cred_jump_id', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':net_dev_cred_jump_id', $data['switchJumpId'], PDO::PARAM_INT);
+        }
         $stmt->bindParam(':net_dev_cred_username', $data['switchUsername']);
         $stmt->bindParam(':net_dev_cred_password_hash', $encryptedPassword);
         $stmt->bindParam(':net_dev_cred_enable_password_hash', $encryptedPrivilegedPassword);

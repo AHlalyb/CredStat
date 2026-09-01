@@ -181,6 +181,25 @@
               ></el-input-number>
             </el-form-item>
           </el-col>
+          
+          <el-col :xs="24" :sm="12" :md="8" :lg="8">
+            <el-form-item label="跳板交换机" prop="switchJumpId">
+              <el-select
+                v-model="formData.switchJumpId"
+                placeholder="留空=直连；中心无法直达设备时经此跳板目标接入"
+                style="width: 100%"
+                clearable
+                filterable
+              >
+                <el-option
+                  v-for="jumpDev in jumpDeviceList"
+                  :key="jumpDev.jump_target_id"
+                  :label="jumpDev.jump_target_name + ' [' + typeLabel(jumpDev.jump_target_type) + '] (' + jumpDev.jump_target_ip + ')'"
+                  :value="jumpDev.jump_target_id"
+                ></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
         </el-row>
         
         <!-- 隐藏的诱饵字段，用于防止浏览器自动填充 -->
@@ -420,6 +439,7 @@ export default {
         switchManagementIp: '',
         switchProtocol: '',
         switchPort: null,
+        switchJumpId: null,
         switchUsername: '',
         switchPassword: '',
         switchPrivilegedPassword: '',
@@ -453,6 +473,8 @@ export default {
       importData: [],
       previewHeaders: [],
       showProgress: false,
+      // 跳板交换机候选列表
+      jumpDeviceList: [],
       importProgress: 0,
       progressStatus: '',
       progressText: '',
@@ -474,6 +496,44 @@ export default {
     };
   },
   methods: {
+    // 加载跳板目标列表（Agent/SSH/Telnet 类型）
+    fetchJumpDevices() {
+      let currentUser = null;
+      try {
+        const userInfo = localStorage.getItem('currentUser');
+        if (userInfo) {
+          currentUser = JSON.parse(userInfo);
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+      }
+      
+      fetch('jump_target_api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Username': currentUser ? currentUser.username : ''
+        },
+        body: JSON.stringify({
+          action: 'list',
+          username: currentUser ? currentUser.username : ''
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.data)) {
+          this.jumpDeviceList = data.data;
+        }
+      })
+      .catch(() => {
+        console.error('加载跳板目标列表失败');
+      });
+    },
+    // 跳板类型显示标签
+    typeLabel(type) {
+      return { agent: 'Agent', ssh: 'SSH', telnet: 'Telnet' }[type] || type;
+    },
+    
     // 初始化密码可见性切换
     initPasswordToggles() {
       // Element Plus的el-input组件已经内置了show-password属性，不再需要手动实现
@@ -567,6 +627,7 @@ export default {
       }
       // 重置端口为null
       this.formData.switchPort = null;
+      this.formData.switchJumpId = null;
       
       // 更新key值，强制重新渲染输入框，清除浏览器自动填充
       this.usernameKey = Date.now();
@@ -1084,6 +1145,9 @@ export default {
     
     // 获取base_obj表数据
     this.fetchBaseObjData();
+    
+    // 获取跳板交换机候选列表
+    this.fetchJumpDevices();
   }
 };
 </script>

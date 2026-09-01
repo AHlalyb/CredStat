@@ -1136,6 +1136,28 @@
             </el-col>
           </el-row>
           
+          <!-- 第三行补充：跳板交换机（中心无法直达设备时经此交换机 CLI 跳转） -->
+          <el-row :gutter="[20, 20]">
+            <el-col :xs="24" :sm="12" :md="8" :lg="8">
+              <el-form-item label="跳板交换机" prop="jump_id">
+                <el-select
+                  v-model="editFormData.jump_id"
+                  placeholder="留空=直连；中心无法直达设备时经此跳板目标接入"
+                  style="width: 100%"
+                  clearable
+                  filterable
+                >
+                  <el-option
+                    v-for="jumpDev in jumpDeviceList"
+                    :key="jumpDev.jump_target_id"
+                    :label="jumpDev.jump_target_name + ' [' + jumpTypeLabel(jumpDev.jump_target_type) + '] (' + jumpDev.jump_target_ip + ')'"
+                    :value="jumpDev.jump_target_id"
+                  ></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          
           <!-- 第四行：用户名、密码、使能密码 -->
           <el-row :gutter="[20, 20]">
             <el-col :xs="24" :sm="12" :md="8" :lg="8">
@@ -1757,6 +1779,9 @@
               </el-descriptions-item>
               <el-descriptions-item label="端口">
                 <span>{{ currentRecord.net_dev_cred_port || '无' }}</span>
+              </el-descriptions-item>
+              <el-descriptions-item label="跳板交换机">
+                <span>{{ currentRecord.jump_name || '无（直连）' }}{{ currentRecord.jump_ip ? ' (' + currentRecord.jump_ip + ')' : '' }}</span>
               </el-descriptions-item>
               
               <!-- 第七行 -->
@@ -2451,6 +2476,7 @@ export default {
           location: '',
           physical_area: '',
           floor_location: '',
+          jump_id: null, // 跳板交换机ID
           // 宿主机集群信息
           cluster_id: '',
           clusterName: '',
@@ -2682,6 +2708,8 @@ export default {
         ]
       },
       saveEditLoading: false,
+      // 跳板交换机候选列表
+      jumpDeviceList: [],
       clusterUsernameKey: Date.now(),
       clusterPasswordKey: Date.now(),
       
@@ -5157,6 +5185,9 @@ export default {
       this.currentRecord = record;
       this.editRecordVisible = true;
       
+      // 加载跳板交换机候选列表（编辑网络设备时需要选择跳板）
+      this.fetchJumpDevices();
+      
       // 获取记录类型
       const recordType = record.category || 'unknown';
       
@@ -5375,6 +5406,7 @@ export default {
               management_ip: managementIp, // 管理IP
               protocol: protocol, // 管理协议
               port: port, // 端口
+              jump_id: record.net_dev_cred_jump_id || null, // 跳板交换机ID
               // 认证信息
               username: username,
               password: password,
@@ -5610,6 +5642,44 @@ export default {
         ElMessage.error(`记录删除失败：${error.message}`);
         console.error('删除记录出错:', error);
       });
+    },
+
+    // 加载跳板目标列表（Agent/SSH/Telnet 类型）
+    fetchJumpDevices() {
+      let currentUser = null;
+      try {
+        const userInfo = localStorage.getItem('currentUser');
+        if (userInfo) {
+          currentUser = JSON.parse(userInfo);
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+      }
+      
+      fetch('jump_target_api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Username': currentUser ? currentUser.username : ''
+        },
+        body: JSON.stringify({
+          action: 'list',
+          username: currentUser ? currentUser.username : ''
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.data)) {
+          this.jumpDeviceList = data.data;
+        }
+      })
+      .catch(() => {
+        console.error('加载跳板目标列表失败');
+      });
+    },
+    // 跳板类型显示标签
+    jumpTypeLabel(type) {
+      return { agent: 'Agent', ssh: 'SSH', telnet: 'Telnet' }[type] || type;
     },
     
     // 处理保存修改

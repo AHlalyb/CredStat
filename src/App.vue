@@ -88,6 +88,11 @@
                 <i class="fas fa-terminal me-2"></i> 远程终端设置
               </router-link>
             </li>
+            <li class="menu-item" v-if="hasManagePermission">
+              <router-link to="/jump-target-settings" class="menu-link">
+                <i class="fas fa-sign-out-alt me-2"></i> 跳板目标设置
+              </router-link>
+            </li>
           </ul>
           </li>
         </ul>

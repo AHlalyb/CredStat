@@ -21,17 +21,32 @@ type Config struct {
 	Listen         string `json:"listen"`          // 监听地址，如 :7822
 	PHPBaseURL     string `json:"php_base_url"`    // PHP 会话接口地址，如 http://127.0.0.1/ws_session_api.php
 	GatewayKey     string `json:"gateway_key"`     // 与 PHP 端一致的共享密钥
+	AgentToken     string `json:"agent_token"`     // agent 跳板共享密钥（与 agent --token 一致，可为空）
 	IdleTimeout    int    `json:"idle_timeout"`    // 设备会话空闲超时（秒），0=不限制
 	ConnectTimeout int    `json:"connect_timeout"` // 连接设备超时（秒）
 }
 
 // Credential 从 PHP 换取的设备连接凭据
 type Credential struct {
+	IP       string          `json:"ip"`
+	Port     string          `json:"port"`
+	Username string          `json:"username"`
+	Password string          `json:"password"`
+	Protocol string          `json:"protocol"`
+	Jump     *JumpCredential `json:"jump,omitempty"` // 跳板目标凭据，非空则经跳板接入
+}
+
+// JumpCredential 跳板目标凭据
+//   - type=agent  : 经 agent TCP 隧道直连目标设备（无需登录跳板）
+//   - type=ssh    : SSH 登录跳板机后 CLI 跳转（telnet/ssh 目标IP）
+//   - type=telnet : Telnet 登录跳板机后 CLI 跳转（telnet/ssh 目标IP）
+type JumpCredential struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
 	IP       string `json:"ip"`
 	Port     string `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Protocol string `json:"protocol"`
 }
 
 // wsMessage WebSocket 消息（JSON）

@@ -79,7 +79,7 @@ if ($action === 'create') {
     // 2. 查询设备凭据
     $devStmt = $pdo->prepare(
         "SELECT net_dev_cred_management_ip, net_dev_cred_protocol, net_dev_cred_port,
-                net_dev_cred_username, net_dev_cred_password_hash
+                net_dev_cred_username, net_dev_cred_password_hash, net_dev_cred_jump_id
          FROM net_dev_cred WHERE id = :id"
     );
     $devStmt->execute([':id' => $deviceId]);
@@ -95,6 +95,37 @@ if ($action === 'create') {
         terminalJsonOut(['success' => false, 'message' => '设备密码解密失败']);
     }
 
+    // 3.1 若配置了跳板目标，一并解密跳板凭据（跳板目标表，类型 agent/ssh/telnet）
+    $jump = null;
+    if (!empty($dev['net_dev_cred_jump_id'])) {
+        $jumpStmt = $pdo->prepare(
+            "SELECT jump_target_name, jump_target_type, jump_target_ip, jump_target_port,
+                    jump_target_username, jump_target_password_hash
+             FROM jump_target WHERE jump_target_id = :id"
+        );
+        $jumpStmt->execute([':id' => intval($dev['net_dev_cred_jump_id'])]);
+        $jumpRow = $jumpStmt->fetch();
+        if ($jumpRow && !empty($jumpRow['jump_target_ip'])) {
+            $jumpType = strtolower((string)$jumpRow['jump_target_type']);
+            $jumpPassword = SecurityUtils::decrypt($jumpRow['jump_target_password_hash']);
+            if (in_array($jumpType, ['ssh', 'telnet']) && ($jumpPassword === null || $jumpPassword === false || $jumpPassword === '')) {
+                terminalJsonOut(['success' => false, 'message' => '跳板目标密码解密失败']);
+            }
+            // agent 类型为 TCP 隧道直连，不需要登录密码；ssh/telnet 类型需要
+            $defaultPort = $jumpType === 'agent' ? 19878 : ($jumpType === 'ssh' ? 22 : 23);
+            $jump = [
+                'name'     => (string)($jumpRow['jump_target_name'] ?: ''),
+                'type'     => $jumpType,
+                'ip'       => $jumpRow['jump_target_ip'],
+                'port'     => (string)(!empty($jumpRow['jump_target_port']) ? $jumpRow['jump_target_port'] : $defaultPort),
+                'username' => (string)($jumpRow['jump_target_username'] ?: ''),
+                'password' => (string)$jumpPassword,
+            ];
+        } else {
+            terminalJsonOut(['success' => false, 'message' => '跳板目标不存在或未配置IP']);
+        }
+    }
+
     // 4. 生成一次性 ticket 并落盘
     $ticket = bin2hex(random_bytes(16));
     $session = [
@@ -105,6 +136,9 @@ if ($action === 'create') {
         'protocol' => strtolower((string)$dev['net_dev_cred_protocol']),
         'expire'   => time() + $ticketTTL,
     ];
+    if ($jump !== null) {
+        $session['jump'] = $jump;
+    }
     $ticketFile = $ticketDir . '/' . $ticket . '.json';
 
     // 顺带清理过期的历史 ticket
@@ -147,6 +181,8 @@ if ($action === 'redeem') {
         terminalJsonOut(['success' => false, 'message' => 'ticket 已过期']);
     }
 
+    $jump = isset($session['jump']) && is_array($session['jump']) ? $session['jump'] : null;
+
     terminalJsonOut([
         'success'  => true,
         'ip'       => $session['ip'],
@@ -154,6 +190,7 @@ if ($action === 'redeem') {
         'username' => $session['username'],
         'password' => $session['password'],
         'protocol' => $session['protocol'],
+        'jump'     => $jump,
     ]);
 }
 

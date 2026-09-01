@@ -292,6 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             net_dev_cred_management_ip = :management_ip,
                             net_dev_cred_protocol = :protocol,
                             net_dev_cred_port = :port,
+                            net_dev_cred_jump_id = :jump_id,
                             net_dev_cred_username = :username,
                             net_dev_cred_password_hash = :password,
                             net_dev_cred_enable_password_hash = :enable_password,
@@ -314,6 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $managementIp = isset($data['management_ip']) ? $data['management_ip'] : '';
                         $protocol = isset($data['protocol']) ? $data['protocol'] : '';
                         $port = isset($data['port']) ? $data['port'] : '';
+                        $jumpId = isset($data['jump_id']) ? intval($data['jump_id']) : (isset($data['jumpId']) ? intval($data['jumpId']) : null);
                         $username = isset($data['username']) ? $data['username'] : '';
                         $password = isset($data['password']) ? $data['password'] : '';
                         $enablePassword = isset($data['enable_password']) ? $data['enable_password'] : '';
@@ -332,6 +334,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt->bindValue(':management_ip', $managementIp, PDO::PARAM_STR);
                         $stmt->bindValue(':protocol', $protocol, PDO::PARAM_STR);
                         $stmt->bindValue(':port', $port, PDO::PARAM_STR);
+                        if ($jumpId === null || $jumpId <= 0) {
+                            $stmt->bindValue(':jump_id', null, PDO::PARAM_NULL);
+                        } else {
+                            $stmt->bindValue(':jump_id', $jumpId, PDO::PARAM_INT);
+                        }
                         $stmt->bindValue(':username', $username, PDO::PARAM_STR);
                         // 加密密码
                         $encryptedPassword = SecurityUtils::encrypt($password);
@@ -1815,22 +1822,27 @@ function searchTable($pdo, $table, $keyword1, $keyword2, $keyword3, $keyword4, $
             break;
             
         case 'net_dev_cred':
-            // 查询网络设备登录信息 - 返回所有字段
+            // 查询网络设备登录信息 - 返回所有字段（含跳板交换机信息）
             $baseSql = "SELECT 
-                        *, 
-                        id as id, 
-                        net_dev_cred_chinese_name as name, 
-                        net_dev_cred_management_ip as ip_url, 
-                        net_dev_cred_protocol as protocol, 
-                        net_dev_cred_port as port, 
-                        net_dev_cred_dev_type as dev_type, 
-                        net_dev_cred_username as username, 
-                        net_dev_cred_password_hash as password, 
-                        net_dev_cred_enable_password_hash as enable_password, 
-                        net_dev_cred_description as remark,
+                        d.*, 
+                        d.id as id, 
+                        d.net_dev_cred_chinese_name as name, 
+                        d.net_dev_cred_management_ip as ip_url, 
+                        d.net_dev_cred_protocol as protocol, 
+                        d.net_dev_cred_port as port, 
+                        d.net_dev_cred_dev_type as dev_type, 
+                        d.net_dev_cred_username as username, 
+                        d.net_dev_cred_password_hash as password, 
+                        d.net_dev_cred_enable_password_hash as enable_password, 
+                        d.net_dev_cred_description as remark,
+                        jt.jump_target_name as jump_name,
+                        jt.jump_target_ip as jump_ip,
+                        jt.jump_target_type as jump_type,
+                        jt.jump_target_port as jump_port,
                         'network' as category
-                    FROM net_dev_cred";
-            $orderClause = " ORDER BY created_at DESC";
+                    FROM net_dev_cred d
+                    LEFT JOIN jump_target jt ON d.net_dev_cred_jump_id = jt.jump_target_id";
+            $orderClause = " ORDER BY d.created_at DESC";
             $category = 'network';
             break;
             
